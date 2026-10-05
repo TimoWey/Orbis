@@ -2,7 +2,9 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-Minecraft worlds are so vast that most of them will never be explored. Orbis is built around a different idea: a world small enough to get to know. Discover its landscapes, find your favourite places, and gradually make the whole world familiar. Each seed gives you a different world to call home.
+Minecraft Java worlds span roughly 60 million × 60 million blocks. Think of [2b2t](https://www.2b2t.org/): a server running since 2010 whose world has welcomed over a million players. For one player or a small group, exploring a whole world that size is out of reach.
+
+Orbis is built around a different idea: a world small enough to get to know. Discover its landscapes, find your favourite places, and gradually make the whole world familiar. Each seed gives you a different world to call home.
 
 Choose a size and keep exploring. When you cross an edge, you continue on the opposite side of the same world.
 
