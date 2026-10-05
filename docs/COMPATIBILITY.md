@@ -9,7 +9,6 @@ As of 2026-10-05. **No Orbis compatibility tests have been performed.**
 | Sodium | Required | Support documented upstream | Untested |
 | Lithium | Required | Support documented upstream | Untested |
 | FerriteCore | Compatibility priority | Memory optimization | Untested |
-| ImmediatelyFast | Compatibility priority | Rendering optimization | Untested |
 | Entity Culling | Compatibility priority | Check visibility across seams | Untested |
 | Litematica | Compatibility priority | Check schematic placement across seams | Untested |
 | MiniHUD | Compatibility priority | Check overlays and coordinates across seams | Untested |

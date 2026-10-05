@@ -2,7 +2,7 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-Minecraft Java worlds span roughly 60 million × 60 million blocks. Think of [2b2t](https://www.2b2t.org/): a server running since 2010 whose world has welcomed over a million players. For one player or a small group, exploring a whole world that size is out of reach.
+Minecraft Java worlds span roughly 60 million × 60 million blocks, about 30 million from the centre in each direction. Think of [2b2t](https://www.2b2t.org/): a server running since 2010 whose world has welcomed over a million players. For one player or a small group, exploring a whole world that size is out of reach.
 
 Orbis is built around a different idea: a world small enough to get to know. Discover its landscapes, find your favourite places, and gradually make the whole world familiar. Each seed gives you a different world to call home.
 
@@ -68,13 +68,12 @@ The following mods are priorities for compatibility testing. Their support in Or
   </tr>
   <tr>
     <td width="33%"><a href="https://modrinth.com/mod/entityculling"><img src="https://cdn.modrinth.com/data/NNAgCjsB/7873452d6cede4daed12da3d7d8c193ab88b4fd6_96.webp" width="28" height="28" alt="" align="absmiddle"> Entity Culling</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/immediatelyfast"><img src="https://cdn.modrinth.com/data/5ZwdcRci/e57b6b451425692ac17ad322d5e14bea686a383a_96.webp" width="28" height="28" alt="" align="absmiddle"> ImmediatelyFast</a></td>
     <td width="33%"><a href="https://modrinth.com/mod/modmenu"><img src="https://cdn.modrinth.com/data/mOgUt4GM/5a20ed1450a0e1e79a1fe04e61bb4e5878bf1d20.png" width="28" height="28" alt="" align="absmiddle"> Mod Menu</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/litematica"><img src="https://cdn.modrinth.com/data/bEpr0Arc/25b5529d7a3b030ac136a6ce879d8ed2a1aa4a8d.png" width="28" height="28" alt="" align="absmiddle"> Litematica</a></td>
   </tr>
   <tr>
-    <td width="33%"><a href="https://modrinth.com/mod/litematica"><img src="https://cdn.modrinth.com/data/bEpr0Arc/25b5529d7a3b030ac136a6ce879d8ed2a1aa4a8d.png" width="28" height="28" alt="" align="absmiddle"> Litematica</a></td>
     <td width="33%"><a href="https://modrinth.com/mod/minihud"><img src="https://cdn.modrinth.com/data/UMxybHE8/4adf057a251f694983af139a06839e33bcd7a419.png" width="28" height="28" alt="" align="absmiddle"> MiniHUD</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/tweakeroo"><img src="https://cdn.modrinth.com/data/t5wuYk45/35af76cfb1d3074c5e8575d5f7385bb6c083c9d6.png" width="28" height="28" alt="" align="absmiddle"> Tweakeroo</a></td>
+    <td colspan="2"><a href="https://modrinth.com/mod/tweakeroo"><img src="https://cdn.modrinth.com/data/t5wuYk45/35af76cfb1d3074c5e8575d5f7385bb6c083c9d6.png" width="28" height="28" alt="" align="absmiddle"> Tweakeroo</a></td>
   </tr>
 </table>
 
@@ -93,6 +92,14 @@ A few examples from the current alpha presets. Each measurement is the full widt
 | Very large | 65,536 × 65,536 | 8,192 × 8,192 |
 
 These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is an additional experimental option with roughly the surface area of our planet, rather than a map of Earth.
+
+## Future ideas
+
+Ideas for future versions; scope and implementation are still open.
+
+- **Globe minimap.** A detailed, high-resolution view of your world that you can rotate and zoom into. Add waypoints, name your favourite places, and plan your next journey.
+- **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
+- **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
 
 ## World conversion
 
