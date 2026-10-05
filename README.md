@@ -4,6 +4,16 @@ Endliche Minecraft-Welten mit nahtlosen Übergängen.
 
 **Status: Planung. Noch kein spielbarer Mod, kein Upstream-Code importiert, keine Spieltests ausgeführt.**
 
+## So funktioniert Orbis
+
+![Animation: Quadrat wird zum Torus; der Spieler läuft zweimal in X-Richtung zum Start zurück.](docs/media/orbis-torus.gif)
+
+**Quadrat → Zylinder → Torus.** Gegenüberliegende Kanten sind direkte Nachbarn. Wer immer in +X läuft, erreicht nach einer Weltbreite wieder denselben Ort; in Z gilt dasselbe. Es entstehen keine neuen Kopien der Welt.
+
+Der Torus veranschaulicht die Verbindungen. **Im Spiel bleiben Gelände und Schwerkraft normal; Y/Höhe wird nicht umgebrochen.** Die Animation ist ein Erklärmodell, keine Spielaufnahme.
+
+[Video zum Abspielen/Pausieren](docs/media/orbis-torus.mp4) · [Animation und Renderer](docs/media/README.md)
+
 | Festgelegt | Ziel |
 | --- | --- |
 | Grundlage | Toroidal World als eigenständige Weiterentwicklung |
@@ -31,3 +41,4 @@ Endliche Minecraft-Welten mit nahtlosen Übergängen.
 - [Preset-Entwurf](spec/world-presets.json)
 
 Stand: 2026-10-05. „Geplant“ und „Upstream dokumentiert“ bedeuten nicht „in Orbis getestet“.
+
