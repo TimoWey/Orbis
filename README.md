@@ -2,9 +2,11 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-**Status: 0.1.0-alpha.1 — CI build and 22 regression tests pass. Gameplay and required-mod compatibility remain unverified.**
+**Status: 0.1.0-alpha.2 — standalone build and 25 regression tests pass. Gameplay and required-mod compatibility remain unverified.**
 
-[Alpha build and JAR download](https://github.com/TimoWey/Orbis/actions/runs/37305137050) · [Implementation PR](https://github.com/TimoWey/Orbis/pull/1)
+[Standalone JAR / build](https://github.com/TimoWey/Orbis/actions/runs/37306724814) · [Implementation PR](https://github.com/TimoWey/Orbis/pull/1)
+
+**Installation: Fabric Loader + Fabric API + one Orbis JAR. No Toroidal World mod required.**
 
 [Implementation, build and installation](docs/IMPLEMENTATION.md) — new worlds only. Biome scans and existing-world conversion are not implemented.
 
@@ -36,7 +38,7 @@ The torus illustrates connectivity. **In-game terrain and gravity stay normal; Y
 
 | Decision | Target |
 | --- | --- |
-| Foundation | Orbis extension; requires Toroidal World 0.19.3 |
+| Foundation | Standalone Orbis; integrated MIT-licensed engine source |
 | Platform | Fabric; Minecraft 26.3, Java 25 |
 | Mode | Singleplayer first |
 | World | Overworld and Nether wrap along X and Z |
