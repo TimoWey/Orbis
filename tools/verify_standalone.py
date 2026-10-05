@@ -5,13 +5,23 @@ import sys
 import zipfile
 from pathlib import Path
 
-jars = [Path(p) for p in sys.argv[1:] if not p.endswith('-sources.jar')]
+debug_expected = '--debug' in sys.argv[1:]
+jars = [Path(p) for p in sys.argv[1:] if p != '--debug' and not p.endswith('-sources.jar')]
 assert len(jars) == 1, f'Expected one distributable, found {jars}'
 with zipfile.ZipFile(jars[0]) as jar:
     names = set(jar.namelist())
     meta = json.loads(jar.read('fabric.mod.json'))
     assert meta['id'] == 'orbis'
     assert meta['entrypoints']['main'] == ['dev.orbis.Orbis']
+    debug_entrypoint = 'dev.orbis.debug.OrbisDebugClient'
+    debug_classes = [name for name in names if name.startswith('dev/orbis/debug/')]
+    assert (debug_entrypoint in meta['entrypoints']['client']) == debug_expected
+    assert bool(debug_classes) == debug_expected, 'Debug classes leaked or are missing'
+    assert meta['version'].endswith('-debug') == debug_expected
+    if debug_expected:
+        assert 'dev/orbis/debug/OrbisDebugScreen.class' in names
+        assert 'dev/orbis/debug/DebugSurvey.class' in names
+        assert 'assets/orbis_debug/lang/en_us.json' in names
     assert 'toroidal_world' not in meta['depends']
     assert 'toroidal_world' not in meta.get('provides', [])
     assert meta['breaks']['toroidal_world'] == '*'
@@ -30,4 +40,4 @@ with zipfile.ZipFile(jars[0]) as jar:
         with zipfile.ZipFile(io.BytesIO(jar.read(nested['file']))) as lib:
             nested_meta = json.loads(lib.read('fabric.mod.json'))
             assert nested_meta['id'] != 'toroidal_world', 'Separate engine mod was nested'
-print(f'{jars[0].name}: standalone packaging verified (one Orbis mod; integrated engine).')
+print(f'{jars[0].name}: standalone packaging verified; debug={debug_expected}.')

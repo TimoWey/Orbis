@@ -10,6 +10,7 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 - Explicit unwrapped End. An identity-shaped engine generator prevents automatic dimension wrapping; it does not impose finite End bounds.
 - World identity and bounds stored in the generator codec, with restoration on recreate.
 - English customization screen with responsive size controls, a live world overview, selected preset marks and inline validation; biome disclaimer on join, and `/orbis` information command.
+- Optional debug-only M atlas: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, bounded generator sampling, structure-type and portal-room layout audits, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
 - Regression tests for bounds, seam math, serialization and shape ownership.
 
 ## Validation
@@ -18,9 +19,11 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 
 Still required before a playable release: create/save/reload/recreate a world; cross X, Z and offset corners in both dimensions; verify portals and End gateways; repeat with Sodium, Lithium and Distant Horizons together. Record exact versions and rendering distances in the compatibility matrix.
 
+After the slider and area-preset update on 2026-10-05, local Java 25 release and debug builds passed all 32 and 40 regression cases respectively, plus standalone JAR packaging verification for both variants. Checks cover every preset, aligned intermediate widths, logarithmic slider round trips, area arithmetic, selection limits and legacy save widths. This does not verify the in-game menu, Stronghold or portal generation.
+
 ## Not implemented or verified
 
-- Actual biome coverage scan, statistical size guarantees, and existing-world conversion/blending.
+- Exhaustive biome coverage certification, statistical size guarantees, and existing-world conversion/blending. The optional debug atlas provides observations and a bounded sample, not proof of missing biomes.
 - Singleplayer visual/gameplay validation, portal placement tests, and the combined Sodium/Lithium/DH test matrix.
 - Earth-sized runtime/performance validation. No full-world arrays or pregeneration are used by Orbis.
 
@@ -29,6 +32,8 @@ The mod is an early development alpha, not completion of the requirements. Start
 ## Build / install
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). GitHub Actions performs the same build and publishes the JAR and test reports as workflow artifacts. Use the ordinary JAR, not the `-sources.jar`.
+
+For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.2-debug.jar` instead of the normal JAR. New CI runs publish separate `orbis-fabric-26.3-release` and `orbis-fabric-26.3-debug` artifacts. The normal build excludes the debug classes and entrypoint entirely.
 
 Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.2.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
 
