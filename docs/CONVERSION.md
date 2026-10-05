@@ -1,26 +1,26 @@
-# Konvertierung bestehender Welten
+# Existing-world conversion
 
-**Geplant; Upstream unterstützt diese Funktion noch nicht.**
+**Planned; this feature is not supported upstream yet.**
 
-| Schritt | Verhalten |
+| Step | Behaviour |
 | --- | --- |
-| Analysieren | Quellversion, Generator, Dimensionen, vorhandene Chunks und wichtige Positionen erfassen |
-| Ausschnitt wählen | Overworld und Nether gekoppelt bei 1:8; Inhalte ausserhalb anzeigen |
-| Schützen | Baugebiete manuell markieren; automatische Erkennung allein ist nicht zuverlässig |
-| Vorschau | Betroffene Randstreifen, Schutzkonflikte und fehlende/unbestätigte Biome anzeigen |
-| Kopieren | Nur auf separater Weltkopie arbeiten |
-| Regenerieren | Ausgewählte Randchunks ersetzen; Übergänge zu erhaltenem Gelände und Gegenrand inklusive Ecken |
-| Daten erhalten | Inventare, Entities, Block-Entities, POIs, Ticks, Strukturen, Spieler und Fortschritt konsistent übernehmen |
-| Abschliessen | End erhalten; DH-Daten aktualisieren; Ergebnis prüfen und Bericht erstellen |
+| Analyze | Inspect source version, generator, dimensions, existing chunks and important positions |
+| Choose bounds | Couple Overworld and Nether at 1:8; show content outside the selection |
+| Protect | Mark builds manually; automatic detection alone is unreliable |
+| Preview | Show affected edge strips, protection conflicts and missing/unconfirmed biomes |
+| Copy | Work on a separate world copy only |
+| Regenerate | Replace selected edge chunks; blend into retained terrain and the opposite edge, including corners |
+| Preserve data | Consistently migrate inventories, entities, block entities, POIs, ticks, structures, players and progress |
+| Finish | Preserve the End; update DH data; verify the result and generate a report |
 
-## Regeln
+## Rules
 
-- Seed bestehender Welt nicht stillschweigend ändern.
-- Keine Modulo-Zusammenführung verschiedener alter Chunks auf dieselbe Zielposition.
-- Streifenbreite einstellbar; schwieriges Gelände braucht eventuell mehr Platz.
-- Übergänge zwischen alten und künftig generierten Chunks auch im Inneren behandeln.
-- Ungenerierte Randbereiche bei Bedarf erzeugen; keine komplette Welt vorberechnen.
-- Fehlende Biome können grössere Grenzen oder ausdrücklich gewählte Geländeänderungen erfordern.
-- Ohne freien Platz können vollständige Biomvielfalt und unveränderte Bauten unvereinbar sein.
+- Never silently change an existing world's seed.
+- Never merge distinct old chunks onto one target position using modulo.
+- Make strip width configurable; difficult terrain may require more space.
+- Handle transitions between retained and newly generated interior chunks too.
+- Generate unexplored edges on demand; do not precompute the entire world.
+- Missing biomes may require larger bounds or explicitly selected terrain changes.
+- Without spare space, complete biome coverage and unchanged builds may conflict.
 
-**Offen:** Quellversion/Modliste der Nutzerwelt, verschiebbarer Ausschnitt, Default-Streifenbreite, unterstützte fremde Generatoren.
+**Open:** source version/mod list, movable selection, default strip width and supported third-party generators.

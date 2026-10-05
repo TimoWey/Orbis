@@ -1,22 +1,22 @@
-# Architekturentwurf
+# Architecture draft
 
-Noch nicht implementiert.
+Not implemented yet.
 
-| Baustein | Aufgabe |
+| Component | Responsibility |
 | --- | --- |
-| Upstream-Basis | Geprüften Toroidal-World-Commit übernehmen; Herkunft/Lizenz erhalten |
-| Weltkonfiguration | Bounds, Grössenprofil, Generator-/Schemasversion persistent speichern |
-| Koordinaten | Eindeutige kanonische Chunks, korrekte Normalisierung negativer Werte |
-| Darstellung | Periodische Ansichten derselben Daten; keine doppelte Simulation |
-| Distanzen | Kürzeste periodische Wege, passende Pfadfindung und Interaktionen |
-| Generierung | Periodisches Noise-Gitter; Features, Strukturen, Höhlen und Flüssigkeiten mitprüfen |
-| Dimensionen | Nether-Bounds = Overworld-Bounds / 8; End explizit ausschliessen |
-| Biomprüfung | Tatsächlichen Generator abfragen; Nachweis, Abwesenheit und Unsicherheit trennen |
-| Konverter | Bestandsmaske, Schutzbereiche, deterministische Übergänge und vollständige Datenmigration |
-| Distant Horizons | Passende LOD-Koordinaten und Cache-Behandlung |
+| Upstream foundation | Import a reviewed Toroidal World commit; retain attribution and licensing |
+| World configuration | Persist bounds, size profile, generator version and schema version |
+| Coordinates | Unique canonical chunks; correct normalization of negative coordinates |
+| Rendering | Periodic views of the same data, without duplicate simulation |
+| Distances | Shortest periodic paths; appropriate pathfinding and interactions |
+| Generation | Periodic noise grid; check features, structures, caves and fluids too |
+| Dimensions | Nether bounds = Overworld bounds / 8; explicitly exclude the End |
+| Biome check | Query the actual generator; distinguish presence, absence and uncertainty |
+| Converter | Existing-chunk mask, protected areas, deterministic transitions and complete data migration |
+| Distant Horizons | Correct LOD coordinates and cache handling |
 
-Singleplayer nutzt einen integrierten Server; Änderungen an Serverlogik bleiben erforderlich.
+Singleplayer uses an integrated server, so server-side logic still needs changes.
 
-Periodische Generierung erfüllt sinngemäss N(x+Lx,y,z)=N(x,y,z) und N(x,y,z+Lz)=N(x,y,z). Gleicher Seed mit verändertem Generator garantiert kein gleiches Gelände.
+Periodic generation conceptually satisfies N(x+Lx,y,z)=N(x,y,z) and N(x,y,z+Lz)=N(x,y,z). Keeping the seed while changing the generator does not guarantee identical terrain.
 
-Kein Startalgorithmus darf alle theoretischen Chunks durchlaufen. Gesamtflächen/-anzahlen mindestens als 64-Bit-Werte behandeln.
+No startup algorithm may iterate through every theoretical chunk. Use at least 64-bit arithmetic for total areas and chunk counts.

@@ -1,28 +1,29 @@
 # Requirements
 
-Stand: 2026-10-05. Alle Funktionen sind noch **geplant**.
+Updated: 2026-10-05. All functionality is still **planned**.
 
-| ID | Priorität | Requirement | Abnahme |
+| ID | Priority | Requirement | Acceptance |
 | --- | --- | --- | --- |
-| R01 | Pflicht | Name Orbis; Basis Toroidal World | Eigene Mod-ID, Herkunft und Lizenzhinweise |
-| R02 | Pflicht | Fabric, neueste stabile Java-Edition zum Projektstart | Konkrete Tool-/Spielversionen festgeschrieben |
-| R03 | Pflicht | Singleplayer zuerst | Erstellen, Spielen, Speichern, Neuladen |
-| R04 | Pflicht | Overworld/Nether nahtlos in X und Z | Alle Kanten und Ecken korrekt; Y unverändert |
-| R05 | Pflicht | Nether exakt 1:8 | Gekoppelte Grenzen und korrekte Portalabbildung |
-| R06 | Pflicht | End behält Vanilla-Verhalten | Keine Orbis-Grenze; Portale/Gateways funktionieren |
-| R07 | Pflicht | Fünf Grössenstufen plus Erde | Finale Werte nach Biomuntersuchung |
-| R08 | Pflicht | Sehr klein/Klein dürfen Biome vermissen | Verständlicher Hinweis |
-| R09 | Ziel | Normal enthält alle natürlich generierenden Overworld-/Nether-Biome | Beide Dimensionen geprüft; Varianten/Höhlen eingeschlossen |
-| R10 | Pflicht | Biomprüfung bei neuer Welt mit transparentem Ergebnis | Vollständig / unvollständig / nicht vollständig geprüft unterscheiden |
-| R11 | Pflicht | Distant Horizons + Sodium + Lithium | Gemeinsam mit festen Versionen getestet |
-| R12 | Pflicht | Konvertierung bestehender Welten | Original unverändert; neue Weltkopie mit Vorschau |
-| R13 | Pflicht | Randchunks gezielt regenerieren und anschliessen | Schutzbereiche erhalten; keine abrupten neuen Geländeübergänge |
-| R14 | Pflicht | Inventare, Entities und Weltdaten erhalten | Datenintegrität nach Konvertierung und Neustart |
-| R15 | Pflicht | Konsistente Simulation über die Naht | Keine Duplikation; Licht, Flüssigkeiten, Redstone, Mobs, Fahrzeuge geprüft |
-| R16 | Pflicht | Bedarfsgesteuerte Generierung | Keine komplette Vorgenerierung; Erde ohne globale Flächenarrays |
-| R17 | Pflicht | Korrekte DH-Fernsicht und Caches | Gelände/LOD stimmen an Naht und nach Konvertierung überein |
-| R18 | Pflicht | Keine automatische Seedänderung bestehender Welten | Fehlende Biome melden und Lösungen anbieten |
+| R01 | Required | Name Orbis; based on Toroidal World | Own mod ID, attribution and license notices |
+| R02 | Required | Fabric; latest stable Java Edition at project start | Pin exact tool and game versions |
+| R03 | Required | Singleplayer first | Create, play, save and reload |
+| R04 | Required | Seamless Overworld/Nether wrapping in X and Z | All edges and corners correct; Y unchanged |
+| R05 | Required | Exact 1:8 Nether scaling | Coupled bounds and correct portal mapping |
+| R06 | Required | Vanilla End behaviour | No Orbis bounds; working portals and gateways |
+| R07 | Required | Five size tiers plus Earth | Final values follow biome analysis |
+| R08 | Required | Very small/Small may lack biomes | Clear warning |
+| R09 | Goal | Normal contains all naturally generating Overworld/Nether biomes | Check both dimensions, including variants and caves |
+| R10 | Required | New-world biome check with transparent results | Distinguish complete, incomplete and not fully checked |
+| R11 | Required | Distant Horizons + Sodium + Lithium | Test together with pinned versions |
+| R12 | Required | Convert existing worlds | Preserve original; preview changes on a new copy |
+| R13 | Required | Selectively regenerate and blend edge chunks | Preserve protected areas; avoid abrupt new terrain seams |
+| R14 | Required | Preserve inventories, entities and world data | Verify integrity after conversion and restart |
+| R15 | Required | Consistent simulation across seams | No duplication; test light, fluids, redstone, mobs and vehicles |
+| R16 | Required | On-demand generation | No full pregeneration; no global area arrays for Earth |
+| R17 | Required | Correct DH views and caches | Terrain and LOD agree across seams and after conversion |
+| R18 | Required | Never automatically change existing-world seeds | Report missing biomes and offer options |
+| R19 | Required | English documentation and user-facing text | English README, docs, animation and proposed UI labels |
 
-**Offen:** Finalgrössen; Mindestfläche je Biom; gewünschte Trefferquote (Vorschlag 99 %); genaue Quellversion der bestehenden Welt; Leistungsbudgets.
+**Open:** final dimensions; minimum usable area per biome; target coverage rate (99% proposed); existing-world source version; performance budgets.
 
-**Nicht Version 1:** dedizierter Multiplayer, gekrümmte Donut-Grafik, geografische Erdkarte, pauschale Kompatibilität mit allen Mods.
+**Outside version 1:** dedicated multiplayer, curved in-game donut geometry, a geographic Earth map and universal mod compatibility.

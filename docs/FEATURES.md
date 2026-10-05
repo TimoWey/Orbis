@@ -1,31 +1,31 @@
 # Features
 
-Alle Features sind **geplant**, noch nicht implementiert.
+All features are **planned**, not implemented yet.
 
-| Feature | Verhalten |
+| Feature | Behaviour |
 | --- | --- |
-| Nahtlose Welt | Weiterlaufen/-fliegen führt auf die andere Seite; gleiche Weltinhalte |
-| Grössenauswahl | Sehr klein, Klein, Mittel/Normal, Gross, Sehr gross, Erde |
-| Biomprüfung | Overworld und Nether vor erstem Spielstart untersuchen |
-| Biombericht | Gefundene, fehlende und unbestätigte Biome pro Dimension anzeigen |
-| Bestehende Welt übernehmen | Vorschau, Schutzgebiete, neue Weltkopie, angepasste Randstreifen |
-| Performance-Mods | Distant Horizons, Sodium und Lithium als Pflichtkombination |
-| Unverändertes End | Gewohnte Erkundung, Endkampf, Portale und Gateways |
+| Seamless world | Walking or flying across a boundary continues on the opposite side of the same world |
+| Size selection | Very small, Small, Medium/Normal, Large, Very large, Earth |
+| Biome check | Examine Overworld and Nether before first play |
+| Biome report | Show found, missing and unconfirmed biomes per dimension |
+| Existing-world conversion | Preview, protected areas, a new world copy and blended edge strips |
+| Performance mods | Distant Horizons, Sodium and Lithium as the required combination |
+| Unchanged End | Familiar exploration, dragon fight, portals and gateways |
 
-## Biomprüfung: vorgeschlagener Ablauf
+## Proposed biome-check flow
 
-1. Grösse und Seed wählen; Generatorparameter stehen fest.
-2. „Biome werden geprüft …“ mit Fortschritt und Abbruchmöglichkeit.
-3. Ergebnis pro Dimension anzeigen:
+1. Choose size and seed; fix generator parameters.
+2. Show “Checking biomes…” with progress and cancellation.
+3. Display results per dimension:
 
-| Status | Meldung |
+| Status | Message |
 | --- | --- |
-| Vollständig nachgewiesen | „Alle erforderlichen Biome wurden gefunden.“ |
-| Nachweislich unvollständig | „In dieser Welt fehlen folgende Biome: …“ |
-| Unvollständige Prüfung | „Die Prüfung konnte nicht alle Biome bestätigen: …“ |
+| Complete coverage confirmed | “All required biomes were found.” |
+| Coverage proven incomplete | “This world is missing the following biomes: …” |
+| Incomplete scan | “The scan could not confirm these biomes: …” |
 
-Bei unvollständiger Abdeckung: **Trotzdem starten**, **Grösse ändern**, bei neuen Welten zusätzlich **anderen Seed prüfen**. Fehlende Rastertreffer allein dürfen nicht als bewiesene Abwesenheit erscheinen.
+If coverage is incomplete: **Start anyway**, **Change size**, and for new worlds only, **Check another seed**. A missed sample alone must not be reported as proven absence.
 
-Vorgeschlagener Hinweis: „Diese Welt ist begrenzt. Einige Biome und Strukturen können fehlen. Du kannst trotzdem spielen oder die Einstellungen ändern.“
+Suggested warning: “This world is finite. Some biomes and structures may be missing. You can keep playing or change your settings.”
 
-Normal soll vollständige Abdeckung anstreben; der Hinweis verhindert ein falsches Garantieversprechen. Eine Garantie oder erzwungene Seed-Suche ist noch nicht beschlossen. Biome und Strukturen getrennt bewerten.
+Normal aims for complete coverage; warnings prevent a false guarantee. Guaranteed coverage or mandatory seed search has not been decided. Evaluate biomes and structures separately. All proposed UI text is English.
