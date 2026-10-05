@@ -1,6 +1,6 @@
 # Features
 
-All features are **planned**, not implemented yet.
+The development alpha implements world wrapping, size selection and an unwrapped End. Gameplay validation is still pending. Biome checks and existing-world conversion are planned. See [Implementation status](https://github.com/TimoWey/Orbis/blob/orbis-alpha/docs/IMPLEMENTATION.md) for build evidence and limitations.
 
 | Feature | Behaviour |
 | --- | --- |
