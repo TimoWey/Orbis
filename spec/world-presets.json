@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "status": "draft_not_runtime_configuration",
+  "nether_scale": 8,
+  "end_wrapping": false,
+  "minimum_overworld_width_chunks_from_upstream": 128,
+  "normal_measurement_candidates_chunks": [
+    512,
+    1024,
+    2048,
+    4096
+  ],
+  "biome_check": {
+    "status": "planned",
+    "dimensions": [
+      "overworld",
+      "nether"
+    ],
+    "allow_start_after_warning": true,
+    "preserve_existing_world_seed": true
+  },
+  "presets": [
+    {
+      "id": "very_small",
+      "label_de": "Sehr klein",
+      "overworld_width_chunks": null,
+      "biome_policy": "missing_biomes_accepted"
+    },
+    {
+      "id": "small",
+      "label_de": "Klein",
+      "overworld_width_chunks": null,
+      "biome_policy": "missing_biomes_accepted"
+    },
+    {
+      "id": "medium",
+      "label_de": "Mittel / Normal",
+      "overworld_width_chunks": null,
+      "biome_policy": "all_biomes_goal_with_check"
+    },
+    {
+      "id": "large",
+      "label_de": "Gross",
+      "overworld_width_chunks": null,
+      "biome_policy": "pending"
+    },
+    {
+      "id": "very_large",
+      "label_de": "Sehr gross",
+      "overworld_width_chunks": null,
+      "biome_policy": "pending"
+    },
+    {
+      "id": "earth",
+      "label_de": "Erde",
+      "overworld_width_chunks": 1411456,
+      "nether_width_chunks": 176432,
+      "large_coordinate_validation_required": true
+    }
+  ]
+}
