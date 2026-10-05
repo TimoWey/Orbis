@@ -1,0 +1,40 @@
+name: Build Orbis
+on:
+  push:
+    paths:
+      - 'src/**'
+      - '*.gradle'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Build and regression tests
+        run: bash gradlew build --no-daemon --stacktrace
+      - name: Upload mod JAR and sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-fabric-26.3
+          path: build/libs/*.jar
+          if-no-files-found: error
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/reports/tests/
+            build/test-results/
+          if-no-files-found: ignore
