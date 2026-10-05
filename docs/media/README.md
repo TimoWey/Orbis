@@ -6,9 +6,12 @@
 | --- | --- |
 | `orbis-torus.gif` | Automatically looping README animation |
 | `orbis-torus.mp4` | Video with playback and pause controls |
+| `orbis-walk-x.gif` | X-only loop; no folding intro |
+| `orbis-walk-z.gif` | Z-only loop; no folding intro |
+| `orbis-walk-diagonal.gif` | Offset diagonal loop; no folding intro |
 | `render_orbis.py` | Reproducible renderer; requires Python, NumPy, Pillow and ffmpeg |
 
-Run from the repository root: `python docs/media/render_orbis.py`.
+Run from the repository root: `python docs/media/render_orbis.py`. To extract only the route loops from the existing full GIF, add `--routes-only`.
 
 ## Routes
 
@@ -21,3 +24,5 @@ Both coordinates wrap independently. The 45° square-world example closes after 
 The shape illustrates topology and is not to scale. Orbis does not bend in-game terrain or gravity; Y / height stays unchanged. The map and torus marker show the same position.
 
 All artwork is procedural block-style graphics. No Minecraft textures, no gameplay footage and no evidence of implemented mod features.
+
+The full video shows X at 0:17, Z at 0:29 and the diagonal at 0:41. The README also embeds each route as its own immediately playing loop.
