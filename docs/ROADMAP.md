@@ -10,4 +10,4 @@
 | 6. Converter | World copy, preview, protected areas, transitions, data integrity and DH cache |
 | 7. Singleplayer release | Version matrix, regression checks and documented limitations |
 
-No release date promised. Required-mod testing accompanies development. No world simulation, mod build or gameplay test has been performed.
+No release date promised. Required-mod testing accompanies development. Implementation has started; see [Implementation](IMPLEMENTATION.md) for completed source and validation status.

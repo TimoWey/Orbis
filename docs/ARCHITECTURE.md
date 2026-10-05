@@ -1,10 +1,10 @@
 # Architecture draft
 
-Not implemented yet.
+The first alpha uses Toroidal World as a pinned engine dependency. See [Implementation](IMPLEMENTATION.md). This table also includes future components.
 
 | Component | Responsibility |
 | --- | --- |
-| Upstream foundation | Import a reviewed Toroidal World commit; retain attribution and licensing |
+| Upstream foundation | Depend on pinned Toroidal World 0.19.3; use its public extension API and retain attribution |
 | World configuration | Persist bounds, size profile, generator version and schema version |
 | Coordinates | Unique canonical chunks; correct normalization of negative coordinates |
 | Rendering | Periodic views of the same data, without duplicate simulation |

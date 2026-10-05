@@ -55,3 +55,7 @@ Assuming 510 million km² including oceans and 1 block = 1 metre:
 Equal area only, not an Earth map. Generate on demand; verify 64-bit area arithmetic and large coordinates.
 
 [Calculation](../analysis/biome_sizing.py) · [Sources](SOURCES_AND_LICENSE.md)
+
+## Development alpha
+
+The first implementation offers provisional Overworld widths of 128, 256, 1024, 2048 and 4096 chunks, plus experimental Earth. Nether widths are always divided by 8. These are testing presets, not a result of biome measurements; even Medium carries a coverage warning.
