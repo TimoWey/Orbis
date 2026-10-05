@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "dev.orbis",
+  "package": "dev.orbis.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": ["TorusOwnershipMixin"],
   "injectors": {"defaultRequire": 1}
