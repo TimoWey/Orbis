@@ -200,9 +200,24 @@ def render(t):
     text(d,(30,613),'Block-style explainer · not gameplay footage · Y / height never wraps',12,MUTED)
     return im
 
+def export_route_loops():
+    """Extract each walk as an immediately playing standalone README loop."""
+    with Image.open(OUT / 'orbis-torus.gif') as source:
+        for name, start, end in [('x', 17, 29), ('z', 29, 41), ('diagonal', 41, 55)]:
+            frames, durations = [], []
+            for frame in range(start * FPS, end * FPS):
+                source.seek(frame)
+                frames.append(source.convert('RGB'))
+                durations.append(source.info['duration'])
+            frames[0].save(OUT / f'orbis-walk-{name}.gif', save_all=True,
+                           append_images=frames[1:], duration=durations, loop=0,
+                           optimize=False)
+
 if __name__=='__main__':
     import sys
-    if '--preview' in sys.argv:
+    if '--routes-only' in sys.argv:
+        export_route_loops()
+    elif '--preview' in sys.argv:
         for t in (0,8,16,20,32,40,44,45,46,48,54):render(t).save(OUT/f'preview-{t}.png')
     else:
         for f in range(FPS*DURATION):
@@ -218,4 +233,5 @@ if __name__=='__main__':
         subprocess.run(base+['-vf','palettegen=stats_mode=diff',str(FRAMES/'palette.png')],check=True)
         subprocess.run(base+['-i',str(FRAMES/'palette.png'),'-lavfi','paletteuse=dither=bayer:bayer_scale=4','-loop','0',str(OUT/'orbis-torus.gif')],check=True)
         subprocess.run(base+['-c:v','libx264','-pix_fmt','yuv420p','-crf','20','-movflags','+faststart',str(OUT/'orbis-torus.mp4')],check=True)
-        print('Rendered GIF and MP4.',flush=True)
+        export_route_loops()
+        print('Rendered GIF, MP4 and route loops.',flush=True)
