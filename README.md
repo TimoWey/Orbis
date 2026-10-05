@@ -2,7 +2,9 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-**Status: first Fabric alpha implementation. Build validation in progress; no gameplay or required-mod compatibility tests completed.**
+**Status: 0.1.0-alpha.1 — CI build and 22 regression tests pass. Gameplay and required-mod compatibility remain unverified.**
+
+[Alpha build and JAR download](https://github.com/TimoWey/Orbis/actions/runs/37305137050) · [Implementation PR](https://github.com/TimoWey/Orbis/pull/1)
 
 [Implementation, build and installation](docs/IMPLEMENTATION.md) — new worlds only. Biome scans and existing-world conversion are not implemented.
 
