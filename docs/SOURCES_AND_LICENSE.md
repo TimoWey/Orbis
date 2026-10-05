@@ -20,4 +20,4 @@ Research snapshot: 2026-10-05. Pin versions and commits before implementation. U
 
 The reviewed upstream file uses MIT, Copyright (c) 2026 Vitalik Yarina. Copying, modification and distribution are permitted under its terms. Retain the full license and copyright notice when importing code; review third-party components separately. Credit the foundation in Orbis.
 
-Orbis is MIT licensed. It depends on Toroidal World 0.19.3 rather than importing the full engine. The test bootstrap is adapted under the retained upstream MIT notice. See [Implementation](IMPLEMENTATION.md) for exact provenance. The animation uses no Minecraft textures or gameplay footage.
+Orbis is MIT licensed. It integrates the engine source from commit `060080683bdc0e198da1fc32502dd3f62875413c`; no separate Toroidal World mod is required. The source archive, checksum and exact integration patches are documented in [vendor/README](../vendor/README.md). The test bootstrap is adapted under the retained upstream MIT notice. See [Implementation](IMPLEMENTATION.md) for exact provenance. The animation uses no Minecraft textures or gameplay footage.
