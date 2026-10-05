@@ -1,27 +1,27 @@
-# Mod-Kompatibilität
+# Mod compatibility
 
-Stand: 2026-10-05. **Noch keine Orbis-Kompatibilität getestet.**
+As of 2026-10-05. **No Orbis compatibility tests have been performed.**
 
-| Mod | Priorität | Upstream / Recherche | Orbis |
+| Mod | Priority | Upstream / research | Orbis |
 | --- | --- | --- | --- |
-| Distant Horizons | Pflicht, besonders wichtig | Upstream dokumentiert Unterstützung | Ungetestet |
-| Sodium | Pflicht | Upstream dokumentiert Unterstützung | Ungetestet |
-| Lithium | Pflicht | Upstream dokumentiert Unterstützung | Ungetestet |
-| FerriteCore | Kandidat | Speicheroptimierung; Integration offen | Ungetestet |
-| ImmediatelyFast | Kandidat | Renderingoptimierung; Integration offen | Ungetestet |
-| ScalableLux | Kandidat | Upstream dokumentiert Unterstützung | Ungetestet |
-| Iris | Zusatz-Ziel | Upstream dokumentiert Unterstützung | Ungetestet |
-| C2ME | Optional prüfen | Unterstützung gelistet; offener Fehlerbericht #55 | Ungetestet / Risiko |
+| Distant Horizons | Required; particularly important | Support documented upstream | Untested |
+| Sodium | Required | Support documented upstream | Untested |
+| Lithium | Required | Support documented upstream | Untested |
+| FerriteCore | Candidate | Memory optimization; integration undecided | Untested |
+| ImmediatelyFast | Candidate | Rendering optimization; integration undecided | Untested |
+| ScalableLux | Candidate | Support documented upstream | Untested |
+| Iris | Additional goal | Support documented upstream | Untested |
+| C2ME | Optional investigation | Listed as supported; open bug report #55 | Untested / risk |
 
-## Abnahme
+## Acceptance
 
-- Konkrete Minecraft-, Java-, Fabric- und Mod-Versionen protokollieren.
-- Pflichtkombination gemeinsam testen, nicht nur Mods einzeln starten.
-- Nähte/Ecken, grosse Sichtweiten, Generierung, Speichern/Neuladen und Konvertierung prüfen.
-- DH: LOD über Naht, Detailübergänge, Blockänderungen und Cache nach Konvertierung.
-- Kleine Welten: keine doppelte Simulation durch wiederholte Darstellung.
-- Leistung: Frametime, Tickzeit, Speicher und Generierungszeit auf dokumentierter Hardware messen.
+- Record exact Minecraft, Java, Fabric and mod versions.
+- Test the required combination together, not just each mod in isolation.
+- Check seams, corners, large view distances, generation, save/reload and conversion.
+- DH: LOD across seams, detail transitions, block edits and caches after conversion.
+- Small worlds: repeated rendering must not cause duplicate simulation.
+- Measure frame time, tick time, memory and generation time on documented hardware.
 
-Upstream nennt für DH eine Reichweite bis zur halben Weltbreite. Kleine Nether-Welten benötigen deshalb eine ausdrückliche Sichtweitenentscheidung. Beliebige Sichtweite ist nicht zugesichert.
+Upstream describes DH support up to half the world width. Small Nether worlds therefore require an explicit view-distance policy. Arbitrary view distances are not promised.
 
-[Quellen](SOURCES_AND_LICENSE.md)
+[Sources](SOURCES_AND_LICENSE.md)

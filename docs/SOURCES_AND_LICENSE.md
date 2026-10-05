@@ -1,23 +1,23 @@
-# Quellen und Lizenz
+# Sources and licensing
 
-Recherche-Stand: 2026-10-05. Vor Implementierung Versionen/Commit pinnen. Upstream-Angaben sind keine Orbis-Testergebnisse.
+Research snapshot: 2026-10-05. Pin versions and commits before implementation. Upstream statements are not Orbis test results.
 
-| Thema | Quelle |
+| Topic | Source |
 | --- | --- |
-| Grundlage | [Toroidal World](https://github.com/anyttng/toroidal_world) |
-| Lizenz | [MIT-Lizenzdatei](https://github.com/anyttng/toroidal_world/blob/main/LICENSE) |
-| Periodische Generierung | [Technische Beschreibung](https://github.com/anyttng/toroidal_world/blob/main/docs/how-it-works.md) |
-| Nether-Mindestgrösse, 1:8, Biomkompression | [Server-/Generator-Dokumentation](https://github.com/anyttng/toroidal_world/blob/main/docs/dedicated-server.md) |
-| Mod-Kompatibilität | [Upstream-Liste](https://github.com/anyttng/toroidal_world/blob/main/docs/supported-mods.md) |
-| Grenzen und DH-Reichweite | [Projektbeschreibung](https://modrinth.com/mod/toroidal-world) |
-| C2ME-Problemmeldung | [Issue 55](https://github.com/anyttng/toroidal_world/issues/55) |
-| Java-Releases | [Offizielle Liste](https://feedback.minecraft.net/hc/en-us/sections/360001186971-Release-Changelogs) |
-| DH-Versionen | [Fabric-Versionen](https://modrinth.com/mod/distanthorizons/versions?g=26.3&l=fabric) |
-| Vanilla-Biomwerkzeuge | [Cubiomes](https://github.com/Cubitect/cubiomes) — nicht automatisch korrekt für Toroidal-Generierung |
-| Erdoberfläche | [NASA-Lehrmaterial](https://www.nasa.gov/wp-content/uploads/2009/07/180576main_ETM.Roving.Vehicle.pdf), gerundet 510 Mio. km² |
+| Foundation | [Toroidal World](https://github.com/anyttng/toroidal_world) |
+| License | [MIT license file](https://github.com/anyttng/toroidal_world/blob/main/LICENSE) |
+| Periodic generation | [Technical explanation](https://github.com/anyttng/toroidal_world/blob/main/docs/how-it-works.md) |
+| Minimum Nether size, 1:8, biome compression | [Server/generator documentation](https://github.com/anyttng/toroidal_world/blob/main/docs/dedicated-server.md) |
+| Mod compatibility | [Upstream list](https://github.com/anyttng/toroidal_world/blob/main/docs/supported-mods.md) |
+| Limits and DH distance | [Project description](https://modrinth.com/mod/toroidal-world) |
+| C2ME bug report | [Issue 55](https://github.com/anyttng/toroidal_world/issues/55) |
+| Java releases | [Official list](https://feedback.minecraft.net/hc/en-us/sections/360001186971-Release-Changelogs) |
+| DH versions | [Fabric versions](https://modrinth.com/mod/distanthorizons/versions?g=26.3&l=fabric) |
+| Vanilla biome tools | [Cubiomes](https://github.com/Cubitect/cubiomes) — not automatically accurate for toroidal generation |
+| Earth surface area | [NASA educational material](https://www.nasa.gov/wp-content/uploads/2009/07/180576main_ETM.Roving.Vehicle.pdf), rounded to 510 million km² |
 
-## Lizenzübernahme
+## Reusing upstream code
 
-Die geprüfte Upstream-Datei enthält MIT, Copyright (c) 2026 Vitalik Yarina. Kopieren, Ändern und Verbreiten sind unter den Lizenzbedingungen erlaubt. Bei Übernahme vollständigen Lizenztext und Copyright-Vermerk erhalten; Fremdanteile separat prüfen. Orbis-Credits nennen die Grundlage.
+The reviewed upstream file uses MIT, Copyright (c) 2026 Vitalik Yarina. Copying, modification and distribution are permitted under its terms. Retain the full license and copyright notice when importing code; review third-party components separately. Credit the foundation in Orbis.
 
-Dieses Repository enthält bisher eigene Planungsdokumente, keinen übernommenen Mod-Code. Eine eigene Projektlizenz wird vor Codeimport festgelegt.
+This repository currently contains original planning documents, calculations and procedural explanatory graphics, with no imported mod code. Choose a project license before importing code. The animation uses no Minecraft textures or gameplay footage.

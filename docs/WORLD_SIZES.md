@@ -1,57 +1,57 @@
-# Weltgrössen und Biomabdeckung
+# World sizes and biome coverage
 
-## Aktueller Stand
+## Current status
 
-Die fünf Grössenwerte sind **wieder offen**. Die frühere Folge 32/64/128/256/512 Chunks ist keine verbindliche Vorgabe mehr. Erde bleibt eine zusätzliche Option.
+The five tier dimensions are **open again**. The previous 32/64/128/256/512-chunk sequence is no longer binding. Earth remains an additional option.
 
-16 × 16 Chunks ist die dokumentierte **Nether-Mindestgrösse** des Upstreams. Bei festem 1:8 ergibt sich mindestens **128 × 128 Overworld-Chunks = 2048 × 2048 Blöcke**. Das garantiert keine Biomvielfalt.
+The documented upstream **minimum Nether size** is 16 × 16 chunks. With fixed 1:8 scaling, the minimum Overworld is **128 × 128 chunks = 2,048 × 2,048 blocks**. This does not guarantee biome coverage.
 
-## Berechnete Kandidaten — keine gemessenen Erfolgsquoten
+## Calculated candidates — no measured success rates
 
-| Overworld: Chunks je Achse | Overworld: Blöcke je Achse | Nether: Chunks je Achse | Nether: Blöcke je Achse | Verwendung |
+| Overworld chunks/axis | Overworld blocks/axis | Nether chunks/axis | Nether blocks/axis | Purpose |
 | ---: | ---: | ---: | ---: | --- |
-| 128 | 2048 | 16 | 256 | Untergrenze / Sehr-klein-Kandidat |
-| 256 | 4096 | 32 | 512 | Klein-Kandidat |
-| 512 | 8192 | 64 | 1024 | Normal-Messkandidat |
-| 1024 | 16384 | 128 | 2048 | Normal-Messkandidat |
-| 2048 | 32768 | 256 | 4096 | Normal-Messkandidat |
-| 4096 | 65536 | 512 | 8192 | Normal-Messkandidat |
+| 128 | 2048 | 16 | 256 | Minimum / Very-small candidate |
+| 256 | 4096 | 32 | 512 | Small candidate |
+| 512 | 8192 | 64 | 1024 | Normal measurement candidate |
+| 1024 | 16384 | 128 | 2048 | Normal measurement candidate |
+| 2048 | 32768 | 256 | 4096 | Normal measurement candidate |
+| 4096 | 65536 | 512 | 8192 | Normal measurement candidate |
 
-Keine Zuordnung final. Breite ist kein Radius. Nether-Fläche = Overworld-Fläche / 64. Für eine quadratische Welt mit C Chunks je Achse: Gesamtzahl = C².
+No assignment is final. Width is not radius. Nether area = Overworld area / 64. A square world with C chunks per axis contains C² chunks.
 
-## Wie wir eine geeignete Normalgrösse bestimmen
+## Choosing a suitable Normal size
 
-- Tatsächlichen Toroidal-/Orbis-Generator verwenden; Vanilla-Seedkarten genügen nicht.
-- Minecraft-/Modversion sowie Biomkompression explizit festlegen. Upstream bietet off/auto/strong/custom; die ausgelieferten Presets setzen off.
-- Alle natürlich generierenden Biome der gewählten Version erfassen, inklusive Varianten und Höhlen. Nutzbare Mindestfläche noch definieren.
-- Zufällige Seeds prüfen; Erfolg nur bei vollständigem Nachweis in **beiden** Dimensionen.
-- Grobe Suche beschleunigt die Prüfung, beweist bei fehlendem Treffer aber keine Abwesenheit. Fundorte anhand Terrain/Höhlen bestätigen.
-- Neue Welt zusätzlich individuell prüfen; bei bestehender Welt Seed erhalten.
+- Use the actual Toroidal/Orbis generator; vanilla seed maps are insufficient.
+- Explicitly fix Minecraft/mod versions and biome compression. Upstream provides off/auto/strong/custom; its shipped presets use off.
+- Include every naturally generating biome in the selected version, including variants and caves. Define minimum usable biome area separately.
+- Sample random seeds; success requires complete evidence in **both** dimensions.
+- Coarse scans speed up searches but missing samples do not prove absence. Confirm locations against terrain/caves.
+- Check each new world individually too; preserve existing-world seeds.
 
-**Noch keine Seed-Simulation durchgeführt.** Wegen seltener, korrelierter Biome lässt sich aus Chunk-Anzahl allein keine seriöse 99-%-Grösse berechnen. Biomkompression verbessert Klimavielfalt, garantiert aber nicht jedes Biom.
+**No seed simulation has been performed.** Rare, correlated biomes prevent a credible 99%-coverage size from being calculated from chunk count alone. Biome compression improves climate diversity but does not guarantee every biome.
 
-## Berechneter statistischer Prüfaufwand
+## Calculated validation effort
 
-Vorschlag: mindestens 99 % gemeinsame Abdeckung. Für eine vorher festgelegte Konfiguration und eine unabhängige Validierungsstichprobe ohne Fehlschlag gilt die einseitige exakte 95-%-Untergrenze p = 0.05^(1/n).
+Proposed target: at least 99% joint coverage. For a configuration fixed in advance and an independent validation sample with zero failures, the exact one-sided 95% lower confidence bound is p = 0.05^(1/n).
 
-| Ziel-Untergrenze | Nötige Prüfwelten ohne Fehlschlag |
+| Target lower bound | Required worlds with zero failures |
 | ---: | ---: |
-| 95 % | 59 |
-| 99 % | 299 |
-| 99.9 % | 2995 |
+| 95% | 59 |
+| 99% | 299 |
+| 99.9% | 2995 |
 
-Dies ist Versuchsplanung, kein Orbis-Messergebnis und keine Garantie für jede Welt. Konfiguration vor der finalen Stichprobe festlegen; Fehler nicht aus der Stichprobe entfernen. Getrennte 99 % pro Dimension reichen nicht für 99 % gemeinsam.
+This is experimental planning, not an Orbis measurement or a guarantee for every world. Fix the configuration before final validation; do not discard failures. Separate 99% rates per dimension do not establish 99% joint coverage.
 
-## Erde
+## Earth
 
-Aus 510 Millionen km² Erdoberfläche inklusive Ozeanen und 1 Block = 1 m:
+Assuming 510 million km² including oceans and 1 block = 1 metre:
 
-- Ideal: 1'992'187'500'000 Chunks; quadratische Breite ca. 22'583'179.581 Blöcke.
-- Gerundet: **1'411'456 Chunks = 22'583'296 Blöcke je Achse**.
-- Overworld gesamt: **1'992'208'039'936 Chunks**.
-- Nether: **176'432 Chunks je Achse**.
-- Flächenabweichung zur Annahme: ca. +0.001031 %.
+- Ideal: 1,992,187,500,000 chunks; square width about 22,583,179.581 blocks.
+- Rounded: **1,411,456 chunks = 22,583,296 blocks per axis**.
+- Total Overworld: **1,992,208,039,936 chunks**.
+- Nether: **176,432 chunks per axis**.
+- Area difference from the assumption: about +0.001031%.
 
-Nur Flächengleichheit, keine Erdkarte. Bedarfsgesteuert erzeugen; 64-Bit-Flächenarithmetik und grosse Koordinaten prüfen.
+Equal area only, not an Earth map. Generate on demand; verify 64-bit area arithmetic and large coordinates.
 
-[Rechnung](../analysis/biome_sizing.py) · [Quellen](SOURCES_AND_LICENSE.md)
+[Calculation](../analysis/biome_sizing.py) · [Sources](SOURCES_AND_LICENSE.md)

@@ -1,32 +1,34 @@
-# Entscheidungen
+# Decisions
 
-Stand: 2026-10-05; jeweils neueste Nutzerentscheidung gilt.
+Updated: 2026-10-05. The latest user decision takes precedence.
 
-| Festgelegt | Wert |
+| Decision | Value |
 | --- | --- |
-| Name / Grundlage | Orbis / Toroidal World |
-| Plattform | Fabric, neueste stabile Java-Edition zum Implementierungsstart |
-| Umfang zuerst | Singleplayer |
-| Pflichtmods | Distant Horizons, Sodium, Lithium |
-| Dimensionen | Overworld/Nether periodisch, 1:8 fest, End unverändert |
-| Grössenstruktur | Fünf Stufen plus Erdprofil |
-| Kleine Welten | Fehlende Biome akzeptabel; Grössen überarbeiten |
-| Normal | Vollständige Overworld-/Nether-Biomvielfalt als Ziel |
-| Neue Welt | Biomprüfung und klarer Hinweis bei fehlender/ungeklärter Abdeckung |
-| Bestehende Welt | Kopie konvertieren; ausgewählte Randchunks neu erzeugen und anpassen |
-| Dokumentation | Kurz, klare Tabellen; Ziele von getesteten Funktionen trennen |
+| Name / foundation | Orbis / Toroidal World |
+| Platform | Fabric; latest stable Java Edition at implementation start |
+| Initial scope | Singleplayer |
+| Required mods | Distant Horizons, Sodium, Lithium |
+| Dimensions | Periodic Overworld/Nether; fixed 1:8; unchanged End |
+| Size structure | Five tiers plus an Earth profile |
+| Small worlds | Missing biomes are acceptable; revise dimensions |
+| Normal | Complete Overworld and Nether biome coverage as a goal |
+| New world | Biome check; clear warning for missing or uncertain coverage |
+| Existing world | Convert a copy; regenerate and blend selected edge chunks |
+| Documentation | Concise tables; distinguish goals from tested features |
+| Language | Keep documentation, animation labels and proposed UI text in English |
+| Explainer | Square → cylinder → torus; X, Z and offset diagonal walks |
 
-## Offen
+## Open
 
-Finale Grössen, Biom-Mindestflächen, Prüftiefe/-dauer, Trefferquote, Performance-Budgets, Quellspielstand, genaue Versionsmatrix, Projektlizenz.
+Final dimensions, minimum biome areas, scan depth/duration, target success rate, performance budgets, source save, exact version matrix and project license.
 
-## Überholt
+## Superseded
 
-- Planetare Klein/Mittel/Gross-Einteilung: ersetzt durch fünf normale Stufen plus Erde.
-- 32/64/128/256/512 Chunks als finale Profile: nach Biomfrage wieder geöffnet.
-- 4-/8-Chunk-Nether als Entwicklungsziel: entfällt vorerst zugunsten grösserer Untergrenze.
-- Dedizierter Multiplayer im ersten Release: ausgeschlossen.
+- Planet-scale Small/Medium/Large: replaced by five regular tiers plus Earth.
+- Final profiles of 32/64/128/256/512 chunks: reopened after the biome-coverage discussion.
+- A 4- or 8-chunk-wide Nether as a development target: replaced for now by a larger minimum.
+- Dedicated multiplayer in the first release: excluded.
 
 ## Repository
 
-Privates Repository: [TimoWey/Orbis](https://github.com/TimoWey/Orbis). Erstellt am 2026-10-05. Dokumentation und Berechnungen sind enthalten; noch kein Upstream-Code importiert und kein spielbarer Mod.
+Private repository: [TimoWey/Orbis](https://github.com/TimoWey/Orbis), created on 2026-10-05. Contains documentation, calculations and an explanatory animation; no upstream code imported and no playable mod.
