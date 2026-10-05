@@ -12,3 +12,5 @@ worlds/
 backups/
 *.zip
 *.bundle
+
+!gradle/wrapper/gradle-wrapper.jar

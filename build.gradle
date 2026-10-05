@@ -33,4 +33,7 @@ test {
     workingDir = layout.buildDirectory.dir('test-run').get().asFile
     doFirst { workingDir.mkdirs() }
 }
-jar { from('licenses') { into 'META-INF/licenses' } }
+jar {
+    from('LICENSE') { rename { 'LICENSE-orbis' } }
+    from('licenses') { into 'META-INF/licenses' }
+}
