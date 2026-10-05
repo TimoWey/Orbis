@@ -1,0 +1,4 @@
+{
+  "gui.orbis.world_shape.finite": "Orbis",
+  "gui.orbis.world_shape.finite.hint": "Finite Overworld and Nether. Exact 1:8 scaling. Unwrapped End. Biome coverage not guaranteed."
+}
