@@ -25,6 +25,7 @@ public final class Orbis implements ModInitializer {
             + "Any size, including Medium, may lack biomes. Existing-world conversion is not available in this alpha.";
 
     @Override public void onInitialize() {
+        new com.toroidalworld.ToroidalWorldFabric().onInitialize();
         WorldOptions.register(OrbisShape.ENABLED);
         OrbisShape.MODULE.register();
         GenerationHooks.atRandomState("orbis:identify", (state, shape, options, seaLevel) -> {
@@ -50,6 +51,6 @@ public final class Orbis implements ModInitializer {
                 context.getSource().sendSuccess(() -> Component.literal(BIOME_WARNING), false);
                 return 1;
             })));
-        LOGGER.info("Orbis alpha initialized; Toroidal World 0.19.3 engine. Biome coverage and conversion are not implemented.");
+        LOGGER.info("Orbis standalone alpha initialized. Biome coverage and conversion are not implemented.");
     }
 }
