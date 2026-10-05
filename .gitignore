@@ -14,3 +14,4 @@ backups/
 *.bundle
 
 !gradle/wrapper/gradle-wrapper.jar
+!vendor/toroidal-engine-0600806.zip
