@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "draft_not_runtime_configuration",
   "nether_scale": 8,
   "end_wrapping": false,
@@ -22,40 +22,40 @@
   "presets": [
     {
       "id": "very_small",
-      "label_de": "Sehr klein",
       "overworld_width_chunks": null,
-      "biome_policy": "missing_biomes_accepted"
+      "biome_policy": "missing_biomes_accepted",
+      "label_en": "Very small"
     },
     {
       "id": "small",
-      "label_de": "Klein",
       "overworld_width_chunks": null,
-      "biome_policy": "missing_biomes_accepted"
+      "biome_policy": "missing_biomes_accepted",
+      "label_en": "Small"
     },
     {
       "id": "medium",
-      "label_de": "Mittel / Normal",
       "overworld_width_chunks": null,
-      "biome_policy": "all_biomes_goal_with_check"
+      "biome_policy": "all_biomes_goal_with_check",
+      "label_en": "Medium / Normal"
     },
     {
       "id": "large",
-      "label_de": "Gross",
       "overworld_width_chunks": null,
-      "biome_policy": "pending"
+      "biome_policy": "pending",
+      "label_en": "Large"
     },
     {
       "id": "very_large",
-      "label_de": "Sehr gross",
       "overworld_width_chunks": null,
-      "biome_policy": "pending"
+      "biome_policy": "pending",
+      "label_en": "Very large"
     },
     {
       "id": "earth",
-      "label_de": "Erde",
       "overworld_width_chunks": 1411456,
       "nether_width_chunks": 176432,
-      "large_coordinate_validation_required": true
+      "large_coordinate_validation_required": true,
+      "label_en": "Earth"
     }
   ]
 }
