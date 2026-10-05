@@ -2,22 +2,31 @@
 
 ## Current status
 
-The five tier dimensions are **open again**. The previous 32/64/128/256/512-chunk sequence is no longer binding. Earth remains an additional option.
+The alpha uses four one-word tiers: **Tiny, Small, Normal, Large**, plus **Earth**. All widths below are full side lengths, not radii. Normal is the default. New selections use a logarithmic size slider, preset buttons or exact chunk input, bounded by Tiny and Earth. Biome and gameplay validation remain open.
 
-The documented upstream **minimum Nether size** is 16 × 16 chunks. With fixed 1:8 scaling, the minimum Overworld is **128 × 128 chunks = 2,048 × 2,048 blocks**. This does not guarantee biome coverage.
+The engine's historical minimum is 128 Overworld chunks (16 Nether chunks). Those existing alpha saves remain readable, but new menu selections require **at least 1,024 chunks per side (Tiny)** and at most **1,448,160 (Earth)**. Widths remain multiples of 16 for exact centred Nether mapping.
 
-## Calculated candidates — no measured success rates
+## Current presets — no measured biome success rates
 
-| Overworld chunks/axis | Overworld blocks/axis | Nether chunks/axis | Nether blocks/axis | Purpose |
-| ---: | ---: | ---: | ---: | --- |
-| 128 | 2048 | 16 | 256 | Minimum / Very-small candidate |
-| 256 | 4096 | 32 | 512 | Small candidate |
-| 512 | 8192 | 64 | 1024 | Normal measurement candidate |
-| 1024 | 16384 | 128 | 2048 | Normal measurement candidate |
-| 2048 | 32768 | 256 | 4096 | Normal measurement candidate |
-| 4096 | 65536 | 512 | 8192 | Normal measurement candidate |
+| Preset | Overworld chunks/axis | Overworld blocks/axis | Nether chunks/axis | Nether blocks/axis |
+| --- | ---: | ---: | ---: | ---: |
+| Tiny | 1024 | 16384 | 128 | 2048 |
+| Small | 8832 | 141312 | 1104 | 17664 |
+| Normal | 76544 | 1224704 | 9568 | 153088 |
+| Large | 625008 | 10000128 | 78126 | 1250016 |
+| Earth | 1448160 | 23170560 | 181020 | 2896320 |
 
-No assignment is final. Width is not radius. Nether area = Overworld area / 64. A square world with C chunks per axis contains C² chunks.
+Nether area = Overworld area / 64. A square world with C chunks per axis contains C² chunks and has a horizontal area of C² × 256 m² (1 block = 1 metre). Existing saved bounds are not resized by changing presets.
+
+The preset targets are Tiny's fixed 1,024-chunk side, Small 20,000 km², Normal 1,500,000 km², Large 100,000,000 km² and Earth 2²⁹ km². Small and Normal give roughly even multiplicative area steps between Tiny and Large. Area targets are converted to square side lengths and rounded to the nearest 16 chunks; the menu displays the actual area, not the ideal target. Custom input supports every aligned value between Tiny and Earth. The slider is continuous between presets, with logarithmic width mapped onto that same grid.
+
+## Stronghold ring sizing
+
+Tiny extends ±8,192 blocks (±512 chunks) from the origin, making its full side 16,384 blocks (1,024 chunks). It encloses the first two nominal Java Stronghold rings completely, with about 2,304 blocks of clearance beyond ring two's nominal outer radius of 5,888 blocks. These are approximate placement bands; biome searches and the structure footprint affect actual positions.
+
+Small, Normal, Large and Earth contain all eight nominal rings (the outermost reaches roughly 24,320 blocks / 1,520 chunks in radius). Larger presets add area but no additional vanilla Stronghold rings. The rings are centred on X=0, Z=0, not necessarily the player spawn.
+
+The integrated engine retains in-bounds Stronghold positions and folds the first position into the world when none remain. This source-level fallback does not replace gameplay validation of complete, reachable portal rooms. See the [pinned engine placement code](https://github.com/anyttng/toroidal_world/blob/060080683bdc0e198da1fc32502dd3f62875413c/common/src/main/java/com/toroidalworld/mixin/ChunkGeneratorStructureStateMixin.java) and [Cubiomes' ring placement logic](https://github.com/Cubitect/cubiomes/blob/master/finders.c#L793).
 
 ## Choosing a suitable Normal size
 
@@ -44,18 +53,20 @@ This is experimental planning, not an Orbis measurement or a guarantee for every
 
 ## Earth
 
-Assuming 510 million km² including oceans and 1 block = 1 metre:
+The chosen target is **2²⁹ km² = 536,870,912 km²**, rather than an exact match to Earth's approximately 510 million km² including oceans. With 1 block = 1 metre:
 
-- Ideal: 1,992,187,500,000 chunks; square width about 22,583,179.581 blocks.
-- Rounded: **1,411,456 chunks = 22,583,296 blocks per axis**.
-- Total Overworld: **1,992,208,039,936 chunks**.
-- Nether: **176,432 chunks per axis**.
-- Area difference from the assumption: about +0.001031%.
+- Rounded width: **1,448,160 chunks = 23,170,560 blocks per axis**.
+- Total Overworld: **2,097,167,385,600 chunks**.
+- Actual area: **536,874,850.7136 km²** (about +0.000734% relative to the target).
+- Nether: **181,020 chunks per axis**.
+- Extent: **±11,585,280 blocks**, within vanilla's coordinate limits; runtime gameplay validation remains pending.
 
-Equal area only, not an Earth map. Generate on demand; verify 64-bit area arithmetic and large coordinates.
+This is an approximate Earth-scale area, not a geographic Earth map. Generate on demand; retain 64-bit area arithmetic and validate large coordinates in game.
 
 [Calculation](../analysis/biome_sizing.py) · [Sources](SOURCES_AND_LICENSE.md)
 
 ## Development alpha
 
-The first implementation offers provisional Overworld widths of 128, 256, 1024, 2048 and 4096 chunks, plus experimental Earth. Nether widths are always divided by 8. These are testing presets, not a result of biome measurements; even Medium carries a coverage warning.
+The alpha offers widths of 1,024, 8,832, 76,544, 625,008 and 1,448,160 chunks. Nether widths are always divided by 8. These presets are not a result of biome measurements; Normal also carries a coverage warning. Cancelling the menu leaves the original selection untouched; invalid text cannot be applied with Done.
+
+In world creation, select **World Shape: Orbis → Customize**. The size controls and live world overview sit side by side on wide windows and stack on smaller windows. The active preset is underlined; custom widths are labelled Custom. Exact input stays visible, with validation beside the field. The overview displays actual square kilometres, both dimension widths and the unchanged End. Done and Cancel stay in the footer while long content scrolls. Resizing preserves the entered value. Native Minecraft controls provide keyboard navigation and narration; visual and interaction testing in game is still required.

@@ -5,11 +5,11 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 ## Implemented
 
 - Own mod ID `orbis` and World Shape: **Orbis** in new-world creation.
-- Five provisional size presets, experimental Earth, and a validated custom width.
+- Logarithmic world-size slider, five preset shortcuts (Tiny, Small, Normal, Large, Earth), and exact chunk input. New selections range from 1,024 to 1,448,160 chunks per side in steps of 16. Normal is the default; see [World sizes](WORLD_SIZES.md) for areas.
 - Square Overworld with X/Z wrapping through the engine; exact 1:8 Nether widths and vanilla coordinate scaling.
 - Explicit unwrapped End. An identity-shaped engine generator prevents automatic dimension wrapping; it does not impose finite End bounds.
 - World identity and bounds stored in the generator codec, with restoration on recreate.
-- English customization screen, biome disclaimer on join, and `/orbis` information command.
+- English customization screen with responsive size controls, a live world overview, selected preset marks and inline validation; biome disclaimer on join, and `/orbis` information command.
 - Regression tests for bounds, seam math, serialization and shape ownership.
 
 ## Validation
@@ -33,6 +33,19 @@ Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windo
 Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.2.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3 and Orbis. Create a new world, choose **World Shape: Orbis**, then **Customize**. Only Normal and Orbis are offered. If upgrading from alpha 1, remove the old Orbis and Toroidal World JARs first; simultaneous installation is explicitly rejected to prevent duplicate classes.
+
+## Project documentation
+
+- [Features and planned biome checks](FEATURES.md)
+- [Mod compatibility](COMPATIBILITY.md)
+- [World sizes and biome coverage](WORLD_SIZES.md)
+- [World conversion](CONVERSION.md)
+- [Requirements](REQUIREMENTS.md)
+- [Architecture](ARCHITECTURE.md)
+- [Roadmap](ROADMAP.md)
+- [Decisions](DECISIONS.md)
+- [Draft presets](../spec/world-presets.json)
+- [Animation source](media/README.md)
 
 ## Pins / provenance
 

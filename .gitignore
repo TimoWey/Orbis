@@ -10,6 +10,8 @@ logs/
 Thumbs.db
 worlds/
 backups/
+docs/media/.preview/
+__pycache__/
 *.zip
 *.bundle
 

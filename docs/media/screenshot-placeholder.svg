@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">In-game screenshot coming soon</title>
+  <rect width="640" height="360" fill="#f3f4f3"/>
+  <g fill="none" stroke="#939c96" stroke-width="2">
+    <rect x="296" y="128" width="48" height="36" rx="3"/>
+    <circle cx="330" cy="138" r="4"/>
+    <path d="m298 160 14-15 10 10 7-6 13 13"/>
+  </g>
+  <text x="320" y="205" text-anchor="middle" fill="#5d6961" font-family="Arial, sans-serif" font-size="20">In-game screenshot coming soon</text>
+</svg>
