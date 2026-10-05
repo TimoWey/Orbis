@@ -2,7 +2,7 @@
 
 Orbis is a Fabric extension of **Toroidal World 0.19.3**, not a renamed copy. Install both mods. The engine remains separately licensed and credited.
 
-## Implemented in source
+## Implemented
 
 - Own mod ID `orbis` and World Shape: **Orbis** in new-world creation.
 - Five provisional size presets, experimental Earth, and a validated custom width.
@@ -11,6 +11,12 @@ Orbis is a Fabric extension of **Toroidal World 0.19.3**, not a renamed copy. In
 - World identity and bounds stored in the generator codec, with restoration on recreate.
 - English customization screen, biome disclaimer on join, and `/orbis` information command.
 - Regression tests for bounds, seam math, serialization and shape ownership.
+
+## Validation
+
+[GitHub Actions build](https://github.com/TimoWey/Orbis/actions/runs/37305137050) passed on 2026-10-05: Java compilation, JAR packaging and all 22 Fabric-loaded regression cases. These exercise the pinned engine, including the ownership mixin; they are not gameplay tests.
+
+Still required before a playable release: create/save/reload/recreate a world; cross X, Z and offset corners in both dimensions; verify portals and End gateways; repeat with Sodium, Lithium and Distant Horizons together. Record exact versions and rendering distances in the compatibility matrix.
 
 ## Not implemented or verified
 
@@ -23,6 +29,8 @@ The mod is an early development alpha, not completion of the requirements. Start
 ## Build / install
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). GitHub Actions performs the same build and publishes the JAR and test reports as workflow artifacts. Use the ordinary JAR, not the `-sources.jar`.
+
+Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.1.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3, Toroidal World 0.19.3+mc26.3 and Orbis. Create a new world, choose **World Shape: Orbis**, then **Customize**. Selecting upstream's separate **Toroidal** option uses upstream rules, not Orbis rules.
 
