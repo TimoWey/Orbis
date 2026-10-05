@@ -18,7 +18,7 @@ class StandaloneEngineTest {
     @Test void loadsWithoutASeparateToroidalWorldMod() {
         assertTrue(FabricLoader.getInstance().isModLoaded("orbis"));
         assertFalse(FabricLoader.getInstance().isModLoaded("toroidal_world"));
-        assertEquals("0.1.0-alpha.2", new FabricPlatform().modVersion());
+        assertEquals(System.getProperty("orbis.expectedVersion"), new FabricPlatform().modVersion());
     }
 
     @Test void registersEngineCodecsUnderTheExistingSaveNamespace() {

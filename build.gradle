@@ -2,7 +2,15 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
-version = project.mod_version
+def debugBuild = providers.gradleProperty('orbisDebug').map { it.toBoolean() }.getOrElse(false)
+version = project.mod_version + (debugBuild ? '-debug' : '')
+// Separate outputs prevent stale debug classes leaking into a subsequent release build.
+layout.buildDirectory = layout.projectDirectory.dir(debugBuild ? 'build/debug' : 'build')
+if (debugBuild) {
+    sourceSets.main.java.srcDir 'src/debug/java'
+    sourceSets.main.resources.srcDir 'src/debug/resources'
+    sourceSets.test.java.srcDir 'src/debugTest/java'
+}
 group = project.maven_group
 base { archivesName = 'orbis' }
 repositories {
@@ -24,11 +32,21 @@ java {
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'orbisDebug', debugBuild
     filesMatching('fabric.mod.json') { expand version: project.version }
+    doLast {
+        if (debugBuild) {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def metadata = new groovy.json.JsonSlurper().parse(manifest)
+            metadata.entrypoints.client += 'dev.orbis.debug.OrbisDebugClient'
+            manifest.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)), 'UTF-8')
+        }
+    }
 }
 test {
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+    systemProperty 'orbis.expectedVersion', project.version.toString()
     workingDir = layout.buildDirectory.dir('test-run').get().asFile
     doFirst { workingDir.mkdirs() }
 }
