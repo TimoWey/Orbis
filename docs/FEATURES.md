@@ -1,11 +1,11 @@
 # Features
 
-All features are **planned**, not implemented yet.
+The development alpha implements world wrapping, size selection and an unwrapped End. Gameplay validation is still pending. Biome checks and existing-world conversion are planned. See [Implementation status](IMPLEMENTATION.md) for build evidence and limitations.
 
 | Feature | Behaviour |
 | --- | --- |
 | Seamless world | Walking or flying across a boundary continues on the opposite side of the same world |
-| Size selection | Very small, Small, Medium/Normal, Large, Very large, Earth |
+| Size selection | Logarithmic slider, Tiny/Small/Normal/Large/Earth shortcuts, and exact full side length in chunks; bounded by Tiny and Earth |
 | Biome check | Examine Overworld and Nether before first play |
 | Biome report | Show found, missing and unconfirmed biomes per dimension |
 | Existing-world conversion | Preview, protected areas, a new world copy and blended edge strips |

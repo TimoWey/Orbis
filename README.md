@@ -2,65 +2,117 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-**Status: 0.1.0-alpha.2 — standalone build and 25 regression tests pass. Gameplay and required-mod compatibility remain unverified.**
+Minecraft Java worlds span roughly 60 million × 60 million blocks, about 30 million from the centre in each direction. Think of [2b2t](https://www.2b2t.org/): a server running since 2010 whose world has welcomed over a million players. For one player or a small group, exploring a whole world that size is out of reach.
 
-[Standalone JAR / build](https://github.com/TimoWey/Orbis/actions/runs/37306724814) · [Implementation PR](https://github.com/TimoWey/Orbis/pull/1)
+Orbis is built around a different idea: a world small enough to get to know. Discover its landscapes, find your favourite places, and gradually make the whole world familiar. Each seed gives you a different world to call home.
 
-**Installation: Fabric Loader + Fabric API + one Orbis JAR. No Toroidal World mod required.**
-
-[Implementation, build and installation](docs/IMPLEMENTATION.md) — new worlds only. Biome scans and existing-world conversion are not implemented.
+Choose a size and keep exploring. When you cross an edge, you continue on the opposite side of the same world.
 
 ## How Orbis works
 
-**Full sequence (55 seconds):** folding 0:00–0:17 · X 0:17–0:29 · Z 0:29–0:41 · diagonal 0:41–0:55. Separate movement loops are below.
+Imagine a square map. Join its top and bottom edges to make a cylinder, then connect the two open ends to make a torus. Both pairs of opposite edges are now neighbours.
 
-![A square world becomes a torus, followed by X, Z and offset diagonal walks that return to the start.](docs/media/orbis-torus.gif)
+![A square Minecraft-style landscape folds into a cylinder and then a torus. The map on the right stays unchanged.](docs/media/orbis-torus.gif)
 
-**Square → cylinder → torus.** Opposite edges are direct neighbours. Walk one world width in X or Z and you return to the same position. No new copies of the world are created.
+The shape explains how the edges connect. In Minecraft, the ground and gravity stay normal. Only the two horizontal directions wrap.
 
-The diagonal example starts at **x = 0.25 L, z = 0.40 L** and crosses the two seams at different times. X and Z wrap independently. On this square world, a 45° route returns after moving L along each axis: a total distance of √2 L. Other angles need not return after this distance.
+### East and west
 
-The torus illustrates connectivity. **In-game terrain and gravity stay normal; Y / height does not wrap.** This is an explainer, not gameplay footage.
+Walk across the blue edge and continue on the opposite side. Keep going and you arrive back where you started.
 
-[Play / pause the video](docs/media/orbis-torus.mp4) · [Animation and renderer](docs/media/README.md)
+![Steve follows an east–west loop on the torus and the matching flat map.](docs/media/orbis-walk-x.gif)
 
-### Walk in X
+### North and south
 
-![X movement: cross the right edge and reappear at the left edge, with Z unchanged.](docs/media/orbis-walk-x.gif)
+The gold edges connect in the same way. You can travel around the world in this direction too.
 
-### Walk in Z
+![Steve follows a north–south loop on the torus and the matching flat map.](docs/media/orbis-walk-z.gif)
 
-![Z movement: cross the bottom edge and reappear at the top edge, with X unchanged.](docs/media/orbis-walk-z.gif)
+### Diagonally
 
-### Walk diagonally from an offset start
+Each direction wraps independently. Here, Steve crosses the gold edge first, then the blue edge, while continuing along the same diagonal.
 
-![Offset diagonal movement: cross the Z seam first, then the X seam, and return to the start.](docs/media/orbis-walk-diagonal.gif)
+![Steve walks diagonally, crossing the two edge pairs at different times before returning to his starting point.](docs/media/orbis-walk-diagonal.gif)
 
-| Decision | Target |
-| --- | --- |
-| Foundation | Standalone Orbis; integrated MIT-licensed engine source |
-| Platform | Fabric; Minecraft 26.3, Java 25 |
-| Mode | Singleplayer first |
-| World | Overworld and Nether wrap along X and Z |
-| Nether | Exact 1:8 coordinate and width ratio to the Overworld |
-| End | Vanilla behaviour without Orbis bounds |
-| Required mods | Distant Horizons, Sodium, Lithium |
-| Existing worlds | Convert a copy; regenerate and blend selected edge strips |
-| New worlds | Biome check with clear results and warnings |
-| Sizes | Five provisional tiers plus experimental Earth; final sizes need biome measurements |
-| Language | English documentation, animation and proposed UI text |
+## Features
 
-## Documentation
+Orbis is an early development alpha. These features are implemented; in-game validation is still pending. The animations above are illustrations.
 
-- [Requirements](docs/REQUIREMENTS.md)
-- [Features](docs/FEATURES.md)
-- [Mod compatibility](docs/COMPATIBILITY.md)
-- [World sizes and biome coverage](docs/WORLD_SIZES.md)
-- [World conversion](docs/CONVERSION.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Decisions](docs/DECISIONS.md)
-- [Sources and licensing](docs/SOURCES_AND_LICENSE.md)
-- [Draft presets](spec/world-presets.json)
+- **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges.
+- **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
+- **A connected Nether.** Its width stays eight times smaller than the Overworld, matching Minecraft's usual coordinate scale.
+- **A familiar End.** The End keeps its normal, unwrapped behaviour.
 
-Updated: 2026-10-05. “Planned” and “documented upstream” do not mean “tested in Orbis”.
+<!-- Replace each placeholder with an in-game capture when available. -->
+
+| Exploring across an edge | Choosing a world size | Travelling through the Nether |
+| --- | --- | --- |
+| ![Placeholder for an in-game view across a world edge.](docs/media/screenshot-placeholder.svg) | ![Placeholder for the Orbis world-size selection screen.](docs/media/screenshot-placeholder.svg) | ![Placeholder for an in-game Nether journey.](docs/media/screenshot-placeholder.svg) |
+
+## Compatibility
+
+Orbis currently targets **Fabric**. Install Fabric Loader, Fabric API and the Orbis JAR. The current alpha targets Minecraft 26.3 and Java 25.
+
+The following mods are priorities for compatibility testing. Their support in Orbis has **not yet been verified**.
+
+<table>
+  <tr>
+    <td width="33%"><a href="https://modrinth.com/mod/fabric-api"><img src="https://cdn.modrinth.com/data/P7dR8mSH/icon.png" width="28" height="28" alt="" align="absmiddle"> Fabric API</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/distanthorizons"><img src="https://cdn.modrinth.com/data/uCdwusMi/e716cda9bb568b5373ff76e363fb4c6d7278fba6_96.webp" width="28" height="28" alt="" align="absmiddle"> Distant Horizons</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/iris"><img src="https://cdn.modrinth.com/data/YL57xq9U/18d0e7f076d3d6ed5bedd472b853909aac5da202_96.webp" width="28" height="28" alt="" align="absmiddle"> Iris Shaders</a></td>
+  </tr>
+  <tr>
+    <td width="33%"><a href="https://modrinth.com/mod/sodium"><img src="https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp" width="28" height="28" alt="" align="absmiddle"> Sodium</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/lithium"><img src="https://cdn.modrinth.com/data/gvQqBUqZ/bcc8686c13af0143adf4285d741256af824f70b7_96.webp" width="28" height="28" alt="" align="absmiddle"> Lithium</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/ferrite-core"><img src="https://cdn.modrinth.com/data/uXXizFIs/222a126f26f8f9ae1eb339f3b767677f18bff31f_96.webp" width="28" height="28" alt="" align="absmiddle"> FerriteCore</a></td>
+  </tr>
+  <tr>
+    <td width="33%"><a href="https://modrinth.com/mod/entityculling"><img src="https://cdn.modrinth.com/data/NNAgCjsB/7873452d6cede4daed12da3d7d8c193ab88b4fd6_96.webp" width="28" height="28" alt="" align="absmiddle"> Entity Culling</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/modmenu"><img src="https://cdn.modrinth.com/data/mOgUt4GM/5a20ed1450a0e1e79a1fe04e61bb4e5878bf1d20.png" width="28" height="28" alt="" align="absmiddle"> Mod Menu</a></td>
+    <td width="33%"><a href="https://modrinth.com/mod/litematica"><img src="https://cdn.modrinth.com/data/bEpr0Arc/25b5529d7a3b030ac136a6ce879d8ed2a1aa4a8d.png" width="28" height="28" alt="" align="absmiddle"> Litematica</a></td>
+  </tr>
+  <tr>
+    <td width="33%"><a href="https://modrinth.com/mod/minihud"><img src="https://cdn.modrinth.com/data/UMxybHE8/4adf057a251f694983af139a06839e33bcd7a419.png" width="28" height="28" alt="" align="absmiddle"> MiniHUD</a></td>
+    <td colspan="2"><a href="https://modrinth.com/mod/tweakeroo"><img src="https://cdn.modrinth.com/data/t5wuYk45/35af76cfb1d3074c5e8575d5f7385bb6c083c9d6.png" width="28" height="28" alt="" align="absmiddle"> Tweakeroo</a></td>
+  </tr>
+</table>
+
+Fabric API is a required dependency. The other mods are separate installations. Exact versions and test results belong in the [compatibility notes](docs/COMPATIBILITY.md).
+
+## World sizes
+
+Choose a preset or use the size slider and exact chunk input. New selections range from Tiny to Earth, in steps of 16 chunks. Each width is the full side length of the square world. Normal is the default. One chunk is 16 × 16 blocks; areas assume one block equals one metre.
+
+| Size | Overworld chunks per side | Overworld blocks per side | Area (km², rounded) |
+| --- | ---: | ---: | ---: |
+| Tiny | 1,024 | 16,384 | 268 |
+| Small | 8,832 | 141,312 | 19,969 |
+| Normal | 76,544 | 1,224,704 | 1,499,900 |
+| Large | 625,008 | 10,000,128 | 100,002,560 |
+| Earth | 1,448,160 | 23,170,560 | 536,874,851 |
+
+These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Existing smaller alpha saves remain readable.
+
+## Future ideas
+
+Ideas for future versions; scope and implementation are still open.
+
+- **Globe minimap.** A detailed, high-resolution view of your world that you can rotate and zoom into. Add waypoints, name your favourite places, and plan your next journey.
+- **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
+- **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
+
+## World conversion
+
+Existing-world conversion is planned. The idea is to choose an area of a world you already play, keep your builds, and connect its opposite edges by regenerating and blending selected strips of terrain.
+
+The conversion would work on a copy, with a preview of the affected areas before making changes. It is not available in the current alpha. A biome check for new worlds is also planned.
+
+## Try the alpha
+
+Use a new test world. Build and installation instructions, known limitations and development documentation are in the [project guide](docs/IMPLEMENTATION.md).
+
+## Inspiration and license
+
+Orbis takes inspiration from [Toroidal World](https://modrinth.com/mod/toroidal-world) and [Circumnavigate](https://modrinth.com/mod/circumnavigate). Its world engine comes from Toroidal World under the MIT License. It ships as a standalone mod; no separate Toroidal World installation is needed.
+
+Orbis is released under the [MIT License](LICENSE). Upstream credits and source details are recorded in [Sources and licensing](docs/SOURCES_AND_LICENSE.md).

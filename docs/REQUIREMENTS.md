@@ -10,8 +10,8 @@ Updated: 2026-10-05. Requirements are the target; current source and validation 
 | R04 | Required | Seamless Overworld/Nether wrapping in X and Z | All edges and corners correct; Y unchanged |
 | R05 | Required | Exact 1:8 Nether scaling | Coupled bounds and correct portal mapping |
 | R06 | Required | Vanilla End behaviour | No Orbis bounds; working portals and gateways |
-| R07 | Required | Five size tiers plus Earth | Final values follow biome analysis |
-| R08 | Required | Very small/Small may lack biomes | Clear warning |
+| R07 | Required | Slider with Tiny, Small, Normal, Large and Earth shortcuts | Exact input between Tiny (1,024) and Earth (1,448,160 chunks per full side), in steps of 16; see [World sizes](WORLD_SIZES.md); biome coverage still requires validation |
+| R08 | Required | Tiny/Small may lack biomes | Clear warning |
 | R09 | Goal | Normal contains all naturally generating Overworld/Nether biomes | Check both dimensions, including variants and caves |
 | R10 | Required | New-world biome check with transparent results | Distinguish complete, incomplete and not fully checked |
 | R11 | Required | Distant Horizons + Sodium + Lithium | Test together with pinned versions |
@@ -24,6 +24,6 @@ Updated: 2026-10-05. Requirements are the target; current source and validation 
 | R18 | Required | Never automatically change existing-world seeds | Report missing biomes and offer options |
 | R19 | Required | English documentation and user-facing text | English README, docs, animation and proposed UI labels |
 
-**Open:** final dimensions; minimum usable area per biome; target coverage rate (99% proposed); existing-world source version; performance budgets.
+**Open:** biome validation of the chosen dimensions; minimum usable area per biome; target coverage rate (99% proposed); existing-world source version; performance budgets.
 
 **Outside version 1:** dedicated multiplayer, curved in-game donut geometry, a geographic Earth map and universal mod compatibility.

@@ -22,7 +22,7 @@ public final class Orbis implements ModInitializer {
     private static final Set<RandomState> WORLDS = Collections.synchronizedSet(
             Collections.newSetFromMap(new WeakHashMap<>()));
     public static final String BIOME_WARNING = "Orbis: Biome coverage has NOT been checked in either dimension. "
-            + "Any size, including Medium, may lack biomes. Existing-world conversion is not available in this alpha.";
+            + "Any size, including Normal, may lack biomes. Existing-world conversion is not available in this alpha.";
 
     @Override public void onInitialize() {
         new com.toroidalworld.ToroidalWorldFabric().onInitialize();
