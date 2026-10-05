@@ -32,3 +32,7 @@ Final dimensions, minimum biome areas, scan depth/duration, target success rate,
 ## Repository
 
 Private repository: [TimoWey/Orbis](https://github.com/TimoWey/Orbis), created on 2026-10-05. Contains documentation, calculations and an explanatory animation; no upstream code imported and no playable mod.
+
+## First implementation (2026-10-05)
+
+Use the pinned Toroidal World engine as a required dependency and build Orbis through its extension API. This replaces the earlier full-source import plan. One version-pinned ownership mixin preserves Orbis settings on recreate. Development presets are 128 / 256 / 1024 / 2048 / 4096 chunks plus Earth (1,411,456); these are not final biome-coverage recommendations.

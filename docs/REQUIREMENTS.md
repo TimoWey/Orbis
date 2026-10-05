@@ -1,6 +1,6 @@
 # Requirements
 
-Updated: 2026-10-05. All functionality is still **planned**.
+Updated: 2026-10-05. Requirements are the target; current source and validation status are tracked in [Implementation](IMPLEMENTATION.md).
 
 | ID | Priority | Requirement | Acceptance |
 | --- | --- | --- | --- |
