@@ -12,7 +12,7 @@ With Java 25:
 
 Install `build/debug/libs/orbis-0.1.0-alpha.2-debug.jar` in the test instance, replacing the normal Orbis JAR. Do not install both. The normal `gradlew.bat build` produces `build/libs/orbis-0.1.0-alpha.2.jar` without debug classes, debug resources or the debug entrypoint. Separate output directories prevent stale debug classes from leaking between variants. `clean` on the normal build also removes the nested debug output.
 
-CI builds and verifies both variants as `orbis-fabric-26.3-release` and `orbis-fabric-26.3-debug`. Run `python tools/verify_standalone.py --debug <debug.jar>` for debug packaging, or omit `--debug` for the normal artifact.
+Separate CI release/debug artifacts are pending a workflow update; the current GitHub login cannot publish workflow changes. Build the debug JAR locally for now. Run `python tools/verify_standalone.py --debug <debug.jar>` for debug packaging, or omit `--debug` for the normal artifact.
 
 Development launch: `gradlew.bat runClient -PorbisDebug=true`. Do not switch build variants while this development client is running: Gradle can clean the previous compilation outputs. The packaged JARs remain separate.
 

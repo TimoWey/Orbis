@@ -33,7 +33,7 @@ The mod is an early development alpha, not completion of the requirements. Start
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). GitHub Actions performs the same build and publishes the JAR and test reports as workflow artifacts. Use the ordinary JAR, not the `-sources.jar`.
 
-For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.2-debug.jar` instead of the normal JAR. New CI runs publish separate `orbis-fabric-26.3-release` and `orbis-fabric-26.3-debug` artifacts. The normal build excludes the debug classes and entrypoint entirely.
+For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.2-debug.jar` instead of the normal JAR. Separate CI release/debug artifacts await a workflow update; the current GitHub login lacks workflow permission. The debug JAR is available from the local build. The normal build excludes the debug classes and entrypoint entirely.
 
 Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.2.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
 
