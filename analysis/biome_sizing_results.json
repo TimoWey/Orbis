@@ -1,0 +1,73 @@
+{
+  "real_world_simulation_executed": false,
+  "candidate_sizes": [
+    {
+      "overworld_chunks_per_axis": 128,
+      "overworld_blocks_per_axis": 2048,
+      "overworld_total_chunks": 16384,
+      "nether_chunks_per_axis": 16,
+      "nether_blocks_per_axis": 256,
+      "nether_total_chunks": 256
+    },
+    {
+      "overworld_chunks_per_axis": 256,
+      "overworld_blocks_per_axis": 4096,
+      "overworld_total_chunks": 65536,
+      "nether_chunks_per_axis": 32,
+      "nether_blocks_per_axis": 512,
+      "nether_total_chunks": 1024
+    },
+    {
+      "overworld_chunks_per_axis": 512,
+      "overworld_blocks_per_axis": 8192,
+      "overworld_total_chunks": 262144,
+      "nether_chunks_per_axis": 64,
+      "nether_blocks_per_axis": 1024,
+      "nether_total_chunks": 4096
+    },
+    {
+      "overworld_chunks_per_axis": 1024,
+      "overworld_blocks_per_axis": 16384,
+      "overworld_total_chunks": 1048576,
+      "nether_chunks_per_axis": 128,
+      "nether_blocks_per_axis": 2048,
+      "nether_total_chunks": 16384
+    },
+    {
+      "overworld_chunks_per_axis": 2048,
+      "overworld_blocks_per_axis": 32768,
+      "overworld_total_chunks": 4194304,
+      "nether_chunks_per_axis": 256,
+      "nether_blocks_per_axis": 4096,
+      "nether_total_chunks": 65536
+    },
+    {
+      "overworld_chunks_per_axis": 4096,
+      "overworld_blocks_per_axis": 65536,
+      "overworld_total_chunks": 16777216,
+      "nether_chunks_per_axis": 512,
+      "nether_blocks_per_axis": 8192,
+      "nether_total_chunks": 262144
+    }
+  ],
+  "validation_trial_plan": [
+    {
+      "target_joint_success": 0.95,
+      "independent_zero_failure_trials": 59,
+      "one_sided_confidence": 0.95,
+      "exact_success_lower_bound": 0.950492390111773
+    },
+    {
+      "target_joint_success": 0.99,
+      "independent_zero_failure_trials": 299,
+      "one_sided_confidence": 0.95,
+      "exact_success_lower_bound": 0.9900308532071007
+    },
+    {
+      "target_joint_success": 0.999,
+      "independent_zero_failure_trials": 2995,
+      "one_sided_confidence": 0.95,
+      "exact_success_lower_bound": 0.9990002555790989
+    }
+  ]
+}
