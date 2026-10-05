@@ -1,0 +1,14 @@
+.gradle/
+build/
+run/
+logs/
+*.log
+*.jar
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+worlds/
+backups/
+*.zip
+*.bundle
