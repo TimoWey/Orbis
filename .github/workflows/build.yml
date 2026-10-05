@@ -9,6 +9,9 @@ on:
       - '.github/workflows/build.yml'
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: orbis-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
