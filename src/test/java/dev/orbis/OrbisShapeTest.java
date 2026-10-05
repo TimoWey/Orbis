@@ -41,8 +41,11 @@ class OrbisShapeTest {
             WorldDimensions result = OrbisShape.apply(vanilla(), preset.size);
             assertEquals(preset.size, OrbisShape.read(result));
             assertEquals(LoopSpans.ofWidth(preset.size.netherChunks()), ShapeDimensions.spansOf(result, LevelStem.NETHER));
-            assertEquals(LoopSpans.NONE, ShapeDimensions.spansOf(result, LevelStem.END));
+            // The public reader hides non-wrapping shapes; inspect the actual
+            // generator below to ensure its explicit identity survives.
+            assertNull(ShapeDimensions.spansOf(result, LevelStem.END));
             var end = (ShapedChunkGenerator) result.get(LevelStem.END).orElseThrow().generator();
+            assertFalse(end.carriedShape().fold().isWrapped());
             var shape = new ToroidalShapeView(end.transformer());
             assertFalse(shape.loops(Direction.Axis.X));
             assertFalse(shape.loops(Direction.Axis.Z));
