@@ -2,7 +2,9 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
-**Status: planning. No playable mod, no upstream code imported, no gameplay tests performed.**
+**Status: first Fabric alpha implementation. Build validation in progress; no gameplay or required-mod compatibility tests completed.**
+
+[Implementation, build and installation](docs/IMPLEMENTATION.md) — new worlds only. Biome scans and existing-world conversion are not implemented.
 
 ## How Orbis works
 
@@ -32,8 +34,8 @@ The torus illustrates connectivity. **In-game terrain and gravity stay normal; Y
 
 | Decision | Target |
 | --- | --- |
-| Foundation | Independent development based on Toroidal World |
-| Platform | Fabric; latest stable Minecraft Java release when implementation begins |
+| Foundation | Orbis extension; requires Toroidal World 0.19.3 |
+| Platform | Fabric; Minecraft 26.3, Java 25 |
 | Mode | Singleplayer first |
 | World | Overworld and Nether wrap along X and Z |
 | Nether | Exact 1:8 coordinate and width ratio to the Overworld |
@@ -41,7 +43,7 @@ The torus illustrates connectivity. **In-game terrain and gravity stay normal; Y
 | Required mods | Distant Horizons, Sodium, Lithium |
 | Existing worlds | Convert a copy; regenerate and blend selected edge strips |
 | New worlds | Biome check with clear results and warnings |
-| Sizes | Five tiers plus Earth; five tier dimensions remain open |
+| Sizes | Five provisional tiers plus experimental Earth; final sizes need biome measurements |
 | Language | English documentation, animation and proposed UI text |
 
 ## Documentation
