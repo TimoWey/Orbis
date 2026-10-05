@@ -1,4 +1,6 @@
-package dev.orbis;
+package dev.orbis.mixin;
+
+import dev.orbis.OrbisShape;
 
 import com.toroidalworld.shape.torus.TorusSettings;
 import net.minecraft.world.level.levelgen.WorldDimensions;
