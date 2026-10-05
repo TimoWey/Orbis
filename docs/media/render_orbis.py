@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 OUT = Path(__file__).resolve().parent
 FRAMES = OUT / '.frames'
 FRAMES.mkdir(exist_ok=True)
-W,H,FPS,DURATION = 960,640,15,29
+W,H,FPS,DURATION = 960,640,15,55
 BG='#101c22'; FG='#ecf4ed'; MUTED='#a2b7b4'; CYAN='#56dbe4'; GOLD='#ffc968'
 FONT='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 BOLD='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
@@ -88,16 +88,30 @@ def avatar(d,x,y,t,scale=1):
     box((-7,8,-1,18+step),'#425d9a');box((2,8,8,18-step),'#425d9a')
     box((-4,-16,-2,-14),'#202b31');box((3,-16,5,-14),'#202b31')
 
+def movement(t):
+    """Normalized square-world coordinates; two laps, followed by a hold."""
+    if t < 29:
+        mode, start, period, origin, velocity = 'X', 17, 5, (.25,.5), (1,0)
+    elif t < 41:
+        mode, start, period, origin, velocity = 'Z', 29, 5, (.25,.5), (0,1)
+    else:
+        mode, start, period, origin, velocity = 'DIAGONAL', 41, 6, (.25,.40), (1,1)
+    progress = min(max((t-start)/period,0),2)
+    uv = (np.array(origin)+progress*np.array(velocity)) % 1
+    return mode, progress, np.array(origin), np.array(velocity), uv
+
+
 def render(t):
     k=float(ease((t-3)/4));b=float(ease((t-9)/5))
     stage=0 if t<3 else 1 if t<9 else 2 if t<17 else 3
-    titles=['Eine endliche, quadratische Welt','Z-Kanten verbinden: ein Zylinder','X-Kanten verbinden: ein Torus','Immer +X laufen. Wieder am Start.']
-    subtitles=['Gleiche Farben markieren zusammengehörende Kanten.','Oben und unten werden zu direkten Nachbarn.','Auch die beiden offenen Enden werden verbunden.','Nach jeder Weltbreite L wiederholt sich die Position.']
+    mode, progress, origin, velocity, uv = movement(t)
+    titles=['A finite, square world','Join the Z edges: a cylinder','Join the X edges: a torus',{'X':'Keep walking in +X. Back to the start.','Z':'Keep walking in +Z. Back to the start.','DIAGONAL':'Walk diagonally from an offset start.'}[mode]]
+    subtitles=['Matching colours identify opposite edges.','The top and bottom edges become direct neighbours.','Now connect the two remaining open ends.', 'Offset: x₀ = 0.25 L, z₀ = 0.40 L. The two edges are crossed at different times.' if mode=='DIAGONAL' else 'After each world width L, you return to the same position.']
     im=Image.new('RGB',(W,H),BG);d=ImageDraw.Draw(im)
     d.rectangle((0,0,W,5),fill=CYAN)
     text(d,(30,23),'ORBIS',20,CYAN,True)
-    text(d,(131,27),'ENDLICHE WELT · ENDLOSE WEGE',14,MUTED)
-    for s,l in enumerate(['01  QUADRAT','02  Z VERBINDEN','03  X VERBINDEN','04  WEITERLAUFEN']):
+    text(d,(131,27),'FINITE WORLD · ENDLESS JOURNEYS',14,MUTED)
+    for s,l in enumerate(['01  SQUARE','02  JOIN Z','03  JOIN X','04  WALK '+mode]):
         x=30+s*232
         d.rounded_rectangle((x,66,x+217,98),6,fill='#294447' if s==stage else '#1a2a31')
         text(d,(x+12,74),l,12,FG if s==stage else MUTED)
@@ -105,7 +119,7 @@ def render(t):
     text(d,(30,146),subtitles[stage],16,MUTED)
     d.rounded_rectangle((24,184,604,519),12,fill='#15262d')
     d.rounded_rectangle((623,184,936,519),12,fill='#1b3036')
-    text(d,(643,199),'DIESELBE WELT ALS KARTE',12,MUTED)
+    text(d,(643,199),'THE SAME WORLD, UNWRAPPED',12,MUTED)
     xyz,proj,mat=geometry(k,b)
     pp=proj(xyz)
     faces=[]
@@ -123,12 +137,12 @@ def render(t):
             faces.append((p[:,2].mean(),p[:,:2],col))
     for _,p,col in sorted(faces,key=lambda a:a[0]):
         d.polygon([tuple(q) for q in p],fill=col,outline=tuple(int(v*.78) for v in col))
-    # A highlighted X cycle. The map remains authoritative when its back half is hidden.
+    # The same route on the torus and on the unwrapped map.
     if stage==3:
-        route=np.linspace(0,1,121)
-        for n in range(120):
-            a=proj(surface(route[n],.5,k,b));c=proj(surface(route[n+1],.5,k,b))
-            d.line([tuple(a[:2]),tuple(c[:2])],fill='#ffd779',width=2)
+        route = (origin + np.linspace(0,1,241)[:,None]*velocity) % 1
+        points = proj(surface(route[:,0],route[:,1],k,b))
+        for n in range(len(points)-1):
+            d.line([tuple(points[n,:2]),tuple(points[n+1,:2])],fill='#ffd779',width=2)
     # Map: unmodified tile layout throughout the entire animation.
     mx,my,size=668,239,224
     for j in range(N):
@@ -139,47 +153,63 @@ def render(t):
     d.line([(mx,my+size+3),(mx+size,my+size+3)],fill=GOLD,width=5)
     text(d,(642,341),'X',14,CYAN,True);text(d,(908,341),'X',14,CYAN,True)
     text(d,(775,217),'Z',14,GOLD,True);text(d,(775,468),'Z',14,GOLD,True)
-    arrow(d,(mx+12,494),(mx+94,494),CYAN);text(d,(mx+104,485),'+X',14,CYAN)
+    arrow(d,(mx+12,494),(mx+68,494),CYAN);text(d,(mx+79,485),'+X',14,CYAN)
+    arrow(d,(mx+151,482),(mx+151,506),GOLD);text(d,(mx+165,485),'+Z',14,GOLD)
     if stage<3:
-        text(d,(47,483),'Topologisches Modell · Form nicht massstabsgetreu',12,MUTED)
+        text(d,(47,483),'Topology model · shape is not to scale',12,MUTED)
     else:
-        elapsed=min(max(t-17,0),10)
-        distance=elapsed/5 # two complete laps
-        u=(.25+distance)%1
-        startx=mx+size*.25;py=my+size*.5
-        d.ellipse((startx-8,py-8,startx+8,py+8),outline='#fff5c5',width=3)
-        text(d,(startx-22,py+28),'START',12,'#fff5c5')
-        arrow(d,(mx+6,py),(mx+size-5,py),'#ffe5a4',2)
-        px=mx+u*size
-        avatar(d,px,py,t,.7)
-        # Position beacon with a dashed leader also remains readable on the back side.
-        point=proj(surface(u,.5,k,b));x,y=point[:2]
+        u,v=uv
+        startx,starty=mx+size*origin[0],my+size*origin[1]
+        d.ellipse((startx-8,starty-8,startx+8,starty+8),outline='#fff5c5',width=3)
+        text(d,(startx-22,starty+25),'START',12,'#fff5c5')
+        # Clip at each seam: never draw a spurious line across the map.
+        for n in range(len(route)-1):
+            if np.max(abs(route[n+1]-route[n]))<.1:
+                d.line([(mx+size*route[n,0],my+size*route[n,1]),(mx+size*route[n+1,0],my+size*route[n+1,1])],fill='#ffe5a4',width=2)
+        for fraction in (.12,.52,.88):
+            a=(origin+fraction*velocity)%1
+            c=a+.045*velocity
+            if np.all(c<1):arrow(d,(mx+size*a[0],my+size*a[1]),(mx+size*c[0],my+size*c[1]),'#ffe5a4',2)
+        avatar(d,mx+u*size,my+v*size,t,.7)
+        # The position beacon stays visible even behind the surface.
+        point=proj(surface(u,v,k,b));x,y=point[:2]
         d.ellipse((x-7,y-7,x+7,y+7),fill='#fff4bf',outline='#243d38',width=2)
         d.line([(x,y-7),(x,y-23)],fill='#fff4bf',width=2)
         d.rectangle((x-5,y-32,x+5,y-23),fill=CYAN)
-        laps=min(int(distance+1e-8),2)
-        text(d,(43,469),f'Strecke: {distance:.2f} L     Runden: {laps}',16,FG,True)
-        text(d,(43,493),'Punkt = Spielerposition, auch auf der Rückseite',12,MUTED)
-        if distance>=1.99: msg='2 Runden. Gleicher Ort. Gleiche Blickrichtung.'
-        elif abs(distance-1)<.13:msg='1 Runde: wieder am selben Startpunkt.'
-        elif u<.1 or u>.93:msg='Rechts hinaus → links nahtlos weiter.'
-        else:msg='x = (x₀ + Strecke) mod L · z bleibt gleich'
+        laps=min(int(progress+1e-8),2)
+        if mode=='DIAGONAL':
+            metric=f'ΔX = ΔZ: {progress:.2f} L   |   Distance: {progress*math.sqrt(2):.2f} L'
+        else:metric=f'Distance: {progress:.2f} L     Laps: {laps}'
+        text(d,(43,469),metric,15,FG,True)
+        text(d,(43,493),'Marker = player position, including the hidden side',12,MUTED)
+        if progress>=1.99:msg='2 laps. Same place. Same direction.'
+        elif abs(progress-1)<.08:msg='1 lap: back at the same starting point.'
+        elif mode=='DIAGONAL':
+            if v<.09 or v>.93:msg='Cross the Z edge: bottom → top. X stays unchanged.'
+            elif u<.09 or u>.93:msg='Cross the X edge: right → left. Z stays unchanged.'
+            else:msg='Both coordinates wrap independently: x mod L, z mod L.'
+        elif mode=='Z':
+            msg='Bottom → top. Keep walking in +Z.' if v<.1 or v>.93 else 'z = (z₀ + distance) mod L · x stays unchanged'
+        else:msg='Right → left. Keep walking in +X.' if u<.1 or u>.93 else 'x = (x₀ + distance) mod L · z stays unchanged'
         text(d,(35,539),msg,18,CYAN,True)
     if stage<3:
-        msgs=['X ↔ X  und  Z ↔ Z: keine Wand, keine neue Welt.','Ein Kantenpaar ist geschlossen; das zweite bleibt offen.','Beide Richtungen sind periodisch. Die Welt hat keinen Rand.']
-        text(d,(35,539),'Jetzt werden auch die X-Kanten zusammengeführt.' if stage==2 and b<1 else msgs[stage],18,CYAN,True)
+        msgs=['X ↔ X  and  Z ↔ Z: no wall, no new copy of the world.','One edge pair is connected; the other is still open.','Both directions are periodic. The world has no edge.']
+        text(d,(35,539),'The remaining X edges are coming together.' if stage==2 and b<1 else msgs[stage],18,CYAN,True)
     d.line((30,575,930,575),fill='#365057',width=1)
-    text(d,(30,589),'Im Spiel bleibt das Gelände flach und die Schwerkraft normal.',16,FG)
-    text(d,(30,613),'Erklärmodell im Blockstil · keine Spielaufnahme · Y/Höhe bleibt unverändert',12,MUTED)
+    text(d,(30,589),'In-game terrain stays flat. Gravity stays normal.',16,FG)
+    text(d,(30,613),'Block-style explainer · not gameplay footage · Y / height never wraps',12,MUTED)
     return im
 
 if __name__=='__main__':
     import sys
     if '--preview' in sys.argv:
-        for t in (0,5,8,11,16,20,27):render(t).save(OUT/f'preview-{t}.png')
+        for t in (0,8,16,20,32,40,44,45,46,48,54):render(t).save(OUT/f'preview-{t}.png')
     else:
         for f in range(FPS*DURATION):
-            render(f/FPS).save(FRAMES/f'{f:04d}.png')
+            frame_path=FRAMES/f'{f:04d}.png'
+            temp_path=FRAMES/'current.tmp'
+            render(f/FPS).save(temp_path,format='PNG')
+            temp_path.replace(frame_path)
             if f%75==0:print(f'frame {f}/{FPS*DURATION}',flush=True)
         for frame in sorted(FRAMES.glob('[0-9]*.png')):
             with Image.open(frame) as check:
