@@ -5,13 +5,23 @@ As of 2026-10-05. **No Orbis compatibility tests have been performed.**
 | Mod | Priority | Upstream / research | Orbis |
 | --- | --- | --- | --- |
 | Distant Horizons | Required; particularly important | Support documented upstream | Untested |
+| Fabric API | Runtime dependency | Required by the standalone build | Build passes; gameplay untested |
 | Sodium | Required | Support documented upstream | Untested |
 | Lithium | Required | Support documented upstream | Untested |
-| FerriteCore | Candidate | Memory optimization; integration undecided | Untested |
-| ImmediatelyFast | Candidate | Rendering optimization; integration undecided | Untested |
+| FerriteCore | Compatibility priority | Memory optimization | Untested |
+| ImmediatelyFast | Compatibility priority | Rendering optimization | Untested |
+| Entity Culling | Compatibility priority | Check visibility across seams | Untested |
+| Litematica | Compatibility priority | Check schematic placement across seams | Untested |
+| MiniHUD | Compatibility priority | Check overlays and coordinates across seams | Untested |
+| Tweakeroo | Compatibility priority | Check camera and placement tools across seams | Untested |
+| Mod Menu | Compatibility priority | Check listing and settings access | Untested |
 | ScalableLux | Candidate | Support documented upstream | Untested |
-| Iris | Additional goal | Support documented upstream | Untested |
+| Iris Shaders | Compatibility priority; particularly important | Support documented upstream | Untested |
 | C2ME | Optional investigation | Listed as supported; open bug report #55 | Untested / risk |
+
+“Required” for Distant Horizons, Sodium and Lithium describes the release acceptance target. They are optional installations in the current alpha; only Fabric Loader and Fabric API are runtime requirements. A matching build of each mod and its dependencies must exist for the selected Minecraft version before testing.
+
+Additional compatibility request: the exact identity of “EM²” is still to be confirmed.
 
 ## Acceptance
 
