@@ -31,6 +31,8 @@ sourceSets.main {
         exclude 'META-INF/accesstransformer.cfg', 'logo.png', '**/*.bbmodel'
         // Built-in Toroidal/Cylinder presets are not Orbis's preset policy.
         exclude 'data/toroidal_world/worldgen/world_preset/**'
+        // Orbis owns its progression and player-facing wording.
+        exclude 'data/toroidal_world/advancement/**'
     }
 }
 // Avoid two root mod manifests and two copies of the access widener.
@@ -39,7 +41,8 @@ processResources {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude { entry ->
         entry.file.toPath().startsWith(engineRoot.get().asFile.toPath()) &&
-                entry.name in ['fabric.mod.json', 'toroidal_world.accesswidener']
+                (entry.name in ['fabric.mod.json', 'toroidal_world.accesswidener'] ||
+                 entry.path.startsWith('assets/toroidal_world/lang/'))
     }
 }
 compileJava.dependsOn prepareEngine

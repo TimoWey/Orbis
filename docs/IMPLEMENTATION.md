@@ -1,4 +1,4 @@
-# Implementation status — 0.1.0-alpha.2
+# Implementation status — 0.1.0-alpha.3
 
 Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned MIT source snapshot and ships inside the Orbis JAR. **Install Fabric Loader, Fabric API and Orbis. No Toroidal World mod is required.**
 
@@ -10,10 +10,12 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 - Explicit unwrapped End. An identity-shaped engine generator prevents automatic dimension wrapping; it does not impose finite End bounds.
 - World identity and bounds stored in the generator codec, with restoration on recreate.
 - English customization screen with responsive size controls, a live world overview, selected preset marks and inline validation; biome disclaimer on join, and `/orbis` information command.
-- Optional debug-only M atlas: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, bounded generator sampling, structure-type and portal-room layout audits, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
+- Optional debug-only corner minimap and non-pausing M atlas window, shared flat/globe mode and saved per-world waypoints: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, bounded generator sampling, structure-type and portal-room layout audits, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
 - Regression tests for bounds, seam math, serialization and shape ownership.
 
 ## Validation
+
+On 2026-10-06, alpha.3 passed 33 normal-build tests and 57 debug-build tests with Java 25, plus standalone packaging checks on both final JARs. New checks cover waypoint persistence/failure isolation, terrain across seams and both projections, and Minecraft codec parsing of Orbis advancements. Interactive validation of the new HUD and window remains pending.
 
 [Standalone CI build](https://github.com/TimoWey/Orbis/actions/runs/37306724814) passed on 2026-10-05: source compilation, 25 regression cases and final-JAR inspection. The new checks initialize the real Orbis entrypoint, verify engine codec registration and confirm Toroidal World is not installed. Packaging checks verify every declared mixin and reject a separate or nested Toroidal World mod. These are not gameplay tests.
 
@@ -33,9 +35,9 @@ The mod is an early development alpha, not completion of the requirements. Start
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). GitHub Actions performs the same build and publishes the JAR and test reports as workflow artifacts. Use the ordinary JAR, not the `-sources.jar`.
 
-For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.2-debug.jar` instead of the normal JAR. Separate CI release/debug artifacts await a workflow update; the current GitHub login lacks workflow permission. The debug JAR is available from the local build. The normal build excludes the debug classes and entrypoint entirely.
+For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.3-debug.jar` instead of the normal JAR. Separate CI release/debug artifacts await a workflow update; the current GitHub login lacks workflow permission. The debug JAR is available from the local build. The normal build excludes the debug classes and entrypoint entirely.
 
-Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.2.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
+Download **orbis-fabric-26.3** from the successful run's **Artifacts** section, unzip it, and place `orbis-0.1.0-alpha.3.jar` in the test instance's `mods` folder. GitHub sign-in is required for this private repository. CI artifacts expire; rebuild from source if the download has expired.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3 and Orbis. Create a new world, choose **World Shape: Orbis**, then **Customize**. Only Normal and Orbis are offered. If upgrading from alpha 1, remove the old Orbis and Toroidal World JARs first; simultaneous installation is explicitly rejected to prevent duplicate classes.
 

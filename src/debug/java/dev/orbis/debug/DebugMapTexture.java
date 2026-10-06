@@ -8,7 +8,8 @@ import net.minecraft.resources.Identifier;
 
 /** One cached texture per open screen. Idle frames reuse it; statistics cannot invalidate it. */
 final class DebugMapTexture implements AutoCloseable {
-    private static final Identifier ID = Identifier.fromNamespaceAndPath("orbis", "debug_atlas");
+    private static int nextId;
+    private final Identifier id = Identifier.fromNamespaceAndPath("orbis", "atlas_" + nextId++);
     private DynamicTexture texture;
     private DebugMapRaster raster;
     private DebugMapRaster.View previousView;
@@ -28,7 +29,7 @@ final class DebugMapTexture implements AutoCloseable {
             width = w; height = h;
             raster = new DebugMapRaster(w, h);
             texture = new DynamicTexture(() -> "Orbis debug atlas", new NativeImage(w, h, false));
-            Minecraft.getInstance().getTextureManager().register(ID, texture);
+            Minecraft.getInstance().getTextureManager().register(id, texture);
         }
         // Coalesce input events; expensive globe reprojection is capped at 30 updates/s.
         boolean changed = revision != data.mapRevision() || seed != data.seed()
@@ -45,13 +46,13 @@ final class DebugMapTexture implements AutoCloseable {
             updateMillis = (System.nanoTime() - start) / 1_000_000.0;
         }
         // This overload takes opposite corners, not a width and height.
-        g.blit(ID, x, y, x + view.width(), y + view.height(), 0, 1, 0, 1);
+        g.blit(id, x, y, x + view.width(), y + view.height(), 0, 1, 0, 1);
     }
     int uploads() { return uploads; }
     double updateMillis() { return updateMillis; }
     String resolution() { return width + " x " + height; }
     @Override public void close() {
-        if (texture != null) Minecraft.getInstance().getTextureManager().release(ID);
+        if (texture != null) Minecraft.getInstance().getTextureManager().release(id);
         texture = null; raster = null; previousView = null; revision = -1;
     }
 }

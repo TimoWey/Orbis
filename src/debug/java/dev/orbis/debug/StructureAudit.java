@@ -4,6 +4,7 @@ import com.toroidalworld.core.ShapedChunkGenerator;
 import com.toroidalworld.engine.gen.AddedStructureStarts;
 import com.toroidalworld.mixin.StructureManagerAccessor;
 import java.util.*;
+import java.util.function.BooleanSupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -17,7 +18,7 @@ import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
 final class StructureAudit {
     static final String PORTAL = "orbis:end_portal_room";
     record Entry(String id, DebugSnapshot.Place location, boolean observed, boolean exhausted) {
-        String status() { return observed ? "Observed" : location != null ? "Predicted" : exhausted ? "Not generated" : "Unconfirmed"; }
+        String status() { return observed ? "Observed" : location != null ? "Predicted" : exhausted ? "Not found in check" : "Unconfirmed"; }
         boolean found() { return observed || location != null; }
     }
     private final ServerLevel level;
@@ -28,7 +29,8 @@ final class StructureAudit {
     private final Set<String> observed = new HashSet<>();
     private final List<Task> tasks = new ArrayList<>();
     private boolean initialized, running;
-    private int nextTask;
+    private int nextTask, nextInitialization;
+    private AddedStructureStarts added;
     private PalettedContainerFactory palettes;
     private long checks, revision;
     private String error = "";
@@ -63,7 +65,7 @@ final class StructureAudit {
         if (!finite) return "Visit a finite dimension to audit";
         if (!level.structureManager().shouldGenerateStructures()) return "Structure generation is disabled";
         if (allFound(entries())) return "All listed types found";
-        if (complete()) return "Generator check complete";
+        if (complete()) return "Generator check complete (predictions)";
         return running ? "Checking generator..." : checks > 0 ? "Check paused" : "Not checked yet";
     }
     static boolean allFound(List<Entry> entries) { return !entries.isEmpty() && entries.stream().allMatch(Entry::found); }
@@ -82,22 +84,29 @@ final class StructureAudit {
     }
 
     /** At most one layout generation per tick; caller also enforces its scheduling deadline. */
-    void tick() {
-        if (!running) return;
+    void tick(long deadline, BooleanSupplier active) {
+        if (!running || !active.getAsBoolean() || System.nanoTime() >= deadline) return;
         try {
             if (!level.structureManager().shouldGenerateStructures()) { running = false; return; }
             var source = level.getChunkSource();
             var state = source.getGeneratorState();
             if (!initialized) {
-                var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
-                var added = carried == null ? AddedStructureStarts.NONE : AddedStructureStarts.of(state,
-                        ((StructureManagerAccessor) level.structureManager()).toroidal$structureCheck(), carried);
-                for (Task task : tasks) task.init(state, added);
+                if (added == null) {
+                    var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
+                    added = carried == null ? AddedStructureStarts.NONE : AddedStructureStarts.of(state,
+                            ((StructureManagerAccessor) level.structureManager()).toroidal$structureCheck(), carried);
+                }
+                // Ring preparation may be expensive. Spread initialization across ticks as well
+                // as candidate checks, and leave the remaining tasks untouched when paused.
+                if (nextInitialization < tasks.size()) {
+                    tasks.get(nextInitialization++).init(state, added);
+                    return;
+                }
                 initialized = true;
                 palettes = PalettedContainerFactory.create(level.registryAccess());
             }
             if (complete()) { running = false; return; }
-            for (int probes = 0; probes < 32; probes++) {
+            for (int probes = 0; probes < 32 && active.getAsBoolean() && System.nanoTime() < deadline; probes++) {
                 Task task = tasks.get(nextTask);
                 nextTask = (nextTask + 1) % tasks.size();
                 if (task.done || satisfied(task)) continue;

@@ -35,6 +35,8 @@ final class DebugSurvey {
     private static long command;
 
     static void open(ResourceKey<Level> dimension, UUID player) {
+        Request active = request;
+        if (active != null && active.dimension.equals(dimension) && active.player.equals(player)) return;
         snapshot = null;
         command++;
         request = new Request(dimension, player, command, false, false, true, command, command);
@@ -85,7 +87,7 @@ final class DebugSurvey {
             if (s.lastCommand != r.command) {
                 s.lastCommand = r.command;
                 boolean scanChanged = s.lastScanCommand != r.scanCommand;
-                if (scanChanged) s.scanning = r.scan;
+                if (scanChanged) s.scanning = r.scan && s.wrapped;
                 if (s.lastAuditCommand != r.auditCommand) s.audit.running(r.audit);
                 s.lastScanCommand = r.scanCommand;
                 s.lastAuditCommand = r.auditCommand;
@@ -101,20 +103,15 @@ final class DebugSurvey {
             }
             try {
                 long deadline = System.nanoTime() + 3_000_000;
-                for (int count = 0; count < 8 && !s.pending.isEmpty() && System.nanoTime() < deadline; count++) {
+                for (int count = 0; count < 8 && !s.pending.isEmpty() && request == r && System.nanoTime() < deadline; count++) {
                     long key = s.pending.iterator().next();
                     s.pending.remove(key);
                     inspect(level, s, key);
                 }
-                if (System.nanoTime() < deadline) s.audit.tick();
-                if (s.auditRevision != s.audit.revision()) {
-                    s.auditRevision = s.audit.revision();
-                    s.mapRevision++;
-                }
                 if (s.scanning && s.wrapped) {
                     if (s.resolver == null) s.resolver = level.getChunkSource().getGenerator().getBiomeSource()
                             .createUncachedResolver(level.getChunkSource().randomState());
-                    for (int count = 0; count < 256 && s.cursor < TOTAL && System.nanoTime() < deadline; count++) {
+                    for (int count = 0; count < 256 && s.cursor < TOTAL && request == r && System.nanoTime() < deadline; count++) {
                         int cell = s.cursor / LAYERS;
                         int layer = s.cursor % LAYERS;
                         int x = DebugMapMath.sampleCoordinate(s.minX, s.span, cell % GRID, GRID);
@@ -136,6 +133,13 @@ final class DebugSurvey {
                         s.cursor++;
                     }
                     if (s.cursor == TOTAL) s.scanning = false;
+                }
+                // Sampling and queued chunk inspection share a deadline. A structure layout is
+                // indivisible, so start at most one only when there is still time this tick.
+                if (request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
+                if (s.auditRevision != s.audit.revision()) {
+                    s.auditRevision = s.audit.revision();
+                    s.mapRevision++;
                 }
             } catch (RuntimeException failure) {
                 s.scanning = false;
@@ -178,7 +182,7 @@ final class DebugSurvey {
         int x = cx * 16 + 8, z = cz * 16 + 8;
         int y = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, 8, 8);
         String surface = id(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2));
-        putBounded(s.history, key, new DebugSnapshot.Cell(cx, cz, DebugMapMath.biomeColor(surface)), HISTORY_LIMIT, s);
+        putBounded(s.history, key, DebugTerrain.sample(level, chunk, DebugMapMath.biomeColor(surface)), HISTORY_LIMIT, s);
         // Locate cells only for newly observed palette entries, not all cells in every chunk.
         for (int section = 0; section < chunk.getSections().length; section++) {
             var palette = chunk.getSection(section);
