@@ -38,33 +38,30 @@ final class OrbisDebugScreen extends Screen {
     OrbisDebugScreen() { super(Component.literal("Orbis atlas")); }
 
     @Override protected void init() {
-        left = Math.max(8, (width - 900) / 2);
-        top = Math.max(8, (height - 560) / 2);
-        right = width - left;
-        bottom = height - top;
-        panelX = right - Math.clamp((right - left) / 3, 132, 192) - 8;
-        mapLeft = left + 8;
-        mapTop = top + 52;
-        mapRight = panelX - 12;
-        mapBottom = bottom - 42;
+        AtlasLayout layout = AtlasLayout.fit(width, height);
+        left = layout.left(); top = layout.top(); right = layout.right(); bottom = layout.bottom(); panelX = layout.panelX();
+        mapLeft = layout.mapLeft(); mapTop = layout.mapTop(); mapRight = layout.mapRight(); mapBottom = layout.mapBottom();
         int panelWidth = right - panelX - 8;
         rows.clear();
-        int controlWidth = Math.max(20, (mapRight - mapLeft - 12) / 4);
-        button(mapLeft, top + 28, controlWidth, "Flat", b -> setGlobe(false), () -> !globe);
-        viewButton = button(mapLeft + controlWidth + 4, top + 28, controlWidth, "Globe", b -> setGlobe(true), () -> globe);
-        button(mapLeft + (controlWidth + 4) * 2, top + 28, controlWidth, "-", b -> zoom(1 / 1.5));
-        button(mapLeft + (controlWidth + 4) * 3, top + 28, controlWidth, "+", b -> zoom(1.5));
-        button(mapLeft, bottom - 22, controlWidth, "You", b -> focusPlayer());
-        button(mapLeft + controlWidth + 4, bottom - 22, controlWidth, "All", b -> resetView());
-        button(mapLeft + (controlWidth + 4) * 2, bottom - 22, controlWidth, "Grid", b -> { showChunks = !showChunks; showPlaces = showChunks; }, () -> showChunks);
-        var cornerButton = button(mapLeft + (controlWidth + 4) * 3, bottom - 22, controlWidth, cornerLabel(), b -> {
+        int controlWidth = layout.controlWidth();
+        button(layout.controlX(0), layout.controlTop(0), controlWidth, "Flat", b -> setGlobe(false), () -> !globe);
+        viewButton = button(layout.controlX(1), layout.controlTop(1), controlWidth, "Globe", b -> setGlobe(true), () -> globe);
+        button(layout.controlX(2), layout.controlTop(2), controlWidth, "-", b -> zoom(1 / 1.5));
+        button(layout.controlX(3), layout.controlTop(3), controlWidth, "+", b -> zoom(1.5));
+        button(layout.controlX(0), layout.controlBottom(0), controlWidth, "You", b -> focusPlayer());
+        button(layout.controlX(1), layout.controlBottom(1), controlWidth, "All", b -> resetView());
+        button(layout.controlX(2), layout.controlBottom(2), controlWidth, "Grid", b -> { showChunks = !showChunks; showPlaces = showChunks; }, () -> showChunks);
+        var cornerButton = button(layout.controlX(3), layout.controlBottom(3), controlWidth, cornerLabel(), b -> {
             AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel()));
         });
         cornerButton.setTooltip(Tooltip.create(Component.literal("Minimap corner: TR, TL, BR, BL. Click to move.")));
-        int third = (panelWidth - 8) / 3;
-        button(panelX, top + 28, third, "Biomes", b -> changeTab(0), () -> tab == 0);
-        button(panelX + third + 4, top + 28, third, "Places", b -> changeTab(1), () -> tab == 1);
-        button(panelX + (third + 4) * 2, top + 28, third, "Stats", b -> changeTab(2), () -> tab == 2);
+        button(panelX, top + 28, 44, "Biomes", b -> changeTab(0), () -> tab == 0);
+        button(panelX + 48, top + 28, panelWidth - 90, Component.translatable("orbis.atlas.structures").getString(), b -> changeTab(1), () -> tab == 1);
+        button(right - 46, top + 28, 38, "Stats", b -> changeTab(2), () -> tab == 2);
+        var sizeButton = button(right - 119, top + 5, 66, sizeLabel(), b -> {
+            AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel()));
+        });
+        sizeButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.size_tip")));
         scanButton = button(right - 68, bottom - 22, 60, "Sample", b -> {
             if (data != null) {
                 if (tab == 1) DebugSurvey.audit(!data.structuresScanning());
@@ -73,18 +70,18 @@ final class OrbisDebugScreen extends Screen {
         });
         scanButton.setTooltip(Tooltip.create(Component.literal("Check this world without loading terrain.")));
         int half = (panelWidth - 4) / 2;
-        filterButton = button(panelX, top + 88, half, "All", b -> {
+        filterButton = button(panelX, top + 86, half, "All", b -> {
             filter = BiomeOverview.Filter.values()[(filter.ordinal() + 1) % BiomeOverview.Filter.values().length];
             page = 0; updateRows();
         });
         filterButton.setTooltip(Tooltip.create(Component.literal("Filter the checklist.")));
-        sortButton = button(panelX + half + 4, top + 88, panelWidth - half - 4, "Name", b -> {
+        sortButton = button(panelX + half + 4, top + 86, panelWidth - half - 4, "Name", b -> {
             sort = sort == BiomeOverview.Sort.NAME ? BiomeOverview.Sort.HITS : BiomeOverview.Sort.NAME;
             page = 0; updateRows();
         });
         sortButton.setTooltip(Tooltip.create(Component.literal("Sort by name, sample hits or discovery status.")));
-        int rowHeight = tab == 0 ? 16 : 23;
-        for (int y = top + (tab != 2 ? 126 : 110); y + rowHeight <= bottom - 28; y += rowHeight) {
+        int rowHeight = tab != 2 ? 16 : 23;
+        for (int y = top + (tab != 2 ? 116 : 110); y + rowHeight <= bottom - 28; y += rowHeight) {
             final int row = rows.size();
             rows.add(addRenderableWidget(new AtlasButton(panelX, y, panelWidth, rowHeight - 1, "", b -> {
                 int index = page * rows.size() + row;
@@ -110,6 +107,7 @@ final class OrbisDebugScreen extends Screen {
         updateRows();
     }
 
+    private static String sizeLabel() { return Component.translatable("orbis.atlas.size").getString() + ": " + new String[]{"S", "M", "L"}[AtlasPreferences.sizeIndex()]; }
     private static String cornerLabel() { return new String[]{"TR", "TL", "BR", "BL"}[AtlasPreferences.corner()]; }
     private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(value); }
     private Button button(int x, int y, int w, String label, Button.OnPress action) {
@@ -154,7 +152,7 @@ final class OrbisDebugScreen extends Screen {
             if (!data.wrapped()) globe = false;
             if (tab == 0) for (var biome : BiomeOverview.select(data.biomes(), filter, sort)) {
                 labels.add(displayName(biome.id()));
-                values.add(String.format(Locale.ROOT, "%,d", biome.sampleHits()));
+                values.add(biome.observed() ? "O" : biome.found() ? "~" : "?");
                 String status = biome.observed() ? "Observed in a loaded chunk" : biome.found() ? "Found by generator sampling" : "Not found yet; existence unconfirmed";
                 tips.add(biome.id() + "\n" + status + "\n" + String.format(Locale.ROOT, "%,d sample queries", biome.sampleHits())
                         + " at four heights. Not a chunk count or area measurement.");
@@ -166,11 +164,18 @@ final class OrbisDebugScreen extends Screen {
                     : Comparator.comparing(StructureAudit.Entry::found).reversed().thenComparing(StructureAudit.Entry::id)).toList()) {
                 if (filter == BiomeOverview.Filter.FOUND && !entry.found()) continue;
                 if (filter == BiomeOverview.Filter.UNCONFIRMED && entry.found()) continue;
-                labels.add(displayName(entry.id()));
-                values.add(entry.status());
-                tips.add(entry.id() + "\n" + entry.status() + (entry.observed() ? "\nObserved in loaded terrain." : "\nGenerator prediction; saved terrain may differ. Not found does not prove absence."));
+                labels.add(entry.id().equals(StructureAudit.PORTAL) ? "Stronghold / portal room" : displayName(entry.id()));
+                values.add(entry.observed() ? "O" : entry.found() ? "~" : "?");
+                tips.add((entry.id().equals(StructureAudit.PORTAL) ? "Stronghold portal room: part of a structure, not a separate structure type.\n" : "") + entry.id() + "\n" + entry.status() + (entry.observed() ? "\nObserved in loaded terrain." : "\nGenerator prediction; saved terrain may differ. Not found does not prove absence."));
                 colors.add(entry.observed() ? ACCENT : entry.found() ? 0xff8dbffa : MUTED);
                 places.add(entry.location());
+            }
+            // Block-entity sightings supplement structures; they are not expected structure types.
+            if (tab == 1 && filter != BiomeOverview.Filter.UNCONFIRMED) for (var place : data.places()) {
+                if (!place.label().equals("End gateway (seen)") && !place.label().equals("End portal block (seen)")) continue;
+                labels.add(place.label()); values.add("O"); colors.add(ACCENT); places.add(place);
+                tips.add(place.label() + "\nAdditional portal observation from a loaded chunk. This is a block observation, not a generated structure type.\nX "
+                        + place.x() + " Y " + place.y() + " Z " + place.z());
             }
             if (tab == 2) for (String[] entry : stats()) {
                 labels.add(entry[0]); values.add(entry[1]); tips.add(entry[0] + ": " + entry[1]);
@@ -182,7 +187,7 @@ final class OrbisDebugScreen extends Screen {
         filterButton.visible = tab != 2;
         sortButton.visible = tab != 2;
         filterButton.setMessage(Component.literal(switch (filter) {
-            case ALL -> "Show: all"; case UNCONFIRMED -> "Not found"; case FOUND -> "Found";
+            case ALL -> "Show: all"; case UNCONFIRMED -> "Unconfirmed"; case FOUND -> "Found";
         }));
         sortButton.setMessage(Component.literal(sort == BiomeOverview.Sort.NAME ? "Name A-Z" : tab == 1 ? "Found first" : "Samples"));
         previousButton.active = page > 0;
@@ -191,10 +196,11 @@ final class OrbisDebugScreen extends Screen {
             int index = page * rows.size() + i;
             Button row = rows.get(i);
             // Only locations are interactive. Unknown biomes and statistics are plain text.
-            row.visible = index < labels.size() && places.get(index) != null;
+            row.visible = index < labels.size();
             if (row.visible) {
                 var place = places.get(index);
-                row.setMessage(Component.literal(tips.get(index) + ". Center map at " + place.x() + ", " + place.y() + ", " + place.z()));
+                row.setMessage(Component.literal(tips.get(index) + (place == null ? "" : ". Center map at " + place.x() + ", " + place.y() + ", " + place.z())));
+                row.setTooltip(Tooltip.create(Component.literal(tips.get(index))));
             }
         }
     }
@@ -219,11 +225,21 @@ final class OrbisDebugScreen extends Screen {
         centerX = place.x(); centerZ = place.z();
         yaw = -(unitX(place.x()) - .5) * Math.PI * 2;
         pitch = (.5 - unitZ(place.z())) * Math.PI;
-        if (!globe) zoom = Math.max(zoom, Math.min(4096, data.span() / 512.0));
+        if (data.wrapped()) {
+            centerX = DebugMapMath.canonical(centerX, data.minX(), data.span());
+            centerZ = DebugMapMath.canonical(centerZ, data.minZ(), data.span());
+        }
+        if (!globe) zoom = Math.max(zoom, data.span() / 512.0);
     }
     private void zoom(double factor) {
         if (globe) globeZoom = Math.clamp(globeZoom * factor, .5, 12);
-        else zoom = Math.clamp(zoom * factor, .25, 65536);
+        else zoom = Math.clamp(zoom * factor, 1, data == null ? 1 : Math.max(1, 8.0 * data.span() / Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop))));
+        constrainView();
+    }
+    private void constrainView() {
+        if (data == null || !data.wrapped() || globe) return;
+        centerX = DebugMapMath.clampCenter(centerX, data.minX(), data.span(), (mapRight - mapLeft) / scale());
+        centerZ = DebugMapMath.clampCenter(centerZ, data.minZ(), data.span(), (mapBottom - mapTop) / scale());
     }
     private double scale() { return Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop)) * zoom / (data == null ? 4096 : data.span()); }
     private double midX() { return (mapLeft + mapRight) / 2.0; }
@@ -235,12 +251,13 @@ final class OrbisDebugScreen extends Screen {
     private int sz(double z) { return (int) Math.clamp(midY() + (z - centerZ) * scale(), -1000000, 1000000); }
 
     @Override public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
-        g.fill(left, top, right, bottom, 0xd9101820);
-        g.outline(left, top, right - left, bottom - top, 0xff304251);
-        g.fill(panelX - 8, top + 25, right - 1, bottom - 1, 0xa016222d);
+        constrainView();
+        g.fill(left, top, right, bottom, 0xe0282828);
+        g.outline(left, top, right - left, bottom - top, 0xff777777);
+        g.fill(panelX - 8, top + 25, right - 1, bottom - 1, 0x80333333);
         g.text(font, "ORBIS", mapLeft, top + 10, ACCENT, false);
         g.text(font, "Atlas", mapLeft + 38, top + 10, TEXT, false);
-        if (right - left > 460 && data != null) g.text(font, data.preset(), mapLeft + 78, top + 10, MUTED, false);
+        if (right - left > 560 && data != null) g.text(font, data.preset(), mapLeft + 78, top + 10, MUTED, false);
         g.fill(mapLeft, mapTop, mapRight, mapBottom, DebugMapRaster.BACKGROUND);
         if (data == null) {
             g.textWithWordWrap(font, Component.literal("Waiting for the integrated server..."), mapLeft + 6, mapTop + 6, Math.max(40, mapRight - mapLeft - 16), MUTED);
@@ -260,31 +277,32 @@ final class OrbisDebugScreen extends Screen {
             }
             g.disableScissor();
             int panelWidth = right - panelX - 8;
+            g.text(font, ellipsis(data.dimension(), panelWidth), panelX, top + 48, MUTED, true);
             if (tab == 1) {
-                long found = data.structures().stream().filter(StructureAudit.Entry::found).count();
-                g.text(font, found + " / " + data.structures().size() + " structures", panelX, top + 54, ACCENT, false);
-                g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 67, MUTED, false);
-                g.text(font, "Generator predictions", panelX, top + 114, MUTED, false);
-                g.fill(panelX, top + 80, right - 8, top + 82, 0xff304251);
-                if (!data.structures().isEmpty()) g.fill(panelX, top + 80, panelX + (int) (panelWidth * found / data.structures().size()), top + 82, ACCENT);
+                long found = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL) && e.found()).count();
+                long expected = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL)).count();
+                g.text(font, found + " / " + expected + " structure types", panelX, top + 59, ACCENT, false);
+                g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 71, MUTED, false);
+                g.text(font, "O: observed / ~: predicted", panelX, top + 106, MUTED, false);
+                g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
+                if (expected > 0) g.fill(panelX, top + 82, panelX + (int) (panelWidth * found / expected), top + 83, ACCENT);
             } else {
-                g.text(font, coverage.found() + " / " + coverage.total() + " biomes found", panelX, top + 54, ACCENT, false);
-                String state = !data.error().isEmpty() ? "error" : data.surveyDone() == data.surveyTotal() ? "done" : data.scanning() ? "sampling" : data.surveyDone() > 0 ? "paused" : "ready";
-                g.text(font, ellipsis(coverage.unknown() + " unconfirmed", panelWidth / 2), panelX, top + 67, MUTED, false);
+                g.text(font, coverage.found() + " / " + coverage.total() + " biomes found", panelX, top + 59, ACCENT, false);
+                String state = !data.error().isEmpty() ? "error" : data.surveyDone() == data.surveyTotal() ? "sampled" : data.scanning() ? "sampling" : data.surveyDone() > 0 ? "paused" : "ready";
+                g.text(font, ellipsis(coverage.unknown() + " unconfirmed", Math.max(20, panelWidth - font.width(data.surveyDone() * 100 / data.surveyTotal() + "% " + state) - 8)), panelX, top + 71, MUTED, false);
                 String progress = data.surveyDone() * 100 / data.surveyTotal() + "% " + state;
-                g.text(font, progress, right - 8 - font.width(progress), top + 67, MUTED, false);
-                g.fill(panelX, top + 80, right - 8, top + 82, 0xff304251);
-                g.fill(panelX, top + 80, panelX + (int) ((long) panelWidth * data.surveyDone() / data.surveyTotal()), top + 82, ACCENT);
+                g.text(font, progress, right - 8 - font.width(progress), top + 71, MUTED, false);
+                g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
+                g.fill(panelX, top + 82, panelX + (int) ((long) panelWidth * data.surveyDone() / data.surveyTotal()), top + 83, ACCENT);
             }
             if (tab == 2) g.text(font, "World / " + data.preset(), panelX, top + 92, TEXT, false);
-            if (tab == 0) g.text(font, "Biome", panelX + 4, top + 114, MUTED, false);
             if (tab == 0) {
-                g.text(font, "Samples", right - 12 - font.width("Samples"), top + 114, MUTED, false);
-                if (inside(mx, my) && my >= mapBottom - 12) tip(g, "Right-click: add/remove waypoint. Height uses player Y.", mx, my);
-                if (mx >= panelX && my >= top + 110 && my < top + 125) tip(g, "Samples = biome queries, not chunks.", mx, my);
+                g.text(font, "O: observed / ~: predicted", panelX + 4, top + 106, MUTED, false);
+                if (mx >= panelX && my >= top + 48 && my < top + 84)
+                    tip(g, "Current dimension: " + data.dimension() + "\nExpected biomes come from this dimension's generator, including mod biomes. A completed sample does not prove completeness. Unconfirmed does not mean absent.", mx, my);
             }
-            g.fill(panelX, top + (tab != 2 ? 124 : 107), right - 8, top + (tab != 2 ? 125 : 108), 0xff304251);
-            if (rowLabels.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? "No biomes match this filter." : "No entries match this filter."), panelX + 4, top + (tab != 2 ? 132 : 115), panelWidth - 8, MUTED);
+            g.fill(panelX, top + (tab != 2 ? 114 : 107), right - 8, top + (tab != 2 ? 115 : 108), 0xff777777);
+            if (rowLabels.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? "No biomes match this filter." : "No entries match this filter."), panelX + 4, top + (tab != 2 ? 122 : 115), panelWidth - 8, MUTED);
             String pagination = (page + 1) + " / " + Math.max(1, (rowLabels.size() + Math.max(1, rows.size()) - 1) / Math.max(1, rows.size()));
             if (font.width(pagination) < panelWidth - 112) g.text(font, pagination, panelX + 44, bottom - 17, MUTED, false);
             if (!globe && inside(mx, my)) {
@@ -301,13 +319,18 @@ final class OrbisDebugScreen extends Screen {
             int index = page * rows.size() + i;
             if (index >= rowLabels.size()) break;
             int y = rows.get(i).getY();
-            if (tab == 0) {
-                if (rowPlaces.get(index) == null) g.fill(panelX + 4, y + 6, panelX + 8, y + 7, MUTED);
-                else if (rowColors.get(index) == ACCENT) g.fill(panelX + 4, y + 4, panelX + 8, y + 8, ACCENT);
-                else g.outline(panelX + 4, y + 4, 4, 4, rowColors.get(index));
-                int valueX = right - 12 - font.width(rowValues.get(index));
-                g.text(font, ellipsis(rowLabels.get(index), valueX - panelX - 20), panelX + 12, y + 3, TEXT, false);
-                g.text(font, rowValues.get(index), valueX, y + 3, MUTED, false);
+            if (tab != 2) {
+                int color = rowColors.get(index);
+                g.outline(panelX + 3, y + 3, 8, 8, color);
+                if (rowPlaces.get(index) != null) {
+                    // Pixel checkmark works with every language/font resource pack.
+                    g.fill(panelX + 4, y + 6, panelX + 6, y + 8, color);
+                    g.fill(panelX + 6, y + 7, panelX + 7, y + 9, color);
+                    g.fill(panelX + 7, y + 5, panelX + 8, y + 8, color);
+                    g.fill(panelX + 8, y + 4, panelX + 10, y + 6, color);
+                }
+                g.text(font, ellipsis(rowLabels.get(index), right - panelX - 40), panelX + 15, y + 3, TEXT, false);
+                g.text(font, rowValues.get(index), right - 19, y + 3, color, false);
             } else {
                 g.text(font, ellipsis(rowLabels.get(index), right - panelX - 18), panelX + 4, y + 2, tab == 2 ? MUTED : TEXT, false);
                 g.text(font, ellipsis(rowValues.get(index), right - panelX - 18), panelX + 4, y + 12, tab == 2 ? TEXT : MUTED, false);
@@ -333,7 +356,10 @@ final class OrbisDebugScreen extends Screen {
             double[] xyz = DebugMapMath.globe(unitX(x), unitZ(z), yaw, pitch);
             if (xyz[2] <= 0) return null;
             px = (int) (midX() + xyz[0] * radius()); py = (int) (midY() - xyz[1] * radius());
-        } else { px = sx(x); py = sz(z); }
+        } else {
+            px = sx(data.wrapped() ? DebugMapMath.canonical(x, data.minX(), data.span()) : x);
+            py = sz(data.wrapped() ? DebugMapMath.canonical(z, data.minZ(), data.span()) : z);
+        }
         if (!inside(px, py) || selected != null && py >= mapBottom - 25) return null;
         return new int[]{px, py};
     }
@@ -369,7 +395,8 @@ final class OrbisDebugScreen extends Screen {
                 new String[]{"Structure positions checked", String.format(Locale.ROOT, "%,d", data.structureChecks())},
                 new String[]{"Structure check", data.structureState()},
                 new String[]{"Queries completed", String.format(Locale.ROOT, "%,d / %,d", data.surveyDone(), data.surveyTotal())},
-                new String[]{"History", data.historyLimited() ? "Capped; old entries evicted" : "Current session"},
+                new String[]{"Cache", DebugSurvey.cacheStatus},
+                new String[]{"History", data.historyLimited() ? "Capped; old entries evicted" : "Persistent (bounded)"},
                 new String[]{"Survey status", data.error().isEmpty() ? "OK / world keeps running" : data.error()});
     }
     private boolean inside(double x, double y) { return x >= mapLeft && x < mapRight && y >= mapTop && y < mapBottom; }
@@ -387,6 +414,8 @@ final class OrbisDebugScreen extends Screen {
             } else {
                 x = centerX + (event.x() - midX()) / scale();
                 z = centerZ + (event.y() - midY()) / scale();
+                if (data.wrapped() && (x < data.minX() || x >= (double) data.minX() + data.span()
+                        || z < data.minZ() || z >= (double) data.minZ() + data.span())) return true;
             }
             if (data.wrapped()) {
                 x = data.minX() + DebugMapMath.unit((x - data.minX()) / data.span()) * data.span();
@@ -411,7 +440,7 @@ final class OrbisDebugScreen extends Screen {
     }
     @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) {
-            if (globe) { yaw += dx * .015; pitch = Math.clamp(pitch + dy * .015, -Math.PI / 2, Math.PI / 2); }
+            if (globe) { yaw += dx * .015; pitch += dy * .0075; }
             else { centerX -= dx / scale(); centerZ -= dy / scale(); }
             return true;
         }
@@ -447,16 +476,16 @@ final class OrbisDebugScreen extends Screen {
         return true;
     }
     private void move(int dx, int dz) {
-        if (globe) { yaw += dx * .15; pitch = Math.clamp(pitch + dz * .15, -Math.PI / 2, Math.PI / 2); }
+        if (globe) { yaw -= dx * .15; pitch -= dz * .075; }
         else { centerX += dx * 24 / scale(); centerZ += dz * 24 / scale(); }
     }
     @Override public Component getNarrationMessage() {
-        if (tab == 1 && data != null) return Component.literal("Orbis places. " + data.structureState()
+        if (tab == 1 && data != null) return Component.literal("Orbis structures. " + data.structureState()
                 + ". Current dimension's structure types and End portal room layouts. Predicted locations use the current generator; saved terrain may differ. "
-                + "Check places to search, or pause and resume. Unconfirmed is not absent. Select a found place to center it.");
+                + "Check structures to search, or pause and resume. Unconfirmed is not absent. Select a found place to center it.");
         return Component.literal("Orbis debug atlas. " + coverage.found() + " of " + coverage.total() + " dimension biomes found. "
                 + coverage.unknown() + " unconfirmed. W A S D move the map. Plus and minus zoom. Home centers the player. "
                 + "Page up and page down browse the list. Right click adds or removes a waypoint at the player height. Tab selects controls. Escape closes. "
-                + "Biome symbols: solid square observed, outline square sampled, dash unconfirmed. The world continues running.");
+                + "Biome symbols: checkmark found, O observed, tilde predicted, question mark unconfirmed. The world continues running.");
     }
 }

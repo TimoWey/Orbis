@@ -99,7 +99,7 @@ These are provisional sizes. Smaller worlds may miss biomes or structures; no pr
 
 Ideas for future versions; scope and implementation are still open.
 
-- **Atlas refinements.** Build on the debug minimap preview with finer terrain detail, waypoint names and multiplayer support.
+- **Atlas refinements.** Build on the debug minimap with waypoint names, a larger exploration archive and multiplayer support.
 - **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
 - **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
 

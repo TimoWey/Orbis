@@ -13,8 +13,8 @@ class OrbisMinimapTest {
                 0, DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "");
     }
 
-    @Test void flatMarkersUseTheShortestDistanceAcrossBothSeams() {
-        assertArrayEquals(new double[]{68, 68}, OrbisMinimap.project(world(), -1020, -1020,
+    @Test void flatMarkersUseCanonicalCoordinatesWithoutDrawingCopies() {
+        assertArrayEquals(new double[]{-956, -956}, OrbisMinimap.project(world(), -1020, -1020,
                 1020, 1020, 128, .5, false, 0, 0), 1e-9);
     }
 

@@ -37,7 +37,7 @@ final class DebugMapRaster {
         rightWorld = view.centerX + view.width * .5 / view.scale;
         topWorld = view.centerZ - view.height * .5 / view.scale;
         bottomWorld = view.centerZ + view.height * .5 / view.scale;
-        Arrays.fill(pixels, BACKGROUND);
+        Arrays.fill(pixels, view.globe ? 0 : BACKGROUND);
         if (view.globe) globe(); else flat();
         java.util.Set<Long> occupied = new java.util.HashSet<>();
         if (view.places) for (var place : data.places()) {
@@ -49,7 +49,7 @@ final class DebugMapRaster {
             long key = ChunkPos.pack((int) point[0] / tile, (int) point[1] / tile);
             if (!occupied.add(key)) continue;
             if (view.globe) globePoint(place.x(), place.z(), 0xffffd279, true);
-            else cross(x(place.x()), y(place.z()), 0xffffd279);
+            else cross((int) point[0], (int) point[1], 0xffffd279);
         }
         return pixels;
     }
@@ -62,17 +62,14 @@ final class DebugMapRaster {
             double z = data.minZ() + (sample.getKey() / DebugSurvey.GRID) * step;
             worldFill(x, z, step, sample.getValue());
         }
-        // Terrain remains visible when the optional loaded-chunk overlay is off.
+        // Cull chunks before drawing; choose a level appropriate to actual texture pixels.
         for (var cell : data.chunks()) {
             double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
-            if (cell.terrain().isEmpty() || 4 * view.scale * Math.min(ratioX, ratioY) < 1) {
-                worldFill(cx, cz, 16, cell.colorAt(8, 8));
-            } else {
-                for (int tz = 0; tz < 4; tz++) for (int tx = 0; tx < 4; tx++) {
-                    double bx = cx + tx * 4, bz = cz + tz * 4;
-                    worldFill(bx, bz, 4, cell.colorAt(tx * 4, tz * 4));
-                }
-            }
+            if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
+            double density = view.scale * Math.min(ratioX, ratioY);
+            int stepSize = cell.terrain().size() == 256 && density >= .75 ? 1 : density * 4 >= .75 ? 4 : 16;
+            for (int tz = 0; tz < 16; tz += stepSize) for (int tx = 0; tx < 16; tx += stepSize)
+                worldFill(cx + tx, cz + tz, stepSize, cell.colorAt(tx, tz, stepSize));
         }
         if (view.chunks && 16 * view.scale >= 1) {
             for (long key : data.loaded()) {
@@ -83,22 +80,16 @@ final class DebugMapRaster {
         if (data.wrapped()) outline(x(data.minX()), y(data.minZ()), x((double) data.minX() + data.span()),
                 y((double) data.minZ() + data.span()), 0xffeac66c);
     }
-    /** One neighbouring copy on each side makes seam crossings continuous without infinite tiling. */
+    /** Exactly one canonical world rectangle, with no neighbouring copies. */
     private void worldFill(double bx, double bz, double size, int color) {
-        int radius = data.wrapped() ? 1 : 0;
-        for (int dz = -radius; dz <= radius; dz++) {
-            double z = bz + dz * (double) data.span();
-            if (z + size <= topWorld || z >= bottomWorld) continue;
-            for (int dx = -radius; dx <= radius; dx++) {
-                double x = bx + dx * (double) data.span();
-                if (x + size <= leftWorld || x >= rightWorld) continue;
-                fill(x(x), y(z), x(x + size), y(z + size), color);
-            }
-        }
+        if (data.wrapped() && (bx < data.minX() || bz < data.minZ()
+                || bx >= (double) data.minX() + data.span() || bz >= (double) data.minZ() + data.span())) return;
+        if (bx + size <= leftWorld || bx >= rightWorld || bz + size <= topWorld || bz >= bottomWorld) return;
+        fill(x(bx), y(bz), x(bx + size), y(bz + size), color);
     }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
-        double sinPitch = Math.sin(view.pitch), cosPitch = Math.cos(view.pitch);
+
         // One inverse projection per texture pixel, only when the view or map changes.
         for (int py = 0; py < height; py++) {
             double yy = (view.height * .5 - (py + .5) / ratioY) / radius;
@@ -106,11 +97,11 @@ final class DebugMapRaster {
                 double xx = ((px + .5) / ratioX - view.width * .5) / radius;
                 double sq = xx * xx + yy * yy;
                 if (sq > 1) continue;
-                double zz = Math.sqrt(1 - sq);
-                double originalY = yy * cosPitch + zz * sinPitch;
-                double originalZ = -yy * sinPitch + zz * cosPitch;
-                double u = DebugMapMath.unit(.5 + (Math.atan2(xx, originalZ) - view.yaw) / (2 * Math.PI));
-                double v = .5 - Math.asin(Math.clamp(originalY, -1, 1)) / Math.PI;
+                // Same inverse as DebugMapMath.unproject, without allocating a pair per pixel.
+                double diskRadius = Math.sqrt(sq);
+                double localScale = diskRadius == 0 ? 0 : Math.asin(diskRadius) / (2 * Math.PI * diskRadius);
+                double u = DebugMapMath.unit(.5 - view.yaw / (2 * Math.PI) + xx * localScale);
+                double v = DebugMapMath.unit(.5 - view.pitch / Math.PI - yy * localScale);
                 int ix = Math.clamp((int) (u * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int iz = Math.clamp((int) (v * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int color = data.surveyColors().getOrDefault(iz * DebugSurvey.GRID + ix, 0xff283b50);
@@ -118,7 +109,7 @@ final class DebugMapRaster {
                 int bx = (int) Math.floor(data.minX() + u * data.span());
                 int bz = (int) Math.floor(data.minZ() + v * data.span());
                 var cell = terrain.get(ChunkPos.pack(bx >> 4, bz >> 4));
-                if (cell != null) color = cell.colorAt(bx, bz);
+                if (cell != null) color = cell.colorAt(bx, bz, data.span() / (radius * Math.min(ratioX, ratioY) * 2 * Math.PI) < 1.5 ? 1 : 4);
                 if (view.chunks) {
                     if (data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4))) {
                         color = blend(color, LOADED);
@@ -143,7 +134,8 @@ final class DebugMapRaster {
                 | ((base & 255) * 4 + (tint & 255)) / 5;
     }
     private double[] project(double x, double z) {
-        if (!view.globe) return new double[] {x(x), y(z)};
+        if (!view.globe) return new double[] {x(data.wrapped() ? DebugMapMath.canonical(x, data.minX(), data.span()) : x),
+                y(data.wrapped() ? DebugMapMath.canonical(z, data.minZ(), data.span()) : z)};
         double[] p = DebugMapMath.globe((x - data.minX()) / data.span(), (z - data.minZ()) / data.span(), view.yaw, view.pitch);
         if (p[2] <= 0) return null;
         double r = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;

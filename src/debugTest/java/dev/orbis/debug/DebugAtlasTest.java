@@ -76,7 +76,7 @@ class DebugAtlasTest {
         var data = fixture(Map.of(), List.of(), Set.of());
         var raster = new DebugMapRaster(128, 128);
         var normal = new DebugMapRaster.View(128, 128, 0, 0, 1, true, 0, 0, false, false);
-        assertEquals(DebugMapRaster.BACKGROUND, raster.render(data, normal)[0]);
+        assertEquals(0, raster.render(data, normal)[0]);
         var zoomed = new DebugMapRaster.View(128, 128, 0, 0, 2, true, 0, 0, false, false);
         assertNotEquals(DebugMapRaster.BACKGROUND, raster.render(data, zoomed)[0]);
     }
@@ -167,7 +167,7 @@ class DebugAtlasTest {
         var view = new DebugMapRaster.View(128, 128, 0, 0, 1, true, 1.2, -.6, false, false);
         int[] pixels = raster.render(fixture(colors, List.of(), Set.of()), view);
         assertEquals(0xff4182a6, pixels[64 * 128 + 64]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[0]);
+        assertEquals(0, pixels[0]);
         assertEquals(128 * 128, pixels.length);
     }
 

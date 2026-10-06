@@ -1,0 +1,8 @@
+{
+  "orbis.atlas.structures": "Strukturen",
+  "orbis.atlas.east": "O",
+  "orbis.atlas.size": "Gr\u00f6\u00dfe",
+  "orbis.atlas.size_tip": "Minimap-Gr\u00f6\u00dfe: klein, mittel, gro\u00df. Wird dauerhaft gespeichert.",
+  "key.category.orbis.debug": "Orbis Debug",
+  "key.orbis.debug_map": "Debug-Weltatlas \u00f6ffnen"
+}

@@ -9,23 +9,30 @@ public final class DebugMapMath {
     public static double unit(double value) { return value - Math.floor(value); }
 
     public static double[] globe(double u, double v, double yaw, double pitch) {
-        double longitude = (u - .5) * Math.PI * 2 + yaw;
-        double latitude = (.5 - v) * Math.PI;
-        double x = Math.cos(latitude) * Math.sin(longitude);
-        double y = Math.sin(latitude);
-        double z = Math.cos(latitude) * Math.cos(longitude);
-        return new double[] {x, y * Math.cos(pitch) - z * Math.sin(pitch),
-                y * Math.sin(pitch) + z * Math.cos(pitch)};
+        // Azimuthal, view-centred chart of the torus. Both axes have the same
+        // local scale. The cut locus is hidden behind the visible hemisphere.
+        double dx = unit(u - .5 + yaw / (2 * Math.PI) + .5) - .5;
+        double dz = unit(v - .5 + pitch / Math.PI + .5) - .5;
+        double distance = Math.hypot(dx, dz);
+        if (distance == 0) return new double[] {0, 0, 1};
+        double angle = Math.min(Math.PI, distance * 2 * Math.PI);
+        double scale = Math.sin(angle) / distance;
+        return new double[] {dx * scale, -dz * scale, Math.cos(angle)};
     }
 
     public static double[] unproject(double x, double y, double yaw, double pitch) {
         double square = x * x + y * y;
         if (square > 1) return null;
-        double z = Math.sqrt(1 - square);
-        double originalY = y * Math.cos(pitch) + z * Math.sin(pitch);
-        double originalZ = -y * Math.sin(pitch) + z * Math.cos(pitch);
-        return new double[] {unit(.5 + (Math.atan2(x, originalZ) - yaw) / (2 * Math.PI)),
-                Math.max(0, Math.min(1, .5 - Math.asin(Math.max(-1, Math.min(1, originalY))) / Math.PI))};
+        double radius = Math.sqrt(square);
+        double scale = radius == 0 ? 0 : Math.asin(radius) / (2 * Math.PI * radius);
+        return new double[] {unit(.5 - yaw / (2 * Math.PI) + x * scale),
+                unit(.5 - pitch / Math.PI - y * scale)};
+    }
+
+    static double canonical(double value, int min, int span) { return min + unit((value - min) / span) * span; }
+    static double clampCenter(double center, int min, int span, double visible) {
+        if (visible >= span) return min + span * .5;
+        return Math.clamp(center, min + visible * .5, min + span - visible * .5);
     }
 
     public static int biomeColor(String name) {
