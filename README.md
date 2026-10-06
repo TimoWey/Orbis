@@ -42,6 +42,8 @@ Orbis is an early development alpha. These features are implemented; in-game val
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
 - **A connected Nether.** Its width stays eight times smaller than the Overworld, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
+- **An alpha atlas preview.** The optional debug build adds a corner minimap, Flat/Globe views, an M-key window, saved waypoints and biome/structure checklists. See [atlas installation and controls](docs/DEBUG_ATLAS.md).
+- **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
 <!-- Replace each placeholder with an in-game capture when available. -->
 
@@ -97,7 +99,7 @@ These are provisional sizes. Smaller worlds may miss biomes or structures; no pr
 
 Ideas for future versions; scope and implementation are still open.
 
-- **Globe minimap.** A detailed, high-resolution view of your world that you can rotate and zoom into. Add waypoints, name your favourite places, and plan your next journey.
+- **Atlas refinements.** Build on the debug minimap preview with finer terrain detail, waypoint names and multiplayer support.
 - **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
 - **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
 

@@ -1,0 +1,12 @@
+{
+  "gui.orbis.world_shape.finite": "Orbis",
+  "gui.orbis.world_shape.finite.hint": "Endliche Oberwelt und endlicher Nether. Exaktes Verhältnis 1:8. Unverändertes End. Biomabdeckung nicht garantiert.",
+  "advancements.orbis.bearings.title": "Orbis: Orientierung finden",
+  "advancements.orbis.bearings.description": "Nimm einen Kompass für deine nächste Expedition mit.",
+  "advancements.orbis.world_on_paper.title": "Eine Welt auf Papier",
+  "advancements.orbis.world_on_paper.description": "Nimm eine beschriebene Karte mit, um einen Teil deiner Welt festzuhalten.",
+  "advancements.orbis.field_kit.title": "Bereit für den Horizont",
+  "advancements.orbis.field_kit.description": "Trage Kompass, beschriebene Karte und Fernrohr gleichzeitig bei dir.",
+  "key.category.orbis.debug": "Orbis Debug",
+  "key.orbis.debug_map": "Debug-Weltkarte öffnen"
+}

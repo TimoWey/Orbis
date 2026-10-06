@@ -7,17 +7,38 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DebugAtlasTest {
+    @Test void reopeningSameWorldKeepsTheLiveMapButDimensionChangesClearIt() {
+        UUID player = UUID.randomUUID();
+        try {
+            DebugSurvey.open(net.minecraft.world.level.Level.OVERWORLD, player);
+            var live = fixture(Map.of(), List.of(), Set.of());
+            DebugSurvey.snapshot = live;
+            DebugSurvey.open(net.minecraft.world.level.Level.OVERWORLD, player);
+            assertSame(live, DebugSurvey.snapshot);
+            DebugSurvey.open(net.minecraft.world.level.Level.NETHER, player);
+            assertNull(DebugSurvey.snapshot);
+            DebugSurvey.snapshot = live;
+            DebugSurvey.close();
+            assertNull(DebugSurvey.snapshot);
+        } finally {
+            DebugSurvey.close();
+        }
+    }
+
     @Test void structureEvidenceNeverEquatesAnIncompleteSearchWithAbsence() {
         var unknown = new StructureAudit.Entry("stronghold", null, false, false);
         var absent = new StructureAudit.Entry("stronghold", null, false, true);
         var predicted = new StructureAudit.Entry("stronghold", new DebugSnapshot.Place("stronghold", 0, 32, 0), false, false);
         assertEquals("Unconfirmed", unknown.status());
-        assertEquals("Not generated", absent.status());
+        assertEquals("Not found in check", absent.status());
         assertFalse(StructureAudit.allFound(List.of(unknown, predicted)));
         assertFalse(StructureAudit.allFound(List.of(absent, predicted)));
         assertFalse(StructureAudit.allFound(List.of()));
         assertTrue(StructureAudit.allFound(List.of(predicted)));
         assertEquals("Predicted", predicted.status());
+        // Completing a prediction check never downgrades stronger, loaded-world evidence.
+        assertEquals("Observed", new StructureAudit.Entry("stronghold", predicted.location(), true, true).status());
+        assertEquals("Predicted", new StructureAudit.Entry("stronghold", predicted.location(), false, true).status());
     }
 
     @Test void placementRegionsFindExactlyTheSameCandidatesAsEveryChunkIncludingNegativeEdges() {

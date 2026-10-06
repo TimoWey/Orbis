@@ -22,6 +22,24 @@ with zipfile.ZipFile(jars[0]) as jar:
         assert 'dev/orbis/debug/OrbisDebugScreen.class' in names
         assert 'dev/orbis/debug/DebugSurvey.class' in names
         assert 'assets/orbis_debug/lang/en_us.json' in names
+    assert not any(name.startswith('data/toroidal_world/advancement/') and name.endswith('.json')
+                   for name in names), 'Inherited player progression was bundled'
+    assert not any(name.startswith('data/toroidal_world/worldgen/world_preset/') and name.endswith('.json')
+                   for name in names), 'Inherited world presets were bundled'
+    for locale in ('en_us', 'de_de'):
+        wording = json.loads(jar.read(f'assets/toroidal_world/lang/{locale}.json'))
+        assert not any(key.startswith('advancements.toroidal_world.') for key in wording)
+        assert 'Orbis' in wording['gui.toroidal_world.settings.title']
+        own_wording = json.loads(jar.read(f'assets/orbis/lang/{locale}.json'))
+        for advancement in ('bearings', 'world_on_paper', 'field_kit'):
+            data = json.loads(jar.read(f'data/orbis/advancement/exploration/{advancement}.json'))
+            assert data['criteria']['prepared']['trigger'] == 'minecraft:inventory_changed'
+            assert data['display']['title']['translate'] in own_wording
+            assert data['display']['description']['translate'] in own_wording
+    engine_locales = {name for name in names if name.startswith('assets/toroidal_world/lang/')
+                      and name.endswith('.json')}
+    assert engine_locales == {'assets/toroidal_world/lang/en_us.json',
+                              'assets/toroidal_world/lang/de_de.json'}, 'Inherited translations leaked'
     assert 'toroidal_world' not in meta['depends']
     assert 'toroidal_world' not in meta.get('provides', [])
     assert meta['breaks']['toroidal_world'] == '*'

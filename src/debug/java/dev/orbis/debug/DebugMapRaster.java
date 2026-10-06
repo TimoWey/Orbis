@@ -12,8 +12,11 @@ final class DebugMapRaster {
     private final int width, height;
     private final int[] pixels;
     private double ratioX, ratioY;
+    private double leftWorld, rightWorld, topWorld, bottomWorld;
     private View view;
     private DebugSnapshot data;
+    private java.util.List<DebugSnapshot.Cell> indexedChunks;
+    private final java.util.Map<Long, DebugSnapshot.Cell> terrain = new java.util.HashMap<>();
 
     DebugMapRaster(int width, int height) {
         this.width = width;
@@ -23,8 +26,17 @@ final class DebugMapRaster {
     int[] render(DebugSnapshot data, View view) {
         this.data = data;
         this.view = view;
+        if (indexedChunks != data.chunks()) {
+            indexedChunks = data.chunks();
+            terrain.clear();
+            for (var cell : indexedChunks) terrain.put(ChunkPos.pack(cell.x(), cell.z()), cell);
+        }
         ratioX = width / (double) view.width;
         ratioY = height / (double) view.height;
+        leftWorld = view.centerX - view.width * .5 / view.scale;
+        rightWorld = view.centerX + view.width * .5 / view.scale;
+        topWorld = view.centerZ - view.height * .5 / view.scale;
+        bottomWorld = view.centerZ + view.height * .5 / view.scale;
         Arrays.fill(pixels, BACKGROUND);
         if (view.globe) globe(); else flat();
         java.util.Set<Long> occupied = new java.util.HashSet<>();
@@ -48,13 +60,21 @@ final class DebugMapRaster {
         for (var sample : data.surveyColors().entrySet()) {
             double x = data.minX() + (sample.getKey() % DebugSurvey.GRID) * step;
             double z = data.minZ() + (sample.getKey() / DebugSurvey.GRID) * step;
-            fill(x(x), y(z), x(x + step), y(z + step), sample.getValue());
+            worldFill(x, z, step, sample.getValue());
+        }
+        // Terrain remains visible when the optional loaded-chunk overlay is off.
+        for (var cell : data.chunks()) {
+            double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
+            if (cell.terrain().isEmpty() || 4 * view.scale * Math.min(ratioX, ratioY) < 1) {
+                worldFill(cx, cz, 16, cell.colorAt(8, 8));
+            } else {
+                for (int tz = 0; tz < 4; tz++) for (int tx = 0; tx < 4; tx++) {
+                    double bx = cx + tx * 4, bz = cz + tz * 4;
+                    worldFill(bx, bz, 4, cell.colorAt(tx * 4, tz * 4));
+                }
+            }
         }
         if (view.chunks && 16 * view.scale >= 1) {
-            for (var cell : data.chunks()) {
-                double x = cell.x() * 16.0, z = cell.z() * 16.0;
-                fill(x(x), y(z), x(x + 16), y(z + 16), cell.color());
-            }
             for (long key : data.loaded()) {
                 double x = ChunkPos.getX(key) * 16.0, z = ChunkPos.getZ(key) * 16.0;
                 if (16 * view.scale >= 6) outline(x(x), y(z), x(x + 16), y(z + 16), LOADED);
@@ -62,6 +82,19 @@ final class DebugMapRaster {
         }
         if (data.wrapped()) outline(x(data.minX()), y(data.minZ()), x((double) data.minX() + data.span()),
                 y((double) data.minZ() + data.span()), 0xffeac66c);
+    }
+    /** One neighbouring copy on each side makes seam crossings continuous without infinite tiling. */
+    private void worldFill(double bx, double bz, double size, int color) {
+        int radius = data.wrapped() ? 1 : 0;
+        for (int dz = -radius; dz <= radius; dz++) {
+            double z = bz + dz * (double) data.span();
+            if (z + size <= topWorld || z >= bottomWorld) continue;
+            for (int dx = -radius; dx <= radius; dx++) {
+                double x = bx + dx * (double) data.span();
+                if (x + size <= leftWorld || x >= rightWorld) continue;
+                fill(x(x), y(z), x(x + size), y(z + size), color);
+            }
+        }
     }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
@@ -82,9 +115,11 @@ final class DebugMapRaster {
                 int iz = Math.clamp((int) (v * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int color = data.surveyColors().getOrDefault(iz * DebugSurvey.GRID + ix, 0xff283b50);
                 if (data.surveyColors().isEmpty() && (ix % 16 == 0 || iz % 16 == 0)) color = 0xff536779;
+                int bx = (int) Math.floor(data.minX() + u * data.span());
+                int bz = (int) Math.floor(data.minZ() + v * data.span());
+                var cell = terrain.get(ChunkPos.pack(bx >> 4, bz >> 4));
+                if (cell != null) color = cell.colorAt(bx, bz);
                 if (view.chunks) {
-                    int bx = (int) Math.floor(data.minX() + u * data.span());
-                    int bz = (int) Math.floor(data.minZ() + v * data.span());
                     if (data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4))) {
                         color = blend(color, LOADED);
                     }
