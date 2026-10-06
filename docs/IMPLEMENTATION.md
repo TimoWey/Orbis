@@ -15,7 +15,7 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 
 ## Validation
 
-On 2026-10-06, alpha.3 passed 33 normal-build tests and 57 debug-build tests with Java 25, plus standalone packaging checks on both final JARs. New checks cover waypoint persistence/failure isolation, terrain across seams and both projections, and Minecraft codec parsing of Orbis advancements. Interactive validation of the new HUD and window remains pending.
+On 2026-10-06, the revised alpha.3 atlas passed 33 normal-build tests and 69 debug-build tests with Java 25, plus standalone packaging checks on both clean-built JARs. Checks include persistent cache recovery/failure isolation, partial survey checkpoints, block-resolution terrain and LOD, single-world Flat bounds, moving-origin globe projection/inverse alignment, GUI layout geometry and waypoint persistence. Live Tiny-world re-entry, visual UI validation and gameplay performance remain pending; see [Debug atlas](DEBUG_ATLAS.md) for sources, cache limits and the interactive checklist.
 
 [Standalone CI build](https://github.com/TimoWey/Orbis/actions/runs/37306724814) passed on 2026-10-05: source compilation, 25 regression cases and final-JAR inspection. The new checks initialize the real Orbis entrypoint, verify engine codec registration and confirm Toroidal World is not installed. Packaging checks verify every declared mixin and reject a separate or nested Toroidal World mod. These are not gameplay tests.
 

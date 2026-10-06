@@ -21,7 +21,11 @@ with zipfile.ZipFile(jars[0]) as jar:
     if debug_expected:
         assert 'dev/orbis/debug/OrbisDebugScreen.class' in names
         assert 'dev/orbis/debug/DebugSurvey.class' in names
+        assert 'dev/orbis/debug/AtlasCache.class' in names
         assert 'assets/orbis_debug/lang/en_us.json' in names
+        assert 'assets/orbis_debug/lang/de_de.json' in names
+    else:
+        assert not any(name.startswith('assets/orbis_debug/') for name in names), 'Debug resources leaked'
     assert not any(name.startswith('data/toroidal_world/advancement/') and name.endswith('.json')
                    for name in names), 'Inherited player progression was bundled'
     assert not any(name.startswith('data/toroidal_world/worldgen/world_preset/') and name.endswith('.json')

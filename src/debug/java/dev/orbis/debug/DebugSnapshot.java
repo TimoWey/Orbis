@@ -11,15 +11,40 @@ public record DebugSnapshot(String dimension, long seed, String preset, long map
         Map<Integer, Integer> surveyColors, int surveyDone, int surveyTotal, boolean scanning,
         boolean historyLimited, String error, List<StructureAudit.Entry> structures,
         boolean structuresScanning, long structureChecks, String structureState) {
-    /** Sixteen surface samples per chunk; copied before crossing to the render thread. */
-    public record Cell(int x, int z, int color, List<Integer> terrain) {
-        public Cell {
-            terrain = List.copyOf(terrain);
-            if (!terrain.isEmpty() && terrain.size() != 16) throw new IllegalArgumentException("Expected 4 x 4 terrain samples");
+    /** Block-resolution surface samples per chunk; copied before crossing to the render thread. */
+    public static final class Cell {
+        private final int x, z, color;
+        private final List<Integer> terrain;
+        private final int[] coarse = new int[16];
+        private final int average;
+        public Cell(int x, int z, int color, List<Integer> terrain) {
+            this.x = x; this.z = z; this.color = color;
+            this.terrain = List.copyOf(terrain);
+            if (!terrain.isEmpty() && terrain.size() != 16 && terrain.size() != 256)
+                throw new IllegalArgumentException("Expected 4 x 4 or 16 x 16 terrain samples");
+            for (int tz = 0; tz < 4; tz++) for (int tx = 0; tx < 4; tx++) {
+                int r = 0, g = 0, b = 0;
+                for (int dz = 0; dz < 4; dz++) for (int dx = 0; dx < 4; dx++) {
+                    int c = colorAt(tx * 4 + dx, tz * 4 + dz);
+                    r += c >> 16 & 255; g += c >> 8 & 255; b += c & 255;
+                }
+                coarse[tz * 4 + tx] = 0xff000000 | (r / 16 << 16) | (g / 16 << 8) | b / 16;
+            }
+            int r = 0, g = 0, b = 0;
+            for (int c : coarse) { r += c >> 16 & 255; g += c >> 8 & 255; b += c & 255; }
+            average = 0xff000000 | (r / 16 << 16) | (g / 16 << 8) | b / 16;
         }
         public Cell(int x, int z, int color) { this(x, z, color, List.of()); }
+        public int x() { return x; }
+        public int z() { return z; }
+        public int color() { return color; }
+        public List<Integer> terrain() { return terrain; }
         public int colorAt(int blockX, int blockZ) {
-            return terrain.isEmpty() ? color : terrain.get((blockZ & 15) / 4 * 4 + (blockX & 15) / 4);
+            return terrain.isEmpty() ? color : terrain.size() == 256 ? terrain.get((blockZ & 15) * 16 + (blockX & 15))
+                    : terrain.get((blockZ & 15) / 4 * 4 + (blockX & 15) / 4);
+        }
+        public int colorAt(int x, int z, int step) {
+            return step >= 16 ? average : step >= 4 ? coarse[(z & 15) / 4 * 4 + (x & 15) / 4] : colorAt(x, z);
         }
     }
     public record Place(String label, int x, int y, int z) {}

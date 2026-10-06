@@ -39,14 +39,14 @@ class DebugTerrainTest {
         assertEquals(0xffabcdef, pixels[31 * 64 + 32]);
         assertEquals(0xff223344, pixels[32 * 64 + 31]);
         assertEquals(0xff556677, pixels[32 * 64 + 32]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[0]);
+        assertEquals(0, pixels[0]);
     }
 
-    @Test void flatWorldSeamShowsTheOppositeEdgeButDoesNotRepeatIndefinitely() {
+    @Test void flatNeverDrawsCopiesBeyondTheCanonicalWorld() {
         var data = fixture(List.of(new DebugSnapshot.Cell(-64, 0, 0xffabcdef)));
         var raster = new DebugMapRaster(64, 64);
         var edge = new DebugMapRaster.View(64, 64, 1024, 8, 1, false, 0, 0, false, false);
-        assertEquals(0xffabcdef, raster.render(data, edge)[32 * 64 + 36]);
+        assertEquals(DebugMapRaster.BACKGROUND, raster.render(data, edge)[32 * 64 + 36]);
         var far = new DebugMapRaster.View(64, 64, 1024 + 2048 * 3, 8, 1, false, 0, 0, false, false);
         assertTrue(Arrays.stream(raster.render(data, far)).allMatch(p -> p == DebugMapRaster.BACKGROUND));
     }

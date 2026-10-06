@@ -1,4 +1,8 @@
 {
+  "orbis.atlas.structures": "Structures",
+  "orbis.atlas.east": "E",
+  "orbis.atlas.size": "Size",
+  "orbis.atlas.size_tip": "Minimap size: small, medium, large. Saved between sessions.",
   "key.category.orbis.debug": "Orbis Debug",
   "key.orbis.debug_map": "Open debug world atlas"
 }

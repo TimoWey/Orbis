@@ -1,0 +1,111 @@
+package dev.orbis.debug;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.zip.GZIPOutputStream;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
+
+class AtlasCacheTest {
+    @TempDir Path directory;
+    private AtlasCache.Data fixture(int cursor) {
+        var observed = new DebugSnapshot.Place("minecraft:plains", -12, 72, 17);
+        var predicted = new DebugSnapshot.Place("mod:grove", 64, 32, -80);
+        var audit = new StructureAudit.Saved(Map.of("minecraft:village_plains", observed), Set.of("minecraft:village_plains"),
+                List.of(new StructureAudit.Progress(891, 2, 3, false), new StructureAudit.Progress(9, 0, 0, true)), 71, 1, true);
+        List<Integer> pixels = new ArrayList<>();
+        for (int i = 0; i < 256; i++) pixels.add(0xff123400 | i);
+        return new AtlasCache.Data(cursor, cursor < DebugSurvey.TOTAL, false, Map.of(0, 0xff123456, 1, 0xff345678),
+                Map.of("minecraft:plains", 5, "mod:grove", 3), Set.of("minecraft:plains"),
+                Map.of("minecraft:plains", observed, "mod:grove", predicted), List.of(observed),
+                List.of(new DebugSnapshot.Cell(-1, 1, 0xff888888, pixels)), audit);
+    }
+
+    @Test void partialSurveyRestoresExactNextQueryTerrainAndEvidence() throws Exception {
+        Path file = AtlasCache.fileFor(directory, "tiny-world-A", "minecraft:overworld");
+        var original = fixture(1733); // midway through a four-height cell
+        AtlasCache.write(file, "generator-and-datapacks-v1", original);
+        var restored = AtlasCache.read(file, "generator-and-datapacks-v1");
+        assertNotNull(restored);
+        assertEquals(1733, restored.cursor());
+        assertTrue(DebugSurvey.shouldScan(restored.cursor(), true, false));
+        assertEquals(original.colors(), restored.colors());
+        assertEquals(original.hits(), restored.hits());
+        assertEquals(original.observed(), restored.observed());
+        assertFalse(restored.observed().contains("mod:grove"));
+        assertEquals(original.locations(), restored.locations());
+        assertEquals(original.audit(), restored.audit());
+        assertEquals(original.chunks().getFirst().terrain(), restored.chunks().getFirst().terrain());
+        assertEquals(0xff1234ff, restored.chunks().getFirst().colorAt(-1, 31));
+
+    }
+
+    @Test void completedCacheDoesNotTriggerAutomaticFullResample() throws Exception {
+        Path file = directory.resolve("complete.gz");
+        AtlasCache.write(file, "tiny", fixture(DebugSurvey.TOTAL));
+        var restored = AtlasCache.read(file, "tiny");
+        assertNotNull(restored);
+        assertFalse(DebugSurvey.shouldScan(restored.cursor(), true, false));
+        assertTrue(DebugSurvey.shouldScan(restored.cursor(), true, true));
+        assertFalse(DebugSurvey.shouldScan(125, false, false));
+    }
+
+    @Test void worldsDimensionsAndGeneratorChangesCannotReuseEachOthersData() throws Exception {
+        Path first = AtlasCache.fileFor(directory, "world-A", "minecraft:overworld");
+        Path otherWorld = AtlasCache.fileFor(directory, "world-B", "minecraft:overworld");
+        Path nether = AtlasCache.fileFor(directory, "world-A", "minecraft:the_nether");
+        assertNotEquals(first, otherWorld); assertNotEquals(first, nether);
+        AtlasCache.write(first, "generator-v1", fixture(100));
+        assertNull(AtlasCache.read(otherWorld, "generator-v1"));
+        assertNull(AtlasCache.read(nether, "generator-v1"));
+        assertNull(AtlasCache.read(first, "changed-datapack-contents"));
+        assertNotNull(AtlasCache.read(first, "generator-v1"));
+    }
+
+    @Test void damagedTruncatedAndUnknownVersionFilesAreDisposable() throws Exception {
+        Path file = directory.resolve("broken.gz");
+        AtlasCache.write(file, "v1", fixture(123));
+        byte[] valid = Files.readAllBytes(file);
+        Files.write(file, Arrays.copyOf(valid, valid.length - 6));
+        assertNull(AtlasCache.read(file, "v1"));
+        Files.write(file, new byte[]{1, 2, 3});
+        assertNull(AtlasCache.read(file, "v1"));
+        try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(file)))) {
+            out.writeInt(0x4f524241); out.writeInt(AtlasCache.VERSION + 1); out.writeUTF("v1");
+        }
+        assertNull(AtlasCache.read(file, "v1"));
+        AtlasCache.write(file, "v2", fixture(456));
+        assertEquals(456, AtlasCache.read(file, "v2").cursor());
+    }
+
+    @Test void oversizedCountsAndFailedWritesDoNotDamageOtherCaches() throws Exception {
+        Path file = directory.resolve("counts.gz");
+        try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(file)))) {
+            out.writeInt(0x4f524241); out.writeInt(AtlasCache.VERSION); out.writeUTF("v1");
+            out.writeInt(DebugSurvey.TOTAL + 1);
+        }
+        assertNull(AtlasCache.read(file, "v1"));
+        Path valid = directory.resolve("valid.gz");
+        AtlasCache.write(valid, "v1", fixture(456));
+        Path blocked = directory.resolve("not-a-directory"); Files.writeString(blocked, "keep");
+        assertThrows(IOException.class, () -> AtlasCache.write(blocked.resolve("cache.gz"), "v1", fixture(999)));
+        assertEquals("keep", Files.readString(blocked));
+        assertEquals(456, AtlasCache.read(valid, "v1").cursor());
+        try (var files = Files.list(directory)) { assertFalse(files.anyMatch(p -> p.toString().endsWith(".tmp"))); }
+    }
+
+    @Test void updatedChunkReplacesOldPersistedPixels() throws Exception {
+        Path file = directory.resolve("update.gz");
+        AtlasCache.write(file, "v1", fixture(456));
+        var before = fixture(789);
+        var changed = new AtlasCache.Data(before.cursor(), before.scanning(), before.limited(), before.colors(), before.hits(),
+                before.observed(), before.locations(), before.places(), List.of(new DebugSnapshot.Cell(-1, 1, 0xffabcdef)), before.audit());
+        AtlasCache.write(file, "v1", changed);
+        var restored = AtlasCache.read(file, "v1");
+        assertEquals(1, restored.chunks().size());
+        assertEquals(0xffabcdef, restored.chunks().getFirst().colorAt(-1, 31));
+        assertEquals(789, restored.cursor());
+    }
+}

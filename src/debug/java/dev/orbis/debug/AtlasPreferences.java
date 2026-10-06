@@ -23,6 +23,12 @@ final class AtlasPreferences {
         catch (NumberFormatException ignored) { return 0; }
     }
     static void cycleCorner() { VALUES.setProperty("corner", Integer.toString((corner() + 1) % 4)); save(); }
+    static int sizeIndex() {
+        try { return Math.floorMod(Integer.parseInt(VALUES.getProperty("size", "1")), 3); }
+        catch (NumberFormatException ignored) { return 1; }
+    }
+    static int size() { return new int[] {72, 96, 128}[sizeIndex()]; }
+    static void cycleSize() { VALUES.setProperty("size", Integer.toString((sizeIndex() + 1) % 3)); save(); }
     private static void save() {
         try {
             Files.createDirectories(FILE.getParent());

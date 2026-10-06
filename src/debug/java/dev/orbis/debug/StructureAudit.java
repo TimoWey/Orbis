@@ -50,14 +50,18 @@ final class StructureAudit {
             }
             if (!ids.isEmpty()) tasks.add(new Task(set, ids));
         }
+        tasks.sort(Comparator.comparing(t -> new TreeSet<>(t.ids).toString()));
         if (expected.contains("minecraft:stronghold")) expected.add(PORTAL);
     }
 
     void observe(String id, DebugSnapshot.Place place) {
-        expected.add(id); found.put(id, place); observed.add(id); revision++;
+        expected.add(id);
+        // Keep a stable observed example instead of alternating between loaded starts every refresh.
+        if (observed.add(id)) { found.put(id, place); revision++; }
     }
     void running(boolean value) { running = value && finite && error.isEmpty() && !complete(); }
     boolean running() { return running; }
+    boolean finished() { return complete(); }
     long checks() { return checks; }
     long revision() { return revision; }
     String state() {
@@ -69,7 +73,7 @@ final class StructureAudit {
         return running ? "Checking generator..." : checks > 0 ? "Check paused" : "Not checked yet";
     }
     static boolean allFound(List<Entry> entries) { return !entries.isEmpty() && entries.stream().allMatch(Entry::found); }
-    private boolean complete() { return initialized && tasks.stream().allMatch(t -> t.done || satisfied(t)); }
+    private boolean complete() { return tasks.stream().allMatch(t -> t.done || satisfied(t)); }
     private boolean satisfied(Task task) {
         return task.ids.stream().allMatch(found::containsKey)
                 && (!task.ids.contains("minecraft:stronghold") || found.containsKey(PORTAL));
@@ -78,9 +82,34 @@ final class StructureAudit {
         return expected.stream().map(id -> {
             String target = id.equals(PORTAL) ? "minecraft:stronghold" : id;
             var relevant = tasks.stream().filter(t -> t.ids.contains(target)).toList();
-            boolean exhausted = initialized && error.isEmpty() && !relevant.isEmpty() && relevant.stream().allMatch(t -> t.done);
+            boolean exhausted = error.isEmpty() && !relevant.isEmpty() && relevant.stream().allMatch(t -> t.done);
             return new Entry(id, found.get(id), observed.contains(id), exhausted);
         }).toList();
+    }
+
+    record Progress(long cursor, int extraCursor, int ringCursor, boolean done) {}
+    record Saved(Map<String, DebugSnapshot.Place> found, Set<String> observed,
+                 List<Progress> tasks, long checks, int nextTask, boolean running) {}
+    Saved save() {
+        return new Saved(Map.copyOf(found), Set.copyOf(observed), tasks.stream()
+                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running);
+    }
+    void restore(Saved saved) {
+        if (saved.tasks().size() != tasks.size()) return;
+        found.putAll(saved.found()); observed.addAll(saved.observed());
+        expected.addAll(observed);
+        checks = saved.checks(); nextTask = Math.floorMod(saved.nextTask(), Math.max(1, tasks.size()));
+        for (int i = 0; i < tasks.size(); i++) {
+            var p = saved.tasks().get(i); var t = tasks.get(i);
+            t.cursor = p.cursor(); t.extraCursor = p.extraCursor(); t.ringCursor = p.ringCursor(); t.done = p.done();
+        }
+        running = saved.running() && finite && !complete();
+        revision++;
+    }
+    void resample() {
+        found.keySet().removeIf(id -> !observed.contains(id));
+        for (var t : tasks) { t.cursor = 0; t.extraCursor = 0; t.ringCursor = 0; t.done = false; }
+        checks = 0; nextTask = 0; error = ""; running = finite; revision++;
     }
 
     /** At most one layout generation per tick; caller also enforces its scheduling deadline. */
@@ -90,6 +119,7 @@ final class StructureAudit {
             if (!level.structureManager().shouldGenerateStructures()) { running = false; return; }
             var source = level.getChunkSource();
             var state = source.getGeneratorState();
+            if (complete()) { running = false; return; }
             if (!initialized) {
                 if (added == null) {
                     var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
@@ -165,26 +195,27 @@ final class StructureAudit {
     private final class Task {
         final StructureSet set;
         final Set<String> ids;
-        Iterator<ChunkPos> extra = Collections.emptyIterator();
-        Iterator<ChunkPos> rings;
+        List<ChunkPos> extra = List.of();
+        int extraCursor, ringCursor;
+        List<ChunkPos> rings;
         Grid grid;
         long cursor;
         boolean done;
         Task(StructureSet set, Set<String> ids) { this.set = set; this.ids = ids; }
         void init(ChunkGeneratorStructureState state, AddedStructureStarts added) {
-            extra = added.of(set.placement()).stream().map(a -> a.chunk()).iterator();
+            extra = added.of(set.placement()).stream().map(a -> a.chunk()).toList();
             if (set.placement() instanceof ConcentricRingsStructurePlacement ring) {
                 var positions = state.getRingPositionsFor(ring);
                 if (positions == null) throw new IllegalStateException("Ring positions unavailable");
-                rings = positions.iterator();
+                rings = List.copyOf(positions);
             } else {
                 int spacing = set.placement() instanceof RandomSpreadStructurePlacement spread ? spread.spacing() : 1;
                 grid = new Grid(minX, minZ, width, spacing);
             }
         }
         ChunkPos next(ChunkGeneratorStructureState state) {
-            if (extra.hasNext()) return extra.next();
-            if (rings != null) return rings.hasNext() ? rings.next() : null;
+            if (extraCursor < extra.size()) return extra.get(extraCursor++);
+            if (rings != null) return ringCursor < rings.size() ? rings.get(ringCursor++) : null;
             if (cursor >= grid.total) return null;
             ChunkPos origin = grid.at(cursor++);
             return set.placement() instanceof RandomSpreadStructurePlacement spread

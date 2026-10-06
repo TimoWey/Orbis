@@ -24,11 +24,9 @@ final class AtlasButton extends Button {
         if (row) {
             if (highlight || chosen) g.fill(getX(), getY(), getRight(), getBottom(), 0xff253b49);
         } else {
-            g.fill(getX(), getY(), getRight(), getBottom(), highlight ? 0xff314858 : chosen ? 0xff233f42 : 0xff202e3b);
-            if (chosen) g.fill(getX(), getBottom() - 2, getRight(), getBottom(), 0xff70dfbd);
-            var font = Minecraft.getInstance().font;
-            g.text(font, getMessage(), getX() + (width - font.width(getMessage())) / 2,
-                    getY() + (height - 8) / 2, active ? 0xffedf3fa : 0xff7d90a1, false);
+            extractDefaultSprite(g);
+            extractDefaultLabel(g.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.NONE));
+            if (chosen) g.outline(getX() + 1, getY() + 1, width - 2, height - 2, 0xffffffff);
         }
         if (isFocused()) g.outline(getX(), getY(), width, height, 0xff70dfbd);
     }
