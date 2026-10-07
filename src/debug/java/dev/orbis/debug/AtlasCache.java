@@ -18,13 +18,13 @@ import net.minecraft.world.level.storage.LevelResource;
 
 /** Disposable, bounded debug data. No Java deserialization and no writes to the world save. */
 final class AtlasCache {
-    // v2: Y=32 ceiling tiles, Nether colors and deduplicated structure occurrences.
-    static final int VERSION = 2, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
+    // v3: separate bounded biome/existence, map and opt-in structure-count checkpoints.
+    static final int VERSION = 3, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
     private static final int MAGIC = 0x4f524241;
     static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Orbis atlas cache"); t.setDaemon(true); return t;
     });
-    record Data(int cursor, boolean scanning, boolean limited, Map<Integer, Integer> colors,
+    record Data(AtlasSearch.Saved search, boolean limited, Map<Integer, Integer> colors,
             Map<String, Integer> hits, Set<String> observed, Map<String, DebugSnapshot.Place> locations,
             List<DebugSnapshot.Place> places, List<DebugSnapshot.Cell> chunks, StructureAudit.Saved audit) {}
     record Loaded(Path file, String fingerprint, Data data, String status) {}
@@ -85,13 +85,14 @@ final class AtlasCache {
         try (var raw = Files.newInputStream(file);
              var in = new DataInputStream(new BufferedInputStream(new LimitedInput(new GZIPInputStream(raw))))) {
             if (in.readInt() != MAGIC || in.readInt() != VERSION || !in.readUTF().equals(fingerprint)) return null;
-            int cursor = bounded(in.readInt(), DebugSurvey.TOTAL);
-            boolean scanning = in.readBoolean(), limited = in.readBoolean();
+            var search = new AtlasSearch.Saved(in.readInt(), in.readInt(), in.readBoolean(),
+                    in.readInt(), in.readInt(), in.readBoolean());
+            boolean limited = in.readBoolean();
             Map<Integer, Integer> colors = new HashMap<>();
             for (int n = count(in, DebugSurvey.GRID * DebugSurvey.GRID); n > 0; n--)
                 colors.put(bounded(in.readInt(), DebugSurvey.GRID * DebugSurvey.GRID - 1), in.readInt());
             Map<String, Integer> hits = new HashMap<>();
-            for (int n = count(in, ENTRY_LIMIT); n > 0; n--) hits.put(in.readUTF(), bounded(in.readInt(), DebugSurvey.TOTAL));
+            for (int n = count(in, ENTRY_LIMIT); n > 0; n--) hits.put(in.readUTF(), bounded(in.readInt(), AtlasSearch.MAX + AtlasSearch.MAP_MAX));
             Set<String> observed = strings(in);
             Map<String, DebugSnapshot.Place> locations = places(in);
             List<DebugSnapshot.Place> markers = new ArrayList<>(places(in).values());
@@ -114,14 +115,17 @@ final class AtlasCache {
             var actualStarts = occurrences(in);
             var predictedStarts = occurrences(in);
             boolean countLimited = in.readBoolean();
+            var policy = new StructureSearchPolicy(in.readBoolean(), in.readLong());
             if (actualStarts.values().stream().mapToInt(Set::size).sum()
                     + predictedStarts.values().stream().mapToInt(Set::size).sum() > StructureCounts.LIMIT)
                 throw new IOException("Too many structure occurrences");
+            if (!policy.counting() && (policy.limit() < checks || policy.limit() - checks > StructureSearchPolicy.QUICK_CHECKS))
+                throw new IOException("Invalid existence-search budget");
             if (checks < 0 || in.read() != -1) throw new IOException("Invalid trailer"); // also verifies gzip CRC
-            return new Data(cursor, scanning, limited, Map.copyOf(colors), Map.copyOf(hits), Set.copyOf(observed),
+            return new Data(search, limited, Map.copyOf(colors), Map.copyOf(hits), Set.copyOf(observed),
                     Map.copyOf(locations), List.copyOf(markers), List.copyOf(chunks),
                     new StructureAudit.Saved(Map.copyOf(found), Set.copyOf(seen), List.copyOf(tasks), checks, next, running,
-                            new StructureCounts.Saved(actualStarts, predictedStarts, countLimited)));
+                            new StructureCounts.Saved(actualStarts, predictedStarts, countLimited), policy));
         } catch (IOException | RuntimeException e) {
             Orbis.LOGGER.warn("Ignoring damaged atlas cache {}", file, e); return null;
         }
@@ -133,7 +137,10 @@ final class AtlasCache {
             try (var raw = Files.newOutputStream(tmp);
                  var out = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(raw)))) {
                 out.writeInt(MAGIC); out.writeInt(VERSION); out.writeUTF(fingerprint);
-                out.writeInt(data.cursor()); out.writeBoolean(data.scanning()); out.writeBoolean(data.limited());
+                var search = data.search();
+                out.writeInt(search.cursor()); out.writeInt(search.limit()); out.writeBoolean(search.running());
+                out.writeInt(search.mapCursor()); out.writeInt(search.mapLimit()); out.writeBoolean(search.mapping());
+                out.writeBoolean(data.limited());
                 out.writeInt(data.colors().size());
                 for (var e : data.colors().entrySet()) { out.writeInt(e.getKey()); out.writeInt(e.getValue()); }
                 out.writeInt(data.hits().size());
@@ -153,6 +160,7 @@ final class AtlasCache {
                 out.writeLong(audit.checks()); out.writeInt(audit.nextTask()); out.writeBoolean(audit.running());
                 occurrences(out, audit.counts().observed()); occurrences(out, audit.counts().predicted());
                 out.writeBoolean(audit.counts().limited());
+                out.writeBoolean(audit.policy().counting()); out.writeLong(audit.policy().limit());
             }
             try { Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING); }

@@ -18,7 +18,7 @@ final class AtlasBiomeSampler {
         void accept(int index, int x, int y, int z, String biome, int color);
     }
 
-    private record Style(String id, int color) {}
+    record Style(String id, int color) {}
     private final BiomeResolver resolver;
     private final int[] xs = new int[DebugSurvey.GRID], zs = new int[DebugSurvey.GRID], ys;
     private final Map<Holder<Biome>, Style> styles = new IdentityHashMap<>();
@@ -42,25 +42,29 @@ final class AtlasBiomeSampler {
         }
     }
 
-    /** Process every sample that fits, keeping the original cell/layer order and resumable indices. */
+    /** Legacy full-grid traversal for parity/benchmark tests. Live searches use AtlasSearch and query(). */
     int run(int cursor, long deadline, BooleanSupplier active, Sink sink) {
         if (cursor < 0 || cursor > DebugSurvey.TOTAL) throw new IllegalArgumentException("Invalid survey cursor");
         while (cursor < DebugSurvey.TOTAL && active.getAsBoolean() && clock.getAsLong() < deadline) {
             int cell = cursor / DebugSurvey.LAYERS;
             int x = xs[cell % DebugSurvey.GRID], z = zs[cell / DebugSurvey.GRID];
             int y = ys[cursor % DebugSurvey.LAYERS];
-            Holder<Biome> biome = resolver.getNoiseBiome(x >> 2, y >> 2, z >> 2);
-            Style style = styles.get(biome);
-            if (style == null) {
-                String id = biome.unwrapKey().map(key -> key.identifier().toString()).orElse("unregistered");
-                style = new Style(id, DebugMapMath.biomeColor(id));
-                // Registered biome holders are stable. Bound this auxiliary cache even for
-                // custom sources that manufacture a fresh holder on every invocation.
-                if (styles.size() < 4096) styles.put(biome, style);
-            }
+            Style style = query(x, y, z);
             sink.accept(cursor, x, y, z, style.id, style.color);
             cursor++;
         }
         return cursor;
+    }
+    Style query(int x, int y, int z) {
+        Holder<Biome> biome = resolver.getNoiseBiome(x >> 2, y >> 2, z >> 2);
+        Style style = styles.get(biome);
+        if (style == null) {
+            String id = biome.unwrapKey().map(key -> key.identifier().toString()).orElse("unregistered");
+            style = new Style(id, DebugMapMath.biomeColor(id));
+            // Registered biome holders are stable. Bound this auxiliary cache even for
+            // custom sources that manufacture a fresh holder on every invocation.
+            if (styles.size() < 4096) styles.put(biome, style);
+        }
+        return style;
     }
 }
