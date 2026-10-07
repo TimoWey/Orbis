@@ -1,0 +1,149 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+
+// The same deterministic provenance is included in the binary and source archive.
+// A commit is optional: source hashing also identifies local, uncommitted changes.
+def debugVariant = providers.gradleProperty('orbisDebug').map { it.toBoolean() }.getOrElse(false)
+def commitId = providers.gradleProperty('orbisCommit').orElse(providers.environmentVariable('GITHUB_SHA')).orElse('unknown')
+def provenanceDirectory = layout.buildDirectory.dir('generated/provenance')
+def provenanceInputs = fileTree(projectDir) {
+    include 'src/**', 'vendor/**', 'licenses/**', 'spec/**', 'tools/**'
+    include '*.gradle', 'gradle.properties', 'gradle/wrapper/**', 'LICENSE'
+    exclude '**/__pycache__/**'
+}
+def provenance = tasks.register('generateBuildProvenance') {
+    inputs.files(provenanceInputs)
+    inputs.property('version', project.version.toString())
+    inputs.property('commit', commitId)
+    inputs.property('debug', debugVariant)
+    outputs.dir(provenanceDirectory)
+    doLast {
+        def digest = MessageDigest.getInstance('SHA-256')
+        provenanceInputs.files.sort { relativePath(it).replace('\\', '/') }.each { source ->
+            digest.update(relativePath(source).replace('\\', '/').getBytes('UTF-8'))
+            digest.update((byte) 0)
+            digest.update(MessageDigest.getInstance('SHA-256').digest(source.bytes))
+        }
+        def output = provenanceDirectory.get().file('META-INF/orbis-build.json').asFile
+        output.parentFile.mkdirs()
+        output.setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                version: project.version.toString(), variant: debugVariant ? 'debug' : 'normal',
+                commit: commitId.get(), source_sha256: digest.digest().encodeHex().toString()
+        ])) + '\n', 'UTF-8')
+    }
+}
+tasks.named('jar') { dependsOn provenance; from(provenanceDirectory) }
+tasks.named('sourcesJar') { dependsOn provenance; from(provenanceDirectory) }
+
+tasks.register('verifyPresets') {
+    dependsOn tasks.named('compileJava')
+    inputs.file('spec/world-presets.json')
+    inputs.files(sourceSets.main.output.classesDirs)
+    doLast {
+        def spec = new JsonSlurper().parse(file('spec/world-presets.json'))
+        def loader = new URLClassLoader(sourceSets.main.output.classesDirs.files.collect { it.toURI().toURL() } as URL[], (ClassLoader) null)
+        try {
+            def sizeClass = loader.loadClass('dev.orbis.WorldSize')
+            def presetClass = loader.loadClass('dev.orbis.WorldSize$Preset')
+            assert sizeClass.getField('MIN_CHUNKS').getInt(null) == spec.minimum_selectable_overworld_width_chunks
+            assert sizeClass.getField('EARTH_CHUNKS').getInt(null) == spec.maximum_selectable_overworld_width_chunks
+            assert sizeClass.getField('STEP_CHUNKS').getInt(null) == spec.width_step_chunks
+            assert sizeClass.getField('LEGACY_MIN_CHUNKS').getInt(null) == spec.minimum_overworld_width_chunks_from_upstream
+            def actual = presetClass.enumConstants.collect { preset ->
+                def size = presetClass.getField('size').get(preset)
+                [id: preset.name().toLowerCase(Locale.ROOT), label_en: presetClass.getField('label').get(preset),
+                 overworld_width_chunks: sizeClass.getMethod('overworldChunks').invoke(size),
+                 nether_width_chunks: sizeClass.getMethod('netherChunks').invoke(size)]
+            }
+            assert actual == spec.presets.collect { it.subMap(['id', 'label_en', 'overworld_width_chunks', 'nether_width_chunks']) }
+            assert actual.every { it.overworld_width_chunks == it.nether_width_chunks * spec.nether_scale }
+            def defaultWidth = sizeClass.getMethod('overworldChunks').invoke(sizeClass.getField('DEFAULT').get(null))
+            assert defaultWidth == actual.find { it.id == spec.default_preset }.overworld_width_chunks
+        } finally { loader.close() }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyPresets') }
+
+tasks.register('verifyDistribution') {
+    dependsOn tasks.named('jar'), tasks.named('sourcesJar')
+    inputs.file(tasks.named('jar').flatMap { it.archiveFile })
+    inputs.file(tasks.named('sourcesJar').flatMap { it.archiveFile })
+    doLast {
+        def artifact = tasks.named('jar').get().archiveFile.get().asFile
+        def sources = tasks.named('sourcesJar').get().archiveFile.get().asFile
+        def requireEntry = { ZipFile archive, String path ->
+            def entry = archive.getEntry(path)
+            if (entry == null) throw new GradleException("Missing ${path} in ${archive.name}")
+            archive.getInputStream(entry).withCloseable { it.readAllBytes() }
+        }
+        def readJson = { ZipFile archive, String path -> new JsonSlurper().parse(requireEntry(archive, path)) }
+        new ZipFile(artifact).withCloseable { jar ->
+            def names = jar.entries().collect { it.name } as Set
+            def meta = readJson(jar, 'fabric.mod.json')
+            assert meta.id == 'orbis' && meta.version == project.version.toString()
+            assert meta.entrypoints.main == ['dev.orbis.Orbis']
+            meta.entrypoints.values().flatten().each { entrypoint ->
+                def name = entrypoint instanceof Map ? entrypoint.value : entrypoint
+                requireEntry(jar, name.replace('.', '/') + '.class')
+            }
+            assert meta.entrypoints.client.contains('dev.orbis.debug.OrbisDebugClient') == debugVariant
+            assert names.any { it.startsWith('dev/orbis/debug/') } == debugVariant
+            assert names.any { it.startsWith('assets/orbis_debug/') } == debugVariant
+            assert !meta.depends.containsKey('toroidal_world') && !(meta.provides ?: []).contains('toroidal_world')
+            assert meta.breaks.toroidal_world == '*'
+            assert !names.any { it.startsWith('data/toroidal_world/advancement/') || it.startsWith('data/toroidal_world/worldgen/world_preset/') }
+            ['dev/orbis/Orbis.class', 'com/toroidalworld/ToroidalWorldFabric.class',
+             'com/toroidalworld/engine/gen/LoopedChunkGenerator.class', 'LICENSE-orbis',
+             'META-INF/licenses/Toroidal-World-MIT.txt', meta.accessWidener, meta.icon].each { requireEntry(jar, it) }
+            if (debugVariant) ['OrbisDebugScreen', 'DebugSurvey', 'AtlasCache'].each { requireEntry(jar, "dev/orbis/debug/${it}.class") }
+            assert (names.findAll { it.startsWith('assets/toroidal_world/lang/') && it.endsWith('.json') } as Set) ==
+                    (['assets/toroidal_world/lang/en_us.json', 'assets/toroidal_world/lang/de_de.json'] as Set)
+            ['en_us', 'de_de'].each { locale ->
+                def wording = readJson(jar, "assets/toroidal_world/lang/${locale}.json")
+                assert !wording.keySet().any { it.startsWith('advancements.toroidal_world.') }
+                assert wording['gui.toroidal_world.settings.title'].contains('Orbis')
+                def own = readJson(jar, "assets/orbis/lang/${locale}.json")
+                ['bearings', 'world_on_paper', 'field_kit'].each { name ->
+                    def advancement = readJson(jar, "data/orbis/advancement/exploration/${name}.json")
+                    assert advancement.criteria.prepared.trigger == 'minecraft:inventory_changed'
+                    assert own.containsKey(advancement.display.title.translate) && own.containsKey(advancement.display.description.translate)
+                }
+                if (debugVariant) requireEntry(jar, "assets/orbis_debug/lang/${locale}.json")
+            }
+            meta.mixins.each { configName ->
+                def config = readJson(jar, configName)
+                ['mixins', 'client', 'server'].each { side -> (config[side] ?: []).each { name ->
+                    requireEntry(jar, (config.package + '.' + name).replace('.', '/') + '.class')
+                } }
+                if (config.plugin) requireEntry(jar, config.plugin.replace('.', '/') + '.class')
+            }
+            (meta.jars ?: []).each { nested ->
+                new ZipInputStream(new ByteArrayInputStream(requireEntry(jar, nested.file))).withCloseable { stream ->
+                    def entry
+                    boolean found = false
+                    while ((entry = stream.nextEntry) != null) if (entry.name == 'fabric.mod.json') {
+                        assert new JsonSlurper().parse(stream.readAllBytes()).id != 'toroidal_world'
+                        found = true
+                    }
+                    assert found: "Missing nested mod metadata: ${nested.file}"
+                }
+            }
+            def info = readJson(jar, 'META-INF/orbis-build.json')
+            assert info.version == meta.version && info.variant == (debugVariant ? 'debug' : 'normal')
+            assert info.source_sha256 ==~ /[0-9a-f]{64}/
+            assert Arrays.equals(requireEntry(jar, 'META-INF/orbis-build.json'), provenanceDirectory.get().file('META-INF/orbis-build.json').asFile.bytes)
+            new ZipFile(sources).withCloseable { sourceJar ->
+                assert Arrays.equals(requireEntry(sourceJar, 'META-INF/orbis-build.json'), requireEntry(jar, 'META-INF/orbis-build.json'))
+                assert Arrays.equals(requireEntry(sourceJar, meta.icon), requireEntry(jar, meta.icon))
+                sourceSets.main.allJava.visit { entry -> if (!entry.directory) {
+                    assert Arrays.equals(requireEntry(sourceJar, entry.relativePath.pathString), entry.file.bytes): "Stale source: ${entry.relativePath}"
+                } }
+            }
+        }
+        logger.lifecycle("${artifact.name}: standalone packaging and matching sources verified.")
+    }
+}
+tasks.named('build') { dependsOn tasks.named('verifyDistribution') }

@@ -8,9 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class OrbisMinimapTest {
     private DebugSnapshot world() {
-        return new DebugSnapshot("minecraft:overworld", 1, "Tiny", 1, -1024, -1024, 2048,
-                true, 0, 64, 0, 0, List.of(), Set.of(), List.of(), List.of(), Map.of(),
-                0, DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "");
+        return AtlasFixtures.world(Map.of(), List.of(), Set.of());
     }
 
     @Test void flatMarkersUseCanonicalCoordinatesWithoutDrawingCopies() {

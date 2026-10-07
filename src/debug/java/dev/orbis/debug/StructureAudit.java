@@ -43,6 +43,7 @@ final class StructureAudit {
     private final Set<String> observed = new HashSet<>();
     private final List<Task> tasks = new ArrayList<>();
     private final StructureCounts counts = new StructureCounts();
+    private final RecentLayouts recentLayouts = new RecentLayouts(4096);
     private boolean initialized, running;
     private StructureSearchPolicy policy = StructureSearchPolicy.quick(0);
     private int nextTask, nextInitialization;
@@ -144,11 +145,12 @@ final class StructureAudit {
     void resample() {
         found.keySet().removeIf(id -> !observed.contains(id));
         counts.clearPredictions();
+        recentLayouts.clear();
         for (var t : tasks) { t.cursor = 0; t.extraCursor = 0; t.ringCursor = 0; t.done = false; }
         checks = 0; nextTask = 0; error = ""; policy = StructureSearchPolicy.quick(0); running = finite; revision++;
     }
 
-    /** At most one layout generation per tick; caller also enforces its scheduling deadline. */
+    /** At most one layout per tick. The deadline prevents starting work, not overruns inside a native query. */
     void tick(long deadline, BooleanSupplier active) {
         if (!running || !active.getAsBoolean() || System.nanoTime() >= deadline) return;
         try {
@@ -179,8 +181,8 @@ final class StructureAudit {
                 if (task.done || !eligible(task)) continue;
                 ChunkPos pos = task.next(state);
                 if (pos == null) { task.done = true; revision++; continue; }
+                if (!inside(pos) || recentLayouts.contains(pos.pack())) continue;
                 checks++;
-                if (!inside(pos)) continue;
                 var scratch = new ProtoChunk(pos, UpgradeData.EMPTY, level, palettes, null);
                 // Use Minecraft's weighted selection, biome/height checks and Orbis added starts.
                 source.getGenerator().createStructures(level.registryAccess(), state, level.structureManager(),
@@ -190,6 +192,9 @@ final class StructureAudit {
                     String id = String.valueOf(level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getKey(structure));
                     if (expected.contains(id)) record(id, start);
                 });
+                // createStructures checks every set, so another task at this chunk adds no evidence.
+                // This bounded optimization need not be persisted: rechecking is always safe.
+                recentLayouts.remember(pos.pack());
                 return;
             }
         } catch (RuntimeException failure) {
@@ -217,20 +222,51 @@ final class StructureAudit {
                 y, minZ * 16 + Math.floorMod(z - minZ * 16, width * 16));
     }
 
-    /** Enumerates every placement region intersecting the finite world without allocating a world-sized list. */
+    /** Small rolling deduplication window; eviction permits rechecking without losing evidence. */
+    static final class RecentLayouts {
+        private final int capacity;
+        private final LinkedHashSet<Long> chunks = new LinkedHashSet<>();
+        RecentLayouts(int capacity) {
+            if (capacity < 1) throw new IllegalArgumentException("Expected a positive capacity");
+            this.capacity = capacity;
+        }
+        boolean contains(long chunk) { return chunks.contains(chunk); }
+        void remember(long chunk) {
+            if (chunks.add(chunk) && chunks.size() > capacity) chunks.removeFirst();
+        }
+        void clear() { chunks.clear(); }
+    }
+
+    /** A deterministic spatial permutation of every region; the same cursor works for Quick and Count. */
     static final class Grid {
-        final int startX, startZ, columns, spacing;
+        final int startX, startZ, columns, rows, spacing;
         final long total;
         Grid(int minX, int minZ, int width, int spacing) {
             this.spacing = spacing;
             startX = Math.floorDiv(minX, spacing); startZ = Math.floorDiv(minZ, spacing);
             columns = Math.floorDiv(minX + width - 1, spacing) - startX + 1;
-            total = (long) columns * (Math.floorDiv(minZ + width - 1, spacing) - startZ + 1);
+            rows = Math.floorDiv(minZ + width - 1, spacing) - startZ + 1;
+            total = (long) columns * rows;
         }
         ChunkPos at(long index) {
             if (index < 0 || index >= total) throw new IndexOutOfBoundsException();
-            return new ChunkPos((startX + (int) (index % columns)) * spacing,
-                    (startZ + (int) (index / columns)) * spacing);
+            int x = 0, z = 0, width = columns, height = rows;
+            // Split the longest axis and interleave the two child traversals. Unequal halves
+            // append their remaining elements; every input index still has exactly one leaf.
+            // Early probes visit distant quadrants instead of spending a whole pass on an edge.
+            while (width > 1 || height > 1) {
+                boolean splitX = width >= height;
+                int half = (splitX ? width : height) / 2;
+                long smaller = (long) half * (splitX ? height : width);
+                boolean upper = index >= 2 * smaller || (index & 1) != 0;
+                index = index < 2 * smaller ? index / 2 : index - smaller;
+                if (splitX) {
+                    if (upper) { x += half; width -= half; } else width = half;
+                } else {
+                    if (upper) { z += half; height -= half; } else height = half;
+                }
+            }
+            return new ChunkPos((startX + x) * spacing, (startZ + z) * spacing);
         }
     }
 

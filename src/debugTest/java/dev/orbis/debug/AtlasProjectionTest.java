@@ -67,8 +67,6 @@ class AtlasProjectionTest {
         assertEquals(DebugMapRaster.BACKGROUND, pixels[10 * 64 + 10]);
     }
     private DebugSnapshot world(Map<Integer, Integer> colors, List<DebugSnapshot.Cell> chunks) {
-        return new DebugSnapshot("minecraft:overworld", 1, "Custom", 1, -1024, -1024, 2048,
-                true, 0, 64, 0, 0, chunks, Set.of(), List.of(), List.of(), colors, 0,
-                DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "");
+        return AtlasFixtures.world(colors, chunks, Set.of());
     }
 }

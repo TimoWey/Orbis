@@ -46,6 +46,34 @@ class AtlasWaypointsTest {
         store.open("world|dimension");
         assertFalse(store.toggle(point(12), 0));
         assertTrue(store.points().isEmpty());
+        assertFalse(store.status().isEmpty());
+    }
+
+    @Test void legacyPathOnlyMarkersArePreservedButNeverAttachedToANewWorld() throws Exception {
+        Path file = directory.resolve("waypoints.properties");
+        var store = new AtlasWaypoints(file);
+        store.open("legacy-save-path|dimension");
+        assertTrue(store.toggle(point(12), 0));
+        String identity = AtlasWorldIdentity.resolve(directory, 42);
+        store.open(AtlasWorldIdentity.waypointKey(identity, "dimension"));
+        assertTrue(store.points().isEmpty());
+        assertTrue(store.status().contains("Legacy"));
+        assertTrue(store.toggle(point(99), 0));
+        store.open("legacy-save-path|dimension");
+        assertEquals(12, store.points().getFirst().x(), "Unverifiable legacy records stay available for manual recovery");
+        store.open(AtlasWorldIdentity.waypointKey(AtlasWorldIdentity.resolve(directory, 43), "dimension"));
+        assertTrue(store.points().isEmpty());
+    }
+
+    @Test void malformedFileIsNotOverwrittenByAChange() throws Exception {
+        Path file = directory.resolve("waypoints.properties");
+        String invalid = "broken=\\uNOPE\n";
+        Files.writeString(file, invalid);
+        var store = new AtlasWaypoints(file);
+        store.open("world|dimension");
+        assertFalse(store.toggle(point(12), 0));
+        assertFalse(store.status().isEmpty());
+        assertEquals(invalid, Files.readString(file));
     }
 
     @Test void boundsMarkerCountAndIgnoresMalformedEntries() throws Exception {

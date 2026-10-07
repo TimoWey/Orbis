@@ -21,8 +21,7 @@ public final class Orbis implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("orbis");
     private static final Set<RandomState> WORLDS = Collections.synchronizedSet(
             Collections.newSetFromMap(new WeakHashMap<>()));
-    public static final String BIOME_WARNING = "Orbis: Biome coverage has NOT been checked in either dimension. "
-            + "Any size, including Normal, may lack biomes. Existing-world conversion is not available in this alpha.";
+    private static Component biomeWarning() { return Component.translatable("message.orbis.biome_warning"); }
 
     @Override public void onInitialize() {
         new com.toroidalworld.ToroidalWorldFabric().onInitialize();
@@ -34,23 +33,22 @@ public final class Orbis implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> WORLDS.clear());
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             if (WORLDS.contains(server.overworld().getChunkSource().randomState())) {
-                handler.player.sendSystemMessage(Component.literal(BIOME_WARNING));
+                handler.player.sendSystemMessage(biomeWarning());
             }
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) ->
             dispatcher.register(Commands.literal("orbis").executes(context -> {
                 var server = context.getSource().getServer();
                 if (!WORLDS.contains(server.overworld().getChunkSource().randomState())) {
-                    context.getSource().sendSuccess(() -> Component.literal("This is not an Orbis world. Create a new world with World Shape: Orbis."), false);
+                    context.getSource().sendSuccess(() -> Component.translatable("message.orbis.not_orbis"), false);
                     return 0;
                 }
                 var shape = ToroidalWorldApi.shapeOf(server.overworld()).orElseThrow();
                 int width = shape.widthChunks(Direction.Axis.X);
-                context.getSource().sendSuccess(() -> Component.literal("Orbis | Overworld: " + width + " x " + width
-                        + " chunks | Nether: " + width / 8 + " x " + width / 8 + " | End: unwrapped"), false);
-                context.getSource().sendSuccess(() -> Component.literal(BIOME_WARNING), false);
+                context.getSource().sendSuccess(() -> Component.translatable("message.orbis.dimensions", width, width / 8), false);
+                context.getSource().sendSuccess(Orbis::biomeWarning, false);
                 return 1;
             })));
-        LOGGER.info("Orbis standalone alpha initialized. Biome coverage and conversion are not implemented.");
+        LOGGER.info("Orbis standalone alpha initialized. Complete biome and structure coverage is not guaranteed; existing-world conversion is unavailable.");
     }
 }

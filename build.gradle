@@ -56,3 +56,4 @@ jar {
 }
 
 apply from: "engine.gradle"
+apply from: "tools/distribution.gradle"

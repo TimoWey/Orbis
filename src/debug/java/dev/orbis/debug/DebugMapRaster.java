@@ -17,6 +17,9 @@ final class DebugMapRaster {
     private DebugSnapshot data;
     private java.util.List<DebugSnapshot.Cell> indexedChunks;
     private final java.util.Map<Long, DebugSnapshot.Cell> terrain = new java.util.HashMap<>();
+    private double[] globeU, globeV;
+    private double projectionRadius = Double.NaN;
+    private int projectionWidth, projectionHeight;
 
     DebugMapRaster(int width, int height) {
         this.width = width;
@@ -57,17 +60,20 @@ final class DebugMapRaster {
     private int y(double z) { return (int) Math.clamp((view.height * .5 + (z - view.centerZ) * view.scale) * ratioY, -1000000, 1000000); }
     private void flat() {
         double step = data.span() / (double) DebugSurvey.GRID;
-        for (var sample : data.surveyColors().entrySet()) {
-            double x = data.minX() + (sample.getKey() % DebugSurvey.GRID) * step;
-            double z = data.minZ() + (sample.getKey() / DebugSurvey.GRID) * step;
-            worldFill(x, z, step, sample.getValue());
+        int firstX = Math.clamp((int) Math.floor((leftWorld - data.minX()) / step), 0, DebugSurvey.GRID - 1);
+        int lastX = Math.clamp((int) Math.floor((rightWorld - data.minX()) / step), 0, DebugSurvey.GRID - 1);
+        int firstZ = Math.clamp((int) Math.floor((topWorld - data.minZ()) / step), 0, DebugSurvey.GRID - 1);
+        int lastZ = Math.clamp((int) Math.floor((bottomWorld - data.minZ()) / step), 0, DebugSurvey.GRID - 1);
+        for (int iz = firstZ; iz <= lastZ; iz++) for (int ix = firstX; ix <= lastX; ix++) {
+            Integer color = data.surveyColors().get(iz * DebugSurvey.GRID + ix);
+            if (color != null) worldFill(data.minX() + ix * step, data.minZ() + iz * step, step, color);
         }
         // Cull chunks before drawing; choose a level appropriate to actual texture pixels.
         for (var cell : data.chunks()) {
             double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
             if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
             double density = view.scale * Math.min(ratioX, ratioY);
-            int stepSize = cell.terrain().size() == 256 && density >= .75 ? 1 : density * 4 >= .75 ? 4 : 16;
+            int stepSize = cell.terrainSize() == 256 && density >= .75 ? 1 : density * 4 >= .75 ? 4 : 16;
             for (int tz = 0; tz < 16; tz += stepSize) for (int tx = 0; tx < 16; tx += stepSize)
                 worldFill(cx + tx, cz + tz, stepSize, cell.colorAt(tx, tz, stepSize));
         }
@@ -89,19 +95,14 @@ final class DebugMapRaster {
     }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
-
-        // One inverse projection per texture pixel, only when the view or map changes.
+        cacheProjection(radius);
+        double originU = .5 - view.yaw / (2 * Math.PI), originV = .5 - view.pitch / Math.PI;
         for (int py = 0; py < height; py++) {
-            double yy = (view.height * .5 - (py + .5) / ratioY) / radius;
             for (int px = 0; px < width; px++) {
-                double xx = ((px + .5) / ratioX - view.width * .5) / radius;
-                double sq = xx * xx + yy * yy;
-                if (sq > 1) continue;
-                // Same inverse as DebugMapMath.unproject, without allocating a pair per pixel.
-                double diskRadius = Math.sqrt(sq);
-                double localScale = diskRadius == 0 ? 0 : Math.asin(diskRadius) / (2 * Math.PI * diskRadius);
-                double u = DebugMapMath.unit(.5 - view.yaw / (2 * Math.PI) + xx * localScale);
-                double v = DebugMapMath.unit(.5 - view.pitch / Math.PI - yy * localScale);
+                int index = py * width + px;
+                if (Double.isNaN(globeU[index])) continue;
+                double u = DebugMapMath.unit(originU + globeU[index]);
+                double v = DebugMapMath.unit(originV + globeV[index]);
                 int ix = Math.clamp((int) (u * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int iz = Math.clamp((int) (v * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int color = data.surveyColors().getOrDefault(iz * DebugSurvey.GRID + ix, 0xff283b50);
@@ -115,10 +116,29 @@ final class DebugMapRaster {
                         color = blend(color, LOADED);
                     }
                 }
-                pixels[py * width + px] = color;
+                pixels[index] = color;
             }
         }
 
+    }
+    /** Rotation reuses the expensive inverse chart; only zoom or sizing changes it. */
+    private void cacheProjection(double radius) {
+        if (projectionRadius == radius && projectionWidth == view.width && projectionHeight == view.height) return;
+        if (globeU == null) { globeU = new double[pixels.length]; globeV = new double[pixels.length]; }
+        for (int py = 0; py < height; py++) {
+            double yy = (view.height * .5 - (py + .5) / ratioY) / radius;
+            for (int px = 0; px < width; px++) {
+                int index = py * width + px;
+                double xx = ((px + .5) / ratioX - view.width * .5) / radius;
+                double square = xx * xx + yy * yy;
+                if (square > 1) { globeU[index] = Double.NaN; continue; }
+                double distance = Math.sqrt(square);
+                double scale = distance == 0 ? 0 : Math.asin(distance) / (2 * Math.PI * distance);
+                globeU[index] = xx * scale;
+                globeV[index] = -yy * scale;
+            }
+        }
+        projectionRadius = radius; projectionWidth = view.width; projectionHeight = view.height;
     }
     private void globePoint(double x, double z, int color, boolean place) {
         double[] xyz = DebugMapMath.globe((x - data.minX()) / data.span(), (z - data.minZ()) / data.span(), view.yaw, view.pitch);

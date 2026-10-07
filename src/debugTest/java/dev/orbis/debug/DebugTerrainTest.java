@@ -13,7 +13,9 @@ class DebugTerrainTest {
         assertEquals(0xff00000f, cell.colorAt(-1, -1));
         assertEquals(0xff000000, cell.colorAt(-16, -16));
         assertEquals(0xff000004, cell.colorAt(-16, -12));
-        assertThrows(UnsupportedOperationException.class, () -> cell.terrain().set(0, 123));
+        int[] copy = cell.copyTerrain();
+        copy[0] = 123;
+        assertEquals(0xff000000, cell.terrainPixel(0));
         assertThrows(IllegalArgumentException.class, () -> new DebugSnapshot.Cell(0, 0, 0, List.of(1)));
     }
 
@@ -52,9 +54,7 @@ class DebugTerrainTest {
     }
 
     private static DebugSnapshot fixture(List<DebugSnapshot.Cell> chunks) {
-        return new DebugSnapshot("minecraft:overworld", 123, "Custom", 1, -1024, -1024, 2048,
-                true, 0, 64, 0, 10, chunks, Set.of(), List.of(), List.of(), Map.of(), 0,
-                DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "Not checked yet");
+        return AtlasFixtures.world(Map.of(), chunks, Set.of());
     }
 
     @Test void ceilingLayerUsesLavaLevelAndRespectsCustomVerticalBounds() {
@@ -64,21 +64,22 @@ class DebugTerrainTest {
         assertEquals(15, DebugTerrain.sliceY(-64, 15));
     }
 
-    @Test void allFiveNetherBiomesStayDistinctUnderUniformRockOrLava() {
-        var ids = List.of("nether_wastes", "soul_sand_valley", "crimson_forest", "warped_forest", "basalt_deltas");
-        var colors = ids.stream().map(id -> DebugMapMath.biomeColor("minecraft:" + id)).toList();
-        assertEquals(5, colors.stream().distinct().count());
-        for (int block : new int[] {0x700200, 0xff0000, 0x707070}) {
-            var slices = colors.stream().map(biome -> DebugTerrain.sliceColor(biome, block)).toList();
-            assertEquals(5, slices.stream().distinct().count());
-            for (int i = 0; i < colors.size(); i++) {
-                assertEquals(255, slices.get(i) >>> 24);
-                for (int shift : new int[] {0, 8, 16})
-                    assertTrue(Math.abs((slices.get(i) >> shift & 255) - (colors.get(i) >> shift & 255)) <= 64);
-            }
-        }
-        for (int color : colors) assertEquals(color, DebugTerrain.sliceColor(color, null));
-        assertNotEquals(DebugMapMath.biomeColor("minecraft:forest"), colors.get(2));
-        assertNotEquals(DebugMapMath.biomeColor("minecraft:forest"), colors.get(3));
+    @Test void observedNetherBlocksKeepActualColorsAndAirIsNeutral() {
+        for (int block : new int[] {0x700200, 0xff0000, 0x707070})
+            assertEquals(0xff000000 | block, DebugTerrain.sliceColor(block, true));
+        assertEquals(DebugTerrain.EMPTY_SLICE_COLOR, DebugTerrain.sliceColor(0, false));
+    }
+
+    @Test void primitiveTilesOwnTheirPixelsAndCacheLowerResolutionColors() {
+        int[] pixels = new int[256];
+        Arrays.fill(pixels, 0xff123456);
+        var cell = new DebugSnapshot.Cell(-1, -1, 0, pixels);
+        pixels[0] = 0;
+        assertEquals(256, cell.terrainSize());
+        assertEquals(0xff123456, cell.colorAt(-16, -16));
+        assertEquals(0xff123456, cell.colorAt(-16, -16, 4));
+        assertEquals(0xff123456, cell.colorAt(-16, -16, 16));
+        assertTrue(cell.sameTerrain(new DebugSnapshot.Cell(10, 10, 0, cell.copyTerrain())));
+        assertFalse(cell.sameTerrain(new DebugSnapshot.Cell(-1, -1, 0, pixels)));
     }
 }

@@ -1,5 +1,6 @@
 package dev.orbis.debug;
 
+import dev.orbis.Orbis;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -12,25 +13,36 @@ import java.util.List;
 import java.util.Properties;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.level.storage.LevelResource;
 
-/** Client markers scoped by save directory and dimension, persisted outside the save. */
+/** Client markers share the cache's save identity; old path-only records are retained, never guessed. */
 final class AtlasWaypoints {
     static final AtlasWaypoints SHARED = new AtlasWaypoints(FabricLoader.getInstance().getConfigDir().resolve("orbis-waypoints.properties"));
     private final Path file;
     private final Properties values = new Properties();
     private String key;
+    private String status = "";
+    private boolean readable = true;
     private List<DebugSnapshot.Place> points = List.of();
     AtlasWaypoints(Path file) { this.file = file; }
     void open(Minecraft client, String dimension) {
         var server = client.getSingleplayerServer();
-        open(server == null ? null : server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize() + "|" + dimension);
+        open(server == null ? null : AtlasWorldIdentity.waypointKey(AtlasWorldIdentity.get(server), dimension));
     }
     void open(String worldKey) {
         key = worldKey;
+        readable = true;
+        status = key == null ? "Waypoints unavailable: world identity not ready" : "";
         values.clear();
-        if (Files.isRegularFile(file)) try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
-        catch (IOException | IllegalArgumentException ignored) { }
+        if (Files.exists(file)) try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
+        catch (IOException | IllegalArgumentException failure) {
+            values.clear();
+            readable = false;
+            status = "Waypoints could not be loaded; saving disabled";
+            Orbis.LOGGER.warn("Could not load Orbis waypoints {}", file, failure);
+        }
+        if (status.isEmpty() && key.startsWith("v2|")
+                && values.stringPropertyNames().stream().anyMatch(name -> !name.startsWith("v2|")))
+            status = "Legacy waypoints retained; their world identity cannot be verified";
         List<DebugSnapshot.Place> loaded = new ArrayList<>();
         for (String entry : (key == null ? "" : values.getProperty(key, "")).split(";")) {
             String[] parts = entry.split(",");
@@ -41,8 +53,9 @@ final class AtlasWaypoints {
         points = List.copyOf(loaded);
     }
     List<DebugSnapshot.Place> points() { return points; }
+    String status() { return status; }
     boolean toggle(DebugSnapshot.Place point, double tolerance) {
-        if (key == null) return false;
+        if (key == null || !readable) return false;
         List<DebugSnapshot.Place> next = new ArrayList<>(points);
         boolean removed = next.removeIf(p -> Math.hypot((double) p.x() - point.x(), (double) p.z() - point.z()) <= tolerance);
         if (!removed) {
@@ -67,10 +80,16 @@ final class AtlasWaypoints {
             catch (AtomicMoveNotSupportedException ignored) { Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING); }
             values.clear(); values.putAll(saved);
             points = List.copyOf(next);
+            status = "";
             return true;
-        } catch (IOException ignored) { return false; }
+        } catch (IOException failure) {
+            status = "Waypoint could not be saved";
+            Orbis.LOGGER.warn("Could not save Orbis waypoints {}", file, failure);
+            return false;
+        }
         finally {
-            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) { }
+            if (temporary != null) try { Files.deleteIfExists(temporary); }
+            catch (IOException failure) { Orbis.LOGGER.warn("Could not remove temporary waypoint file {}", temporary, failure); }
         }
     }
 }

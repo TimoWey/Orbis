@@ -17,8 +17,8 @@ class AtlasCacheTest {
                 List.of(new StructureAudit.Progress(891, 2, 3, false), new StructureAudit.Progress(9, 0, 0, true)), 71, 1, true,
                 new StructureCounts.Saved(Map.of("minecraft:village_plains", Set.of(12L, 13L)),
                         Map.of("minecraft:village_plains", Set.of(13L, 14L)), false), new StructureSearchPolicy(true, 0));
-        List<Integer> pixels = new ArrayList<>();
-        for (int i = 0; i < 256; i++) pixels.add(0xff123400 | i);
+        int[] pixels = new int[256];
+        for (int i = 0; i < 256; i++) pixels[i] = 0xff123400 | i;
         return new AtlasCache.Data(new AtlasSearch.Saved(cursor, AtlasSearch.MAX, cursor < AtlasSearch.MAX,
                 317, AtlasSearch.MAP_MAX, true), false, Map.of(0, 0xff123456, 1, 0xff345678),
                 Map.of("minecraft:plains", 5, "mod:grove", 3), Set.of("minecraft:plains"),
@@ -41,7 +41,7 @@ class AtlasCacheTest {
         assertFalse(restored.observed().contains("mod:grove"));
         assertEquals(original.locations(), restored.locations());
         assertEquals(original.audit(), restored.audit());
-        assertEquals(original.chunks().getFirst().terrain(), restored.chunks().getFirst().terrain());
+        assertArrayEquals(original.chunks().getFirst().copyTerrain(), restored.chunks().getFirst().copyTerrain());
         assertEquals(0xff1234ff, restored.chunks().getFirst().colorAt(-1, 31));
 
     }
@@ -106,6 +106,10 @@ class AtlasCacheTest {
             out.writeInt(0x4f524241); out.writeInt(1); out.writeUTF("v1");
         }
         assertNull(AtlasCache.read(file, "v1"), "Old roof pixels and first-find-only structure results cannot be reused");
+        try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(file)))) {
+            out.writeInt(0x4f524241); out.writeInt(3); out.writeUTF("v1");
+        }
+        assertNull(AtlasCache.read(file, "v1"), "Old search cursors cannot resume with the progressive traversal order");
         AtlasCache.write(file, "v2", fixture(456));
         assertEquals(456, AtlasCache.read(file, "v2").search().cursor());
     }

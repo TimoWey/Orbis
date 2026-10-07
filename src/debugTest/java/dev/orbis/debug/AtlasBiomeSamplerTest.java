@@ -26,53 +26,16 @@ class AtlasBiomeSamplerTest {
         registries = VanillaRegistries.createWorldLookup();
     }
 
-    @Test void exhaustedBudgetAndCancellationNeverStartAnotherQueryAndResumeExactly() {
-        var plains = registries.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        var clock = new AtomicInteger();
-        var queries = new AtomicInteger();
-        var sampler = new AtlasBiomeSampler((x, y, z) -> { queries.incrementAndGet(); return plains; },
-                -1024, -1024, 2048, new int[] {63, -48, 32, 128}, clock::getAndIncrement);
-        var received = new ArrayList<Integer>();
-        AtlasBiomeSampler.Sink sink = (index, x, y, z, biome, color) -> received.add(index);
-        assertEquals(0, sampler.run(0, 0, () -> true, sink));
-        assertEquals(0, queries.get());
-        assertEquals(3, sampler.run(0, 4, () -> true, sink));
-        assertEquals(List.of(0, 1, 2), received);
-        assertEquals(5, sampler.run(3, Long.MAX_VALUE, () -> queries.get() < 5, sink));
-        assertEquals(List.of(0, 1, 2, 3, 4), received);
-        assertEquals(5, queries.get());
-    }
-
-    @Test void fastSourcesUseTheAvailableBudgetWithoutTheOld256SampleLimit() {
-        var plains = registries.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        var clock = new AtomicInteger();
-        var sampler = new AtlasBiomeSampler((x, y, z) -> plains,
-                -1024, -1024, 2048, new int[] {32, 16, 32, 128}, clock::getAndIncrement);
-        var indices = new ArrayList<Integer>();
-        assertEquals(3000, sampler.run(0, 3000, () -> true,
-                (i, x, y, z, biome, color) -> indices.add(i)));
-        assertEquals(3000, indices.size());
-        assertEquals(2999, indices.getLast());
-    }
-
-    @Test void callerHeightsAndNegativeCoordinatesArePreservedIncludingDuplicateLayers() {
+    @Test void queriesUseQuartCoordinatesAndReuseStableBiomeStyles() {
         var plains = registries.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
         var quart = new ArrayList<List<Integer>>();
-        int[] heights = {32, 16, 32, 127};
-        var sampler = new AtlasBiomeSampler((x, y, z) -> { quart.add(List.of(x, y, z)); return plains; },
-                -1024, -2048, 2048, heights, () -> 0);
-        heights[0] = 99;
-        var samples = new ArrayList<List<Integer>>();
-        int start = DebugSurvey.TOTAL - 5;
-        assertEquals(DebugSurvey.TOTAL, sampler.run(start, 1, () -> true,
-                (i, x, y, z, biome, color) -> samples.add(List.of(i, x, y, z))));
-        assertEquals(List.of(start, 1012, 127, -4), samples.getFirst());
-        assertEquals(List.of(DebugSurvey.TOTAL - 4, 1020, 32, -4), samples.get(1));
-        assertEquals(List.of(255, 8, -1), quart.get(1));
-        assertEquals(quart.get(1), quart.get(3));
-        assertEquals(5, quart.size(), "Duplicate layers still contribute separate hits");
+        var sampler = new AtlasBiomeSampler((x, y, z) -> { quart.add(List.of(x, y, z)); return plains; });
+        var first = sampler.query(-1, -63, -5);
+        assertSame(first, sampler.query(1020, 127, -4));
+        assertEquals(List.of(List.of(-1, -16, -2), List.of(255, 31, -1)), quart);
+        assertEquals("minecraft:plains", first.id());
+        assertEquals(DebugMapMath.biomeColor(first.id()), first.color());
     }
-
     @Test void cachedSamplerExactlyMatchesAllUncachedTinySamplesInEveryDimension() {
         var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
         for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER, LevelStem.END)) {
@@ -84,7 +47,7 @@ class AtlasBiomeSamplerTest {
             int[] heights = dimension.equals(LevelStem.NETHER) ? new int[] {32, 16, 32, 128}
                     : dimension.equals(LevelStem.END) ? new int[] {0, 16, 32, 128} : new int[] {63, -48, 32, 128};
             BiomeResolver expected = generator.getBiomeSource().createUncachedResolver(random);
-            var actual = AtlasBiomeSampler.create(generator.getBiomeSource(), random, -span / 2, -span / 2, span, heights);
+            var actual = new FullGridBiomeSurvey(AtlasBiomeSampler.create(generator.getBiomeSource(), random), -span / 2, -span / 2, span, heights);
             // No ServerLevel, chunk source, or chunk exists in this test. Both paths use
             // the actual wrapped generator's seeded climate field and all four layers.
             assertEquals(DebugSurvey.TOTAL, actual.run(0, Long.MAX_VALUE, () -> true, (i, x, y, z, biome, color) -> {
@@ -109,7 +72,7 @@ class AtlasBiomeSamplerTest {
                 boolean nether = dimension.equals(LevelStem.NETHER);
                 int span = nether ? preset.size.netherBlocks() : preset.size.overworldBlocks();
                 int[] heights = nether ? new int[]{32, 16, 32, 128} : new int[]{63, -48, 32, 128};
-                var sampler = AtlasBiomeSampler.create(generator.getBiomeSource(), random, -span / 2, -span / 2, span, heights);
+                var sampler = AtlasBiomeSampler.create(generator.getBiomeSource(), random);
                 var search = new AtlasSearch(-span / 2, -span / 2, span, nether ? 0 : -64, nether ? 255 : 319, heights, true);
                 Set<String> possible = new HashSet<>(), found = new HashSet<>();
                 generator.getBiomeSource().possibleBiomes().forEach(b -> possible.add(b.unwrapKey().orElseThrow().identifier().toString()));

@@ -20,3 +20,11 @@ Singleplayer uses an integrated server, so server-side logic still needs changes
 Periodic generation conceptually satisfies N(x+Lx,y,z)=N(x,y,z) and N(x,y,z+Lz)=N(x,y,z). Keeping the seed while changing the generator does not guarantee identical terrain.
 
 No startup algorithm may iterate through every theoretical chunk. Use at least 64-bit arithmetic for total areas and chunk counts.
+
+## Atlas boundaries
+
+The atlas keeps three kinds of data separate: observed terrain colors from loaded chunks, biome previews predicted by the current wrapped generator, and structure evidence/checkpoint state. Predictions are not a replacement for observed blocks. The HUD and full atlas share the same tile and level-of-detail representation, with separate projection/view state. Detailed terrain takes display priority; the predicted biome preview is a separate fallback layer rather than baked-in terrain tint.
+
+This follows the useful separation used by established map tools: sampled world data, derived display tiles and user overlays have distinct lifetimes. Orbis must retain its own wrapped-generator prediction path: a generic vanilla seed map cannot account for its periodic generation. A regional tile archive and incremental texture updates are sensible future extensions; the current bounded cache is not an unlimited exploration archive.
+
+Build metadata and matching source archives identify each variant. CI verifies both variants, while seam traversal, portals, persistence in a running world and the combined performance-mod matrix still require gameplay validation.

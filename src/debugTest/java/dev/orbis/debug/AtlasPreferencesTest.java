@@ -7,6 +7,26 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AtlasPreferencesTest {
     @TempDir Path directory;
+    @Test void failedWriteIsVisibleAndCanRecoverAfterTheDirectoryIsFixed() throws Exception {
+        Path parent = directory.resolve("blocked");
+        Files.writeString(parent, "not a directory");
+        var store = new AtlasPreferences.Store(parent.resolve("atlas.properties"));
+        store.setGlobe("minecraft:overworld", true);
+        assertFalse(store.status().isEmpty());
+        Files.delete(parent); Files.createDirectory(parent);
+        store.setGlobe("minecraft:overworld", false);
+        assertTrue(store.status().isEmpty());
+        assertFalse(new AtlasPreferences.Store(parent.resolve("atlas.properties")).globe("minecraft:overworld"));
+    }
+    @Test void malformedPreferencesAreReportedAndNotOverwritten() throws Exception {
+        Path file = directory.resolve("atlas.properties");
+        String invalid = "broken=\\uNOPE\n";
+        Files.writeString(file, invalid);
+        var store = new AtlasPreferences.Store(file);
+        assertFalse(store.status().isEmpty());
+        store.setGlobe("minecraft:overworld", true);
+        assertEquals(invalid, Files.readString(file));
+    }
     @Test void viewModesSurviveRestartIndependentlyForEveryDimension() throws Exception {
         Path file = directory.resolve("atlas.properties");
         var store = new AtlasPreferences.Store(file);

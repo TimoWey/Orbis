@@ -21,7 +21,7 @@ final class OrbisDebugScreen extends Screen {
     private final AtlasWaypoints waypoints = AtlasWaypoints.SHARED;
     private double centerX, centerZ, zoom = 1, yaw, pitch;
     private boolean globe, dragging, initialized;
-    private boolean showChunks, showPlaces;
+    private int overlayMode; // Off, chunk grid, structures, both.
     private double globeZoom = 1;
     private Button scanButton, detailButton, resetButton, viewButton, filterButton, sortButton, previousButton, nextButton;
     private final DebugMapTexture mapTexture = new DebugMapTexture();
@@ -29,13 +29,10 @@ final class OrbisDebugScreen extends Screen {
     private BiomeOverview.Sort sort = BiomeOverview.Sort.NAME;
     private BiomeOverview.Counts coverage = new BiomeOverview.Counts(0, 0, 0, 0);
     private final List<Button> rows = new ArrayList<>();
-    private List<String> rowValues = List.of(), rowTips = List.of();
-    private List<Integer> rowColors = List.of();
+    private List<AtlasRow> entries = List.of();
     private DebugSnapshot.Place selected;
-    private List<String> rowLabels = List.of();
-    private List<DebugSnapshot.Place> rowPlaces = List.of();
 
-    OrbisDebugScreen() { super(Component.literal("Orbis atlas")); }
+    OrbisDebugScreen() { super(Component.translatable("orbis.atlas.title")); }
 
     @Override protected void init() {
         AtlasLayout layout = AtlasLayout.fit(width, height);
@@ -44,61 +41,64 @@ final class OrbisDebugScreen extends Screen {
         int panelWidth = right - panelX - 8;
         rows.clear();
         int controlWidth = layout.controlWidth();
-        button(layout.controlX(0), layout.controlTop(0), controlWidth, "Flat", b -> setGlobe(false), () -> !globe);
-        viewButton = button(layout.controlX(1), layout.controlTop(1), controlWidth, "Globe", b -> setGlobe(true), () -> globe);
+        button(layout.controlX(0), layout.controlTop(0), controlWidth, tr("flat"), b -> setGlobe(false), () -> !globe);
+        viewButton = button(layout.controlX(1), layout.controlTop(1), controlWidth, tr("globe"), b -> setGlobe(true), () -> globe);
         button(layout.controlX(2), layout.controlTop(2), controlWidth, "-", b -> zoom(1 / 1.5));
         button(layout.controlX(3), layout.controlTop(3), controlWidth, "+", b -> zoom(1.5));
-        button(layout.controlX(0), layout.controlBottom(0), controlWidth, "You", b -> focusPlayer());
-        button(layout.controlX(1), layout.controlBottom(1), controlWidth, "All", b -> resetView());
-        button(layout.controlX(2), layout.controlBottom(2), controlWidth, "Grid", b -> { showChunks = !showChunks; showPlaces = showChunks; }, () -> showChunks);
+        button(layout.controlX(0), layout.controlBottom(0), controlWidth, tr("you"), b -> focusPlayer());
+        button(layout.controlX(1), layout.controlBottom(1), controlWidth, tr("all"), b -> resetView());
+        var overlayButton = button(layout.controlX(2), layout.controlBottom(2), controlWidth, overlayLabel(), b -> {
+            overlayMode = (overlayMode + 1) % 4; b.setMessage(Component.literal(overlayLabel()));
+        }, () -> overlayMode != 0);
+        overlayButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.layers_tip")));
         var cornerButton = button(layout.controlX(3), layout.controlBottom(3), controlWidth, cornerLabel(), b -> {
             AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel()));
         });
-        cornerButton.setTooltip(Tooltip.create(Component.literal("Minimap corner: TR, TL, BR, BL. Click to move.")));
-        button(panelX, top + 28, 44, "Biomes", b -> changeTab(0), () -> tab == 0);
+        cornerButton.setTooltip(Tooltip.create(Component.literal(tr("corner_tip"))));
+        button(panelX, top + 28, 44, tr("biomes"), b -> changeTab(0), () -> tab == 0);
         button(panelX + 48, top + 28, panelWidth - 90, Component.translatable("orbis.atlas.structures").getString(), b -> changeTab(1), () -> tab == 1);
-        button(right - 46, top + 28, 38, "Stats", b -> changeTab(2), () -> tab == 2);
+        button(right - 46, top + 28, 38, tr("stats"), b -> changeTab(2), () -> tab == 2);
         var sizeButton = button(right - 119, top + 5, 66, sizeLabel(), b -> {
             AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel()));
         });
         sizeButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.size_tip")));
-        scanButton = button(right - 68, bottom - 22, 60, "Sample", b -> {
+        scanButton = button(right - 68, bottom - 22, 60, tr("sample"), b -> {
             if (data != null) {
                 DebugSurvey.act(tab == 1 ? DebugSurvey.Action.STRUCTURES : DebugSurvey.Action.BIOMES);
             }
         });
-        scanButton.setTooltip(Tooltip.create(Component.literal("Check this world without loading terrain.")));
+        scanButton.setTooltip(Tooltip.create(Component.literal(tr("check_tip"))));
         int half = (panelWidth - 4) / 2;
         detailButton = button(panelX, bottom - 44, half, "", b -> {
             if (data != null) DebugSurvey.act(tab == 1 ? DebugSurvey.Action.COUNT : DebugSurvey.Action.MAP);
         });
-        resetButton = button(panelX + half + 4, bottom - 44, panelWidth - half - 4, "Resample", b -> {
+        resetButton = button(panelX + half + 4, bottom - 44, panelWidth - half - 4, tr("resample"), b -> {
             if (data != null) DebugSurvey.act(tab == 1 ? DebugSurvey.Action.RESET_STRUCTURES : DebugSurvey.Action.RESAMPLE);
         });
-        filterButton = button(panelX, top + 86, half, "All", b -> {
+        filterButton = button(panelX, top + 86, half, tr("all"), b -> {
             filter = BiomeOverview.Filter.values()[(filter.ordinal() + 1) % BiomeOverview.Filter.values().length];
             page = 0; updateRows();
         });
-        filterButton.setTooltip(Tooltip.create(Component.literal("Filter the checklist.")));
-        sortButton = button(panelX + half + 4, top + 86, panelWidth - half - 4, "Name", b -> {
+        filterButton.setTooltip(Tooltip.create(Component.literal(tr("filter_tip"))));
+        sortButton = button(panelX + half + 4, top + 86, panelWidth - half - 4, tr("name"), b -> {
             sort = sort == BiomeOverview.Sort.NAME ? BiomeOverview.Sort.HITS : BiomeOverview.Sort.NAME;
             page = 0; updateRows();
         });
-        sortButton.setTooltip(Tooltip.create(Component.literal("Sort by name, sample hits or discovery status.")));
+        sortButton.setTooltip(Tooltip.create(Component.literal(tr("sort_tip"))));
         int rowHeight = tab != 2 ? 16 : 23;
         for (int y = top + (tab != 2 ? 116 : 110); y + rowHeight <= bottom - 48; y += rowHeight) {
             final int row = rows.size();
             rows.add(addRenderableWidget(new AtlasButton(panelX, y, panelWidth, rowHeight - 1, "", b -> {
                 int index = page * rows.size() + row;
-                if (index < rowPlaces.size() && rowPlaces.get(index) != null) focus(rowPlaces.get(index));
+                if (index < entries.size() && entries.get(index).place() != null) focus(entries.get(index).place());
             }, () -> {
                 int index = page * rows.size() + row;
-                return selected != null && index < rowPlaces.size() && selected.equals(rowPlaces.get(index));
+                return selected != null && index < entries.size() && selected.equals(entries.get(index).place());
             }, true)));
         }
         previousButton = button(panelX, bottom - 22, 18, "<", b -> movePage(-1));
         nextButton = button(panelX + 20, bottom - 22, 18, ">", b -> movePage(1));
-        button(right - 49, top + 5, 41, "Close", b -> onClose());
+        button(right - 49, top + 5, 41, tr("close"), b -> onClose());
         if (minecraft.level != null && minecraft.player != null) {
             String current = minecraft.level.dimension().identifier().toString();
             if (!current.equals(dimension)) {
@@ -112,8 +112,10 @@ final class OrbisDebugScreen extends Screen {
         updateRows();
     }
 
+    private String overlayLabel() { return tr(new String[]{"layers_off", "layers_chunks", "layers_places", "layers_both"}[overlayMode]); }
+    private static String tr(String key, Object... args) { return Component.translatable("orbis.atlas." + key, args).getString(); }
     private static String sizeLabel() { return Component.translatable("orbis.atlas.size").getString() + ": " + new String[]{"S", "M", "L"}[AtlasPreferences.sizeIndex()]; }
-    private static String cornerLabel() { return new String[]{"TR", "TL", "BR", "BL"}[AtlasPreferences.corner()]; }
+    private static String cornerLabel() { return tr(new String[]{"corner_tr", "corner_tl", "corner_br", "corner_bl"}[AtlasPreferences.corner()]); }
     private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(dimension, value); }
     private Button button(int x, int y, int w, String label, Button.OnPress action) {
         return button(x, y, w, label, action, () -> false);
@@ -140,93 +142,95 @@ final class OrbisDebugScreen extends Screen {
     }
     private void changeTab(int value) { tab = value; page = 0; rebuildWidgets(); }
     private void movePage(int step) {
-        page = Math.clamp(page + step, 0, Math.max(0, (rowLabels.size() - 1) / Math.max(1, rows.size())));
+        page = Math.clamp(page + step, 0, Math.max(0, (entries.size() - 1) / Math.max(1, rows.size())));
         updateRows();
     }
     private void updateRows() {
-        List<String> labels = new ArrayList<>(), values = new ArrayList<>(), tips = new ArrayList<>();
-        List<Integer> colors = new ArrayList<>();
-        List<DebugSnapshot.Place> places = new ArrayList<>();
+        List<AtlasRow> nextEntries = new ArrayList<>();
         if (data != null) {
             coverage = BiomeOverview.counts(data.biomes());
             scanButton.active = data.wrapped() && data.error().isEmpty();
             var work = data.search().progress();
             boolean allFound = data.search().allFound();
-            scanButton.setMessage(Component.literal(tab == 1 ? data.structuresScanning() ? "Pause" : "Check"
-                    : work.running() ? "Pause" : allFound ? "Found" : work.cursor() < work.limit() ? "Resume"
-                    : work.limit() < AtlasSearch.MAX ? "Search+" : "Done"));
+            scanButton.setMessage(Component.literal(tab == 1 ? data.structuresScanning() ? tr("pause") : tr("check")
+                    : work.running() ? tr("pause") : allFound ? tr("found") : work.cursor() < work.limit() ? tr("resume")
+                    : work.limit() < AtlasSearch.MAX ? tr("search_more") : tr("done")));
             if (tab != 1 && !work.running() && (allFound || work.cursor() == AtlasSearch.MAX)) scanButton.active = false;
             scanButton.setTooltip(Tooltip.create(Component.literal(tab == 1
-                    ? "Check existence: up to 256 more candidate positions. Stop when all types, including portal rooms, are found. Counts remain lower bounds."
-                    : "Quick biome check: at most 1,024 queries. Search+ adds up to 4,096 queries for missing types. Stops when all expected types are found.")));
+                    ? tr("check_structures_tip")
+                    : tr("check_biomes_tip"))));
             detailButton.active = data.wrapped() && data.error().isEmpty();
-            detailButton.setMessage(Component.literal(tab == 1 ? data.structureCounting() && data.structuresScanning() ? "Counting" : "Count all"
-                    : work.mapping() ? "Pause map" : work.mapCursor() < work.mapLimit() ? "Map: go"
-                    : work.mapCursor() < AtlasSearch.MAP_MAX ? "Map+" : "Map done"));
+            detailButton.setMessage(Component.literal(tab == 1 ? data.structureCounting() && data.structuresScanning() ? tr("counting") : tr("count_all")
+                    : work.mapping() ? tr("pause_map") : work.mapCursor() < work.mapLimit() ? tr("map_go")
+                    : work.mapCursor() < AtlasSearch.MAP_MAX ? tr("map_more") : tr("map_done")));
             if (tab == 1 && data.structureCounting() && data.structuresScanning()
                     || tab != 1 && work.mapCursor() == AtlasSearch.MAP_MAX) detailButton.active = false;
             detailButton.setTooltip(Tooltip.create(Component.literal(tab == 1
-                    ? "Explicit full count across this finite dimension. Can take a long time in large worlds. Pause with Pause; Count all resumes it. Completed counts restart."
-                    : "Independent map preview: 256 coarse queries automatically. Map+ refines it with 65,536 surface queries. This does not require completing the biome checklist.")));
-            resetButton.active = data.wrapped() && data.error().isEmpty();
+                    ? tr("count_tip")
+                    : tr("map_tip"))));
+            resetButton.active = data.wrapped();
             resetButton.setTooltip(Tooltip.create(Component.literal(tab == 1
-                    ? "Reset predicted counts and candidate cursors, retain observations, then run a bounded existence check."
-                    : "Restart the small biome search. Retains observations and map detail; does not start full map refinement.")));
+                    ? tr("reset_structures_tip")
+                    : tr("reset_biomes_tip"))));
             viewButton.active = data.wrapped();
             if (!data.wrapped() && globe) setGlobe(false);
             if (tab == 0) for (var biome : BiomeOverview.select(data.biomes(), filter, sort)) {
-                labels.add(displayName(biome.id()));
-                values.add(biome.observed() ? "O" : biome.found() ? "~" : "?");
-                String status = biome.observed() ? "Observed in a loaded chunk" : biome.found() ? "Found by generator sampling" : "Not found yet; existence unconfirmed";
-                tips.add(biome.id() + "\n" + status + "\n" + String.format(Locale.ROOT, "%,d sample queries", biome.sampleHits())
-                        + " across biome search and map preview. Not a chunk count or area measurement.");
-                colors.add(biome.observed() ? ACCENT : biome.found() ? 0xff8dbffa : MUTED);
-                places.add(biome.location());
+                String value = biome.observed() ? "O" : biome.found() ? "~" : "?";
+                String status = biome.observed() ? tr("observed") : biome.found() ? tr("sampled") : tr("unconfirmed_tip");
+                String tip = biome.id() + "\n" + status + "\n" + tr("biome_queries", String.format(Locale.ROOT, "%,d", biome.sampleHits()));
+                nextEntries.add(new AtlasRow(displayName(biome.id()), value, tip,
+                        biome.observed() ? ACCENT : biome.found() ? 0xff8dbffa : MUTED, biome.location()));
             }
             if (tab == 1) for (var entry : data.structures().stream().sorted(sort == BiomeOverview.Sort.NAME
                     ? Comparator.comparing(StructureAudit.Entry::id)
                     : Comparator.comparing(StructureAudit.Entry::found).reversed().thenComparing(StructureAudit.Entry::id)).toList()) {
                 if (filter == BiomeOverview.Filter.FOUND && !entry.found()) continue;
                 if (filter == BiomeOverview.Filter.UNCONFIRMED && entry.found()) continue;
-                labels.add(entry.id().equals(StructureAudit.PORTAL) ? "Stronghold / portal room" : displayName(entry.id()));
-                values.add(entry.countLabel() + " " + (entry.observed() ? "O" : entry.found() ? "~" : "?"));
-                tips.add((entry.id().equals(StructureAudit.PORTAL) ? "Stronghold portal room: counts layouts, not active portals or proof of intact frame blocks.\n" : "") + entry.id() + "\n" + entry.status() + "\n" + entry.countDetails() + (entry.observed() ? "\nObserved in loaded terrain." : "\nGenerator prediction; saved terrain may differ. Not found does not prove absence."));
-                colors.add(entry.observed() ? ACCENT : entry.found() ? 0xff8dbffa : MUTED);
-                places.add(entry.location());
+                String label = entry.id().equals(StructureAudit.PORTAL) ? tr("portal_room") : displayName(entry.id());
+                String value = entry.countLabel() + " " + (entry.observed() ? "O" : entry.found() ? "~" : "?");
+                String tip = (entry.id().equals(StructureAudit.PORTAL) ? tr("portal_tip") + "\n" : "")
+                        + entry.id() + "\n" + entry.status() + "\n" + entry.countDetails() + "\n"
+                        + tr(entry.observed() ? "structure_observed" : "structure_predicted");
+                nextEntries.add(new AtlasRow(label, value, tip, entry.observed() ? ACCENT : entry.found() ? 0xff8dbffa : MUTED, entry.location()));
             }
             // Block-entity sightings supplement structures; they are not expected structure types.
             if (tab == 1 && filter != BiomeOverview.Filter.UNCONFIRMED) for (var place : data.places()) {
                 if (!place.label().equals("End gateway (seen)") && !place.label().equals("End portal block (seen)")) continue;
-                labels.add(place.label()); values.add("O"); colors.add(ACCENT); places.add(place);
-                tips.add(place.label() + "\nAdditional portal observation from a loaded chunk. This is a block observation, not a generated structure type.\nX "
-                        + place.x() + " Y " + place.y() + " Z " + place.z());
+                nextEntries.add(new AtlasRow(place.label(), "O", place.label() + "\n" + tr("portal_seen_tip") + "\nX "
+                        + place.x() + " Y " + place.y() + " Z " + place.z(), ACCENT, place));
             }
             if (tab == 2) for (String[] entry : stats()) {
-                labels.add(entry[0]); values.add(entry[1]); tips.add(entry[0] + ": " + entry[1]);
-                places.add(null); colors.add(MUTED);
+                nextEntries.add(new AtlasRow(entry[0], entry[1], entry[0] + ": " + entry[1], MUTED, null));
             }
         } else { scanButton.active = false; detailButton.active = false; resetButton.active = false; }
-        rowLabels = labels; rowValues = values; rowTips = tips; rowColors = colors; rowPlaces = places;
-        page = Math.clamp(page, 0, Math.max(0, (labels.size() - 1) / Math.max(1, rows.size())));
+        entries = List.copyOf(nextEntries);
+        page = Math.clamp(page, 0, Math.max(0, (entries.size() - 1) / Math.max(1, rows.size())));
         filterButton.visible = tab != 2;
         sortButton.visible = tab != 2;
         filterButton.setMessage(Component.literal(switch (filter) {
-            case ALL -> "Show: all"; case UNCONFIRMED -> "Unconfirmed"; case FOUND -> "Found";
+            case ALL -> tr("show_all"); case UNCONFIRMED -> tr("unconfirmed"); case FOUND -> tr("found");
         }));
-        sortButton.setMessage(Component.literal(sort == BiomeOverview.Sort.NAME ? "Name A-Z" : tab == 1 ? "Found first" : "Samples"));
+        sortButton.setMessage(Component.literal(sort == BiomeOverview.Sort.NAME ? tr("name_sort") : tab == 1 ? tr("found_sort") : tr("samples")));
         previousButton.active = page > 0;
-        nextButton.active = (page + 1) * rows.size() < labels.size();
+        nextButton.active = (page + 1) * rows.size() < entries.size();
         for (int i = 0; i < rows.size(); i++) {
             int index = page * rows.size() + i;
             Button row = rows.get(i);
             // Only locations are interactive. Unknown biomes and statistics are plain text.
-            row.visible = index < labels.size();
+            row.visible = index < entries.size();
             if (row.visible) {
-                var place = places.get(index);
-                row.setMessage(Component.literal(tips.get(index) + (place == null ? "" : ". Center map at " + place.x() + ", " + place.y() + ", " + place.z())));
-                row.setTooltip(Tooltip.create(Component.literal(tips.get(index))));
+                var place = entries.get(index).place();
+                row.active = place != null;
+                row.setMessage(Component.literal(entries.get(index).tooltip() + (place == null ? "" : "\n" + tr("center_at", place.x(), place.y(), place.z()))));
+                row.setTooltip(Tooltip.create(Component.literal(entries.get(index).tooltip())));
             }
         }
+    }
+    private String searchLabel() {
+        var work = data.search().progress();
+        if (!data.wrapped()) return tr("unwrapped");
+        return tr(data.search().allFound() ? "state_found" : work.running() ? "state_searching"
+                : work.cursor() < work.limit() ? "state_paused" : work.limit() == AtlasSearch.MAX ? "state_limit" : "state_pass");
     }
     private static String displayName(String id) {
         String value = id.replace("minecraft:", "").replace("orbis:", "").replace('_', ' ');
@@ -234,9 +238,15 @@ final class OrbisDebugScreen extends Screen {
     }
     private void resetView() {
         if (data == null) return;
+        selected = null;
         centerX = data.minX() + data.span() / 2.0;
         centerZ = data.minZ() + data.span() / 2.0;
         zoom = 1;
+        if (!data.wrapped()) {
+            var bounds = knownBounds();
+            centerX = bounds.centerX(); centerZ = bounds.centerZ();
+            zoom = bounds.zoom(data.span(), mapRight - mapLeft, mapBottom - mapTop);
+        }
         globeZoom = 1;
         yaw = pitch = 0;
     }
@@ -257,8 +267,17 @@ final class OrbisDebugScreen extends Screen {
     }
     private void zoom(double factor) {
         if (globe) globeZoom = Math.clamp(globeZoom * factor, .5, 12);
-        else zoom = Math.clamp(zoom * factor, 1, data == null ? 1 : Math.max(1, 8.0 * data.span() / Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop))));
+        else zoom = Math.clamp(zoom * factor, minimumZoom(), data == null ? 1 : Math.max(1, 8.0 * data.span() / Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop))));
         constrainView();
+    }
+    private AtlasViewBounds knownBounds() {
+        int x = minecraft.player == null ? data.playerX() : minecraft.player.getBlockX();
+        int z = minecraft.player == null ? data.playerZ() : minecraft.player.getBlockZ();
+        return AtlasViewBounds.known(data.chunks(), waypoints.points(), x, z);
+    }
+    private double minimumZoom() {
+        if (data == null || data.wrapped()) return 1;
+        return Math.min(1, knownBounds().zoom(data.span(), mapRight - mapLeft, mapBottom - mapTop));
     }
     private void constrainView() {
         if (data == null || !data.wrapped() || globe) return;
@@ -281,14 +300,14 @@ final class OrbisDebugScreen extends Screen {
         g.fill(panelX - 8, top + 25, right - 1, bottom - 1, 0x80333333);
         g.text(font, "ORBIS", mapLeft, top + 10, ACCENT, false);
         g.text(font, "Atlas", mapLeft + 38, top + 10, TEXT, false);
-        if (right - left > 560 && data != null) g.text(font, data.preset(), mapLeft + 78, top + 10, MUTED, false);
+        if (data != null) g.text(font, ellipsis(data.wrapped() ? tr("blocks_chunks", String.format(Locale.ROOT, "%,d", data.span()), String.format(Locale.ROOT, "%,d", data.span() / 16)) : tr("unwrapped"), Math.max(0, right - 123 - (mapLeft + 78))), mapLeft + 78, top + 10, MUTED, false);
         // Transparent map margins reuse the window's surface, including outside the globe.
         if (data == null) {
-            g.textWithWordWrap(font, Component.literal("Waiting for the integrated server..."), mapLeft + 6, mapTop + 6, Math.max(40, mapRight - mapLeft - 16), MUTED);
+            g.textWithWordWrap(font, Component.literal(tr("waiting")), mapLeft + 6, mapTop + 6, Math.max(40, mapRight - mapLeft - 16), MUTED);
         } else {
             g.enableScissor(mapLeft, mapTop, mapRight, mapBottom);
             mapTexture.draw(g, data, new DebugMapRaster.View(mapRight - mapLeft, mapBottom - mapTop, centerX, centerZ,
-                    globe ? globeZoom : scale(), globe, yaw, pitch, showChunks, showPlaces), mapLeft, mapTop);
+                    globe ? globeZoom : scale(), globe, yaw, pitch, (overlayMode & 1) != 0, (overlayMode & 2) != 0), mapLeft, mapTop);
             for (var waypoint : waypoints.points()) marker(g, waypoint.x(), waypoint.z(), "+", 0xffffd279);
             if (minecraft.player != null) marker(g, minecraft.player.getX(), minecraft.player.getZ(), "P", 0xffffffff);
             if (selected != null) marker(g, selected.x(), selected.z(), "X", ACCENT);
@@ -296,8 +315,8 @@ final class OrbisDebugScreen extends Screen {
                 g.fill(mapLeft, mapBottom - 25, mapRight, mapBottom, 0xe0101923);
                 g.text(font, ellipsis(displayName(selected.label()), mapRight - mapLeft - 12), mapLeft + 4, mapBottom - 22, ACCENT, false);
                 g.text(font, "X " + selected.x() + "  Y " + selected.y() + "  Z " + selected.z(), mapLeft + 4, mapBottom - 11, TEXT, false);
-            } else if (data.surveyDone() == 0) {
-                g.text(font, ellipsis("Building coarse biome preview", mapRight - mapLeft - 12), mapLeft + 6, mapTop + 6, MUTED, false);
+            } else if (data.wrapped() && data.search().progress().mapping() && data.search().progress().mapCursor() < AtlasSearch.MAP_COARSE) {
+                g.text(font, ellipsis(tr("building_preview"), mapRight - mapLeft - 12), mapLeft + 6, mapTop + 6, MUTED, false);
             }
             g.disableScissor();
             int panelWidth = right - panelX - 8;
@@ -305,62 +324,62 @@ final class OrbisDebugScreen extends Screen {
             if (tab == 1) {
                 long found = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL) && e.found()).count();
                 long expected = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL)).count();
-                g.text(font, found + " / " + expected + " structure types", panelX, top + 59, ACCENT, false);
+                g.text(font, ellipsis(tr("structures_found", found, expected), panelWidth), panelX, top + 59, ACCENT, false);
                 g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 71, MUTED, false);
-                g.text(font, "N+ = partial / ~ predicted", panelX, top + 106, MUTED, false);
+                g.text(font, ellipsis(tr("structure_legend"), panelWidth), panelX, top + 106, MUTED, false);
                 g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
                 if (expected > 0) g.fill(panelX, top + 82, panelX + (int) (panelWidth * found / expected), top + 83, ACCENT);
             } else {
-                g.text(font, coverage.found() + " / " + coverage.total() + " biomes found", panelX, top + 59, ACCENT, false);
-                String state = !data.error().isEmpty() ? "Error" : data.search().label();
-                g.text(font, ellipsis(coverage.unknown() + " unconfirmed / " + state, panelWidth), panelX, top + 71, MUTED, false);
+                g.text(font, ellipsis(tr("biomes_found", coverage.found(), coverage.total()), panelWidth), panelX, top + 59, ACCENT, false);
+                String state = !data.error().isEmpty() ? tr("error") : searchLabel();
+                g.text(font, ellipsis(tr("unknown_state", coverage.unknown(), state), panelWidth), panelX, top + 71, MUTED, false);
                 g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
-                g.fill(panelX, top + 82, panelX + (int) ((long) panelWidth * data.surveyDone() / data.surveyTotal()), top + 83, ACCENT);
+                g.fill(panelX, top + 82, panelX + (int) ((long) panelWidth * data.search().progress().cursor() / data.search().progress().limit()), top + 83, ACCENT);
             }
-            if (tab == 2) g.text(font, "World / " + data.preset(), panelX, top + 92, TEXT, false);
+            if (tab == 2) g.text(font, ellipsis(tr("world", data.preset()), panelWidth), panelX, top + 92, TEXT, false);
             if (tab == 0) {
-                g.text(font, "O: observed / ~: predicted", panelX + 4, top + 106, MUTED, false);
+                g.text(font, ellipsis(tr("biome_legend"), panelWidth - 4), panelX + 4, top + 106, MUTED, false);
                 if (mx >= panelX && my >= top + 48 && my < top + 84)
-                    tip(g, "Current dimension: " + data.dimension() + "\nExpected biomes come from this dimension's generator, including mod biomes. A completed sample does not prove completeness. Unconfirmed does not mean absent.", mx, my);
+                    tip(g, tr("dimension_tip", data.dimension()), mx, my);
             }
             g.fill(panelX, top + (tab != 2 ? 114 : 107), right - 8, top + (tab != 2 ? 115 : 108), 0xff777777);
-            if (rowLabels.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? "No biomes match this filter." : "No entries match this filter."), panelX + 4, top + (tab != 2 ? 122 : 115), panelWidth - 8, MUTED);
-            String pagination = (page + 1) + " / " + Math.max(1, (rowLabels.size() + Math.max(1, rows.size()) - 1) / Math.max(1, rows.size()));
+            if (entries.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? tr("no_biomes") : tr("no_entries")), panelX + 4, top + (tab != 2 ? 122 : 115), panelWidth - 8, MUTED);
+            String pagination = (page + 1) + " / " + Math.max(1, (entries.size() + Math.max(1, rows.size()) - 1) / Math.max(1, rows.size()));
             if (font.width(pagination) < panelWidth - 112) g.text(font, pagination, panelX + 44, bottom - 17, MUTED, false);
             if (!globe && inside(mx, my)) {
                 int x = (int) Math.floor(centerX + (mx - midX()) / scale());
                 int z = (int) Math.floor(centerZ + (my - midY()) / scale());
                 String coordinate = "X " + x + "   Z " + z;
-                if (data.loaded().contains(ChunkPos.pack(x >> 4, z >> 4))) coordinate += "   loaded";
+                if (data.loaded().contains(ChunkPos.pack(x >> 4, z >> 4))) coordinate += "   " + tr("loaded");
                 g.text(font, ellipsis(coordinate, mapRight - mapLeft - 4), mapLeft, mapBottom + 5, MUTED, false);
-            } else g.text(font, ellipsis(globe ? "Right-click: waypoint / drag: rotate" : "Right-click: waypoint / drag: pan", mapRight - mapLeft - 4), mapLeft, mapBottom + 5, MUTED, false);
+            } else g.text(font, ellipsis(globe ? tr("drag_globe") : tr("drag_flat"), mapRight - mapLeft - 4), mapLeft, mapBottom + 5, MUTED, false);
         }
         super.extractRenderState(g, mx, my, delta);
         // Text is rendered independently of navigation widgets, including all read-only entries.
         for (int i = 0; i < rows.size(); i++) {
             int index = page * rows.size() + i;
-            if (index >= rowLabels.size()) break;
+            if (index >= entries.size()) break;
             int y = rows.get(i).getY();
             if (tab != 2) {
-                int color = rowColors.get(index);
+                int color = entries.get(index).color();
                 g.outline(panelX + 3, y + 3, 8, 8, color);
-                if (rowPlaces.get(index) != null) {
+                if (entries.get(index).place() != null) {
                     // Pixel checkmark works with every language/font resource pack.
                     g.fill(panelX + 4, y + 6, panelX + 6, y + 8, color);
                     g.fill(panelX + 6, y + 7, panelX + 7, y + 9, color);
                     g.fill(panelX + 7, y + 5, panelX + 8, y + 8, color);
                     g.fill(panelX + 8, y + 4, panelX + 10, y + 6, color);
                 }
-                int valueX = right - 12 - font.width(rowValues.get(index));
-                g.text(font, ellipsis(rowLabels.get(index), valueX - panelX - 20), panelX + 15, y + 3, TEXT, false);
-                g.text(font, rowValues.get(index), valueX, y + 3, color, false);
+                int valueX = right - 12 - font.width(entries.get(index).value());
+                g.text(font, ellipsis(entries.get(index).label(), valueX - panelX - 20), panelX + 15, y + 3, TEXT, false);
+                g.text(font, entries.get(index).value(), valueX, y + 3, color, false);
             } else {
-                g.text(font, ellipsis(rowLabels.get(index), right - panelX - 18), panelX + 4, y + 2, tab == 2 ? MUTED : TEXT, false);
-                g.text(font, ellipsis(rowValues.get(index), right - panelX - 18), panelX + 4, y + 12, tab == 2 ? TEXT : MUTED, false);
+                g.text(font, ellipsis(entries.get(index).label(), right - panelX - 18), panelX + 4, y + 2, tab == 2 ? MUTED : TEXT, false);
+                g.text(font, ellipsis(entries.get(index).value(), right - panelX - 18), panelX + 4, y + 12, tab == 2 ? TEXT : MUTED, false);
             }
             if (mx >= panelX && mx < right - 8 && my >= y && my < y + rows.get(i).getHeight()) {
-                var place = rowPlaces.get(index);
-                tip(g, rowTips.get(index) + (place == null ? "" : "\nSelect to locate " + rowLabels.get(index)), mx, my);
+                var place = entries.get(index).place();
+                tip(g, entries.get(index).tooltip() + (place == null ? "" : "\n" + tr("select_locate", entries.get(index).label())), mx, my);
             }
         }
     }
@@ -368,6 +387,7 @@ final class OrbisDebugScreen extends Screen {
         g.setTooltipForNextFrame(font, font.split(Component.literal(message), Math.min(180, Math.max(80, width / 3))), x, y);
     }
     private String ellipsis(String value, int available) {
+        if (available < font.width("...")) return "";
         return font.width(value) <= available ? value : font.plainSubstrByWidth(value, Math.max(0, available - font.width("..."))) + "...";
     }
     @Override public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {}
@@ -403,26 +423,28 @@ final class OrbisDebugScreen extends Screen {
     }
     private void toggleWaypoint(DebugSnapshot.Place point) {
         if (!waypoints.toggle(point, 0) && minecraft.player != null)
-            minecraft.player.sendSystemMessage(Component.literal("Waypoint could not be saved (limit: 128 per dimension)."));
+            minecraft.player.sendSystemMessage(Component.literal(tr("waypoint_failed")));
     }
     private List<String[]> stats() {
-        return List.of(new String[]{"Preset (matched by width)", data.preset()},
-                new String[]{"Dimension", data.dimension()}, new String[]{"Seed", Long.toString(data.seed())},
-                new String[]{"World width", data.wrapped() ? String.format(Locale.ROOT, "%,d blocks / %,d chunks", data.span(), data.span() / 16) : "Unwrapped"},
-                new String[]{"Loaded / mapped chunks", data.loaded().size() + " / " + data.chunks().size()},
-                new String[]{"Observed / sampled biomes", coverage.observed() + " / " + coverage.sampled()},
-                new String[]{"Server tick", String.format(Locale.ROOT, "%.1f ms", data.tickMillis())},
-                new String[]{"Map refresh", String.format(Locale.ROOT, "%.2f ms", mapTexture.updateMillis())},
-                new String[]{"Terrain layer", minecraft.level != null && minecraft.level.dimensionType().hasCeiling() ? "Y 32 / biome-tinted" : "Surface"},
-                new String[]{"Map texture", mapTexture.resolution()}, new String[]{"Texture uploads", Integer.toString(mapTexture.uploads())},
-                new String[]{"Biome search", data.surveyDone() + " / " + data.surveyTotal() + " queries / " + data.search().label()},
-                new String[]{"Map preview", data.search().progress().mapCursor() + " / " + data.search().progress().mapLimit() + " queries"},
-                new String[]{"Structure positions checked", String.format(Locale.ROOT, "%,d", data.structureChecks())},
-                new String[]{"Structure check", data.structureState()},
-                new String[]{"Queries completed", String.format(Locale.ROOT, "%,d / %,d", data.surveyDone(), data.surveyTotal())},
-                new String[]{"Cache", DebugSurvey.cacheStatus},
-                new String[]{"History", data.historyLimited() ? "Capped; old entries evicted" : "Persistent (bounded)"},
-                new String[]{"Survey status", data.error().isEmpty() ? "OK / world keeps running" : data.error()});
+        return List.of(new String[]{tr("preset"), data.preset()},
+                new String[]{tr("dimension"), data.dimension()},
+                new String[]{tr("bounds"), data.wrapped() ? tr("bounds_value", data.minX(), (long) data.minX() + data.span(), data.minZ(), (long) data.minZ() + data.span()) : tr("unwrapped")}, new String[]{tr("seed"), Long.toString(data.seed())},
+                new String[]{tr("world_width"), data.wrapped() ? tr("blocks_chunks", String.format(Locale.ROOT, "%,d", data.span()), String.format(Locale.ROOT, "%,d", data.span() / 16)) : tr("unwrapped")},
+                new String[]{tr("mapped_chunks"), data.loaded().size() + " / " + data.chunks().size()},
+                new String[]{tr("observed_biomes"), coverage.observed() + " / " + coverage.sampled()},
+                new String[]{tr("server_tick"), String.format(Locale.ROOT, "%.1f ms", data.tickMillis())},
+                new String[]{tr("map_refresh"), String.format(Locale.ROOT, "%.2f ms", mapTexture.updateMillis())},
+                new String[]{tr("terrain_layer"), minecraft.level != null && minecraft.level.dimensionType().hasCeiling() ? tr("terrain_ceiling") : tr("surface")},
+                new String[]{tr("map_texture"), mapTexture.resolution()}, new String[]{tr("uploads"), Integer.toString(mapTexture.uploads())},
+                new String[]{tr("biome_search"), tr("queries", data.search().progress().cursor(), data.search().progress().limit()) + " / " + searchLabel()},
+                new String[]{tr("map_preview"), tr("queries", data.search().progress().mapCursor(), data.search().progress().mapLimit())},
+                new String[]{tr("structure_positions"), String.format(Locale.ROOT, "%,d", data.structureChecks())},
+                new String[]{tr("structure_check"), data.structureState()},
+                new String[]{tr("cache"), DebugSurvey.cacheStatus},
+                new String[]{tr("preferences"), AtlasPreferences.status().isEmpty() ? tr("saved") : AtlasPreferences.status()},
+                new String[]{tr("waypoints"), waypoints.status().isEmpty() ? tr("saved") : waypoints.status()},
+                new String[]{tr("history"), data.historyLimited() ? tr("history_capped") : tr("persistent")},
+                new String[]{tr("survey_status"), data.error().isEmpty() ? tr("status_ok") : data.error()});
     }
     private boolean inside(double x, double y) { return x >= mapLeft && x < mapRight && y >= mapTop && y < mapBottom; }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
@@ -505,12 +527,7 @@ final class OrbisDebugScreen extends Screen {
         else { centerX += dx * 24 / scale(); centerZ += dz * 24 / scale(); }
     }
     @Override public Component getNarrationMessage() {
-        if (tab == 1 && data != null) return Component.literal("Orbis structures. " + data.structureState()
-                + ". Current dimension's structure types and End portal room layouts. Predicted locations use the current generator; saved terrain may differ. "
-                + "Check structures to search, or pause and resume. Unconfirmed is not absent. Select a found place to center it.");
-        return Component.literal("Orbis debug atlas. " + coverage.found() + " of " + coverage.total() + " dimension biomes found. "
-                + coverage.unknown() + " unconfirmed. W A S D move the map. Plus and minus zoom. Home centers the player. "
-                + "Page up and page down browse the list. Right click adds or removes a waypoint at the player height. Tab selects controls. Escape closes. "
-                + "Biome symbols: checkmark found, O observed, tilde predicted, question mark unconfirmed. The world continues running.");
+        if (tab == 1 && data != null) return Component.translatable("orbis.atlas.narration_structures", data.structureState());
+        return Component.translatable("orbis.atlas.narration_atlas", coverage.found(), coverage.total(), coverage.unknown());
     }
 }
