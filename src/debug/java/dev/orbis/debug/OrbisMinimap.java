@@ -34,25 +34,10 @@ final class OrbisMinimap implements AutoCloseable {
         texture.draw(g, data, new DebugMapRaster.View(size, size, x, z, globe ? 1 : scale,
                 globe, yaw, pitch, false, false), left, top);
         g.enableScissor(left, top, left + size, top + size);
-        for (var point : AtlasWaypoints.SHARED.points()) {
-            double[] p = project(data, point.x(), point.z(), x, z, size, scale, globe, yaw, pitch);
-            if (p == null) continue;
-            int px = left + (int) p[0], py = top + (int) p[1];
-            g.outline(px - 2, py - 2, 5, 5, 0xffffd279);
-        }
         double[] player = project(data, client.player.getX(), client.player.getZ(), x, z, size, scale, globe, yaw, pitch);
-        if (player != null) {
-            int px = left + (int) player[0], py = top + (int) player[1];
-            g.fill(px - 2, py - 2, px + 3, py + 3, 0xff101820);
-            g.fill(px - 1, py - 1, px + 2, py + 2, 0xffffffff);
-            // Direction marker uses the same projection as the terrain, including globe rotation.
-            double angle = Math.toRadians(client.player.getYRot());
-            double ahead = globe ? data.span() / 80.0 : 12;
-            double[] facing = project(data, client.player.getX() - Math.sin(angle) * ahead,
-                    client.player.getZ() + Math.cos(angle) * ahead, x, z, size, scale, globe, yaw, pitch);
-            if (facing != null) g.fill(left + (int) facing[0] - 1, top + (int) facing[1] - 1,
-                    left + (int) facing[0] + 2, top + (int) facing[1] + 2, 0xff70dfbd);
-        }
+        if (player != null) AtlasPlayerMarker.draw(g, left + (int) player[0], top + (int) player[1],
+                AtlasPlayerMarker.direction(globe, (client.player.getX() - data.minX()) / data.span(),
+                        (client.player.getZ() - data.minZ()) / data.span(), yaw, pitch, client.player.getYRot()));
         g.disableScissor();
         label(g, "N", left + size / 2, top - 11);
         label(g, net.minecraft.network.chat.Component.translatable("orbis.atlas.east").getString(), left + size + 8, top + size / 2 - 4);

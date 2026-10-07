@@ -53,9 +53,8 @@
   "orbis.atlas.biome_legend": "O: beobachtet / ~: vorhergesagt",
   "orbis.atlas.no_biomes": "Keine Biome entsprechen diesem Filter.",
   "orbis.atlas.no_entries": "Keine passenden Einträge.",
-  "orbis.atlas.drag_globe": "Rechtsklick: Wegpunkt / Ziehen: drehen",
-  "orbis.atlas.drag_flat": "Rechtsklick: Wegpunkt / Ziehen: verschieben",
-  "orbis.atlas.waypoint_failed": "Wegpunkt konnte nicht gespeichert werden (maximal 128 je Dimension).",
+  "orbis.atlas.drag_globe": "Ziehen: drehen � Pos1: Spieler zentrieren",
+  "orbis.atlas.drag_flat": "Ziehen: verschieben � Pos1: Spieler zentrieren",
   "orbis.atlas.preset": "Oberwelt-Vorlage (nach Breite)",
   "orbis.atlas.dimension": "Dimension",
   "orbis.atlas.seed": "Seed",
@@ -79,6 +78,7 @@
   "orbis.atlas.history": "Verlauf",
   "orbis.atlas.history_capped": "Begrenzt; ältere Einträge entfernt",
   "orbis.atlas.persistent": "Gespeichert (begrenzt)",
+  "orbis.atlas.terrain_archived": "Detailarchiv aktiv",
   "orbis.atlas.survey_status": "Prüfstatus",
   "orbis.atlas.status_ok": "OK / Welt läuft weiter",
   "orbis.atlas.layers_off": "Aus",
@@ -105,7 +105,6 @@
   "orbis.atlas.bounds": "Kanonische X-/Z-Grenzen",
   "orbis.atlas.bounds_value": "X [%s, %s) / Z [%s, %s)",
   "orbis.atlas.preferences": "Einstellungen",
-  "orbis.atlas.waypoints": "Wegpunkte",
   "orbis.atlas.corner_tr": "OR",
   "orbis.atlas.corner_tl": "OL",
   "orbis.atlas.corner_br": "UR",
@@ -116,5 +115,8 @@
   "orbis.atlas.state_limit": "Limit erreicht",
   "orbis.atlas.state_pass": "Durchlauf fertig",
   "orbis.atlas.narration_structures": "Orbis-Strukturen. %s. Strukturtypen und Endportalraum-Layouts dieser Dimension. Vorhersagen verwenden den aktuellen Generator; gespeichertes Gelände kann abweichen. Suche starten, pausieren oder fortsetzen. Unbestätigt bedeutet nicht abwesend. Einen Fund zum Zentrieren auswählen.",
-  "orbis.atlas.narration_atlas": "Orbis-Atlas. %s von %s Biomen gefunden; %s unbestätigt. W A S D bewegt die Karte. Plus und Minus zoomen. Pos1 zentriert den Spieler. Bild auf und ab blättert. Rechtsklick setzt oder entfernt einen Wegpunkt auf Spielerhöhe. Tab wählt Bedienelemente. Escape schliesst. O bedeutet beobachtet, Tilde vorhergesagt, Fragezeichen unbestätigt. Die Welt läuft weiter."
+  "orbis.atlas.narration_atlas": "Orbis-Atlas. %s von %s Biomen gefunden; %s unbestätigt. W A S D bewegt die Karte. Plus und Minus zoomen. Pos1 zentriert den Spieler. Bild auf und ab blättert.Tab wählt Bedienelemente. Escape schliesst. O bedeutet beobachtet, Tilde vorhergesagt, Fragezeichen unbestätigt. Die Welt läuft weiter.",
+  "orbis.atlas.follow_on": "Folgen: An",
+  "orbis.atlas.follow_off": "Folgen: Aus",
+  "orbis.atlas.follow_tip": "H�lt den Spieler in der Mitte. Ziehen oder WASD schaltet das Folgen aus. Pos1 aktiviert es wieder."
 }

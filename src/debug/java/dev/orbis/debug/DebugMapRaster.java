@@ -15,6 +15,7 @@ final class DebugMapRaster {
     private double leftWorld, rightWorld, topWorld, bottomWorld;
     private View view;
     private DebugSnapshot data;
+    private int[] archived;
     private java.util.List<DebugSnapshot.Cell> indexedChunks;
     private final java.util.Map<Long, DebugSnapshot.Cell> terrain = new java.util.HashMap<>();
     private double[] globeU, globeV;
@@ -27,8 +28,12 @@ final class DebugMapRaster {
         pixels = new int[width * height];
     }
     int[] render(DebugSnapshot data, View view) {
+        return render(data, view, null);
+    }
+    int[] render(DebugSnapshot data, View view, int[] archived) {
         this.data = data;
         this.view = view;
+        this.archived = archived;
         if (indexedChunks != data.chunks()) {
             indexedChunks = data.chunks();
             terrain.clear();
@@ -68,14 +73,28 @@ final class DebugMapRaster {
             Integer color = data.surveyColors().get(iz * DebugSurvey.GRID + ix);
             if (color != null) worldFill(data.minX() + ix * step, data.minZ() + iz * step, step, color);
         }
-        // Cull chunks before drawing; choose a level appropriate to actual texture pixels.
+        // Sample original block colors at visible pixel centers, regardless of zoom.
+        if (archived != null) for (int i = 0; i < pixels.length; i++) if (archived[i] != 0) pixels[i] = archived[i];
+        // Work stays bounded by screen coverage without replacing terrain with coarse averages.
+        double densityX = view.scale * ratioX, densityY = view.scale * ratioY;
         for (var cell : data.chunks()) {
             double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
             if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
-            double density = view.scale * Math.min(ratioX, ratioY);
-            int stepSize = cell.terrainSize() == 256 && density >= .75 ? 1 : density * 4 >= .75 ? 4 : 16;
-            for (int tz = 0; tz < 16; tz += stepSize) for (int tx = 0; tx < 16; tx += stepSize)
-                worldFill(cx + tx, cz + tz, stepSize, cell.colorAt(tx, tz, stepSize));
+            if (data.wrapped() && (cx < data.minX() || cz < data.minZ()
+                    || cx >= (double) data.minX() + data.span() || cz >= (double) data.minZ() + data.span())) continue;
+            int left = Math.clamp((int) Math.ceil((cx - leftWorld) * densityX - .5), 0, width);
+            int right = Math.clamp((int) Math.ceil((cx + 16 - leftWorld) * densityX - .5), 0, width);
+            int top = Math.clamp((int) Math.ceil((cz - topWorld) * densityY - .5), 0, height);
+            int bottom = Math.clamp((int) Math.ceil((cz + 16 - topWorld) * densityY - .5), 0, height);
+            boolean live = data.loaded().contains(ChunkPos.pack(cell.x(), cell.z()));
+            for (int py = top; py < bottom; py++) {
+                int tz = Math.clamp((int) Math.floor(topWorld + (py + .5) / densityY - cz), 0, 15);
+                for (int px = left; px < right; px++) {
+                    if (!live && archived != null && archived[py * width + px] != 0) continue;
+                    int tx = Math.clamp((int) Math.floor(leftWorld + (px + .5) / densityX - cx), 0, 15);
+                    pixels[py * width + px] = cell.colorAt(tx, tz);
+                }
+            }
         }
         if (view.chunks && 16 * view.scale >= 1) {
             for (long key : data.loaded()) {
@@ -107,10 +126,12 @@ final class DebugMapRaster {
                 int iz = Math.clamp((int) (v * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
                 int color = data.surveyColors().getOrDefault(iz * DebugSurvey.GRID + ix, 0xff283b50);
                 if (data.surveyColors().isEmpty() && (ix % 16 == 0 || iz % 16 == 0)) color = 0xff536779;
+                if (archived != null && archived[index] != 0) color = archived[index];
                 int bx = (int) Math.floor(data.minX() + u * data.span());
                 int bz = (int) Math.floor(data.minZ() + v * data.span());
                 var cell = terrain.get(ChunkPos.pack(bx >> 4, bz >> 4));
-                if (cell != null) color = cell.colorAt(bx, bz, data.span() / (radius * Math.min(ratioX, ratioY) * 2 * Math.PI) < 1.5 ? 1 : 4);
+                if (cell != null && (archived == null || archived[index] == 0
+                        || data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4)))) color = cell.colorAt(bx, bz);
                 if (view.chunks) {
                     if (data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4))) {
                         color = blend(color, LOADED);

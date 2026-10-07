@@ -5,6 +5,53 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DebugTerrainTest {
+    @Test void flatAlwaysUsesOriginalBlockColorsAcrossZoomAndDisplayScales() {
+        var data = fixture(detailedChunks()); // Cached terrain remains detailed after chunks unload.
+        for (int factor : new int[] {1, 2}) for (double scale : new double[] {.125, .5, 1, 2}) {
+            int size = 64 * factor;
+            var view = new DebugMapRaster.View(64, 64, -7.25, 3.25, scale, false, 0, 0, false, false);
+            int[] pixels = new DebugMapRaster(size, size).render(data, view);
+            for (int y = 0; y < size; y++) for (int x = 0; x < size; x++) {
+                int bx = (int) Math.floor(-7.25 + ((x + .5) / factor - 32) / scale);
+                int bz = (int) Math.floor(3.25 + ((y + .5) / factor - 32) / scale);
+                int expected = bx >= -16 && bx < 16 && bz >= -16 && bz < 16
+                        ? blockColor(bx, bz) : DebugMapRaster.BACKGROUND;
+                assertEquals(expected, pixels[y * size + x], "Flat scale=" + scale + " factor=" + factor);
+            }
+        }
+    }
+
+    @Test void globeAlwaysUsesOriginalBlockColorsAcrossZoomAndDisplayScales() {
+        var data = fixture(detailedChunks());
+        for (int factor : new int[] {1, 2}) for (double scale : new double[] {.5, 1, 2}) {
+            int size = 64 * factor;
+            var view = new DebugMapRaster.View(64, 64, 0, 0, scale, true, 0, 0, false, false);
+            int[] pixels = new DebugMapRaster(size, size).render(data, view);
+            for (int y = size / 2 - 1; y <= size / 2; y++) for (int x = size / 2 - 1; x <= size / 2; x++) {
+                double[] uv = DebugMapMath.unproject(((x + .5) / factor - 32) / (28 * scale),
+                        (32 - (y + .5) / factor) / (28 * scale), 0, 0);
+                int bx = (int) Math.floor(-1024 + uv[0] * 2048);
+                int bz = (int) Math.floor(-1024 + uv[1] * 2048);
+                assertEquals(blockColor(bx, bz), pixels[y * size + x], "Globe scale=" + scale + " factor=" + factor);
+            }
+        }
+    }
+
+    private static List<DebugSnapshot.Cell> detailedChunks() {
+        var chunks = new ArrayList<DebugSnapshot.Cell>();
+        for (int cz = -1; cz <= 0; cz++) for (int cx = -1; cx <= 0; cx++) {
+            int[] colors = new int[256];
+            for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
+                colors[z * 16 + x] = blockColor(cx * 16 + x, cz * 16 + z);
+            chunks.add(new DebugSnapshot.Cell(cx, cz, 0xff987654, colors));
+        }
+        return List.copyOf(chunks);
+    }
+
+    private static int blockColor(int x, int z) {
+        return 0xff000000 | ((x + 16) << 16) | ((z + 16) << 8) | ((x + z + 32) & 255);
+    }
+
     @Test void tileCopiesItsPixelsAndAddressesNegativeCoordinates() {
         var colors = new ArrayList<Integer>();
         for (int i = 0; i < 16; i++) colors.add(0xff000000 | i);
@@ -70,15 +117,13 @@ class DebugTerrainTest {
         assertEquals(DebugTerrain.EMPTY_SLICE_COLOR, DebugTerrain.sliceColor(0, false));
     }
 
-    @Test void primitiveTilesOwnTheirPixelsAndCacheLowerResolutionColors() {
+    @Test void primitiveTilesOwnTheirOriginalPixels() {
         int[] pixels = new int[256];
         Arrays.fill(pixels, 0xff123456);
         var cell = new DebugSnapshot.Cell(-1, -1, 0, pixels);
         pixels[0] = 0;
         assertEquals(256, cell.terrainSize());
         assertEquals(0xff123456, cell.colorAt(-16, -16));
-        assertEquals(0xff123456, cell.colorAt(-16, -16, 4));
-        assertEquals(0xff123456, cell.colorAt(-16, -16, 16));
         assertTrue(cell.sameTerrain(new DebugSnapshot.Cell(10, 10, 0, cell.copyTerrain())));
         assertFalse(cell.sameTerrain(new DebugSnapshot.Cell(-1, -1, 0, pixels)));
     }

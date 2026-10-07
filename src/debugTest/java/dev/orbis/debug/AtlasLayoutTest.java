@@ -11,14 +11,15 @@ class AtlasLayoutTest {
                 if (w < 320 || h < 240) continue; // Minecraft's GUI scale floor
                 var layout = AtlasLayout.fit(w, h);
                 assertTrue(layout.mapRight() - layout.mapLeft() >= 86);
+                assertEquals(w / 2.0, (layout.mapLeft() + layout.mapRight()) / 2.0, .5);
+                assertEquals(h / 2.0, (layout.mapTop() + layout.mapBottom()) / 2.0, .5);
                 assertTrue(layout.mapBottom() - layout.mapTop() >= 48);
                 assertTrue(layout.controlWidth() >= 32);
                 assertTrue(layout.top() >= 12 && layout.bottom() <= h - 12);
                 for (int i = 0; i < 4; i++) {
-                    assertTrue(layout.controlX(i) >= layout.mapLeft());
-                    assertTrue(layout.controlX(i) + layout.controlWidth() <= layout.mapRight());
-                    assertTrue(layout.controlTop(i) + 18 < layout.mapTop());
-                    assertTrue(layout.controlBottom(i) > layout.mapBottom());
+                    assertTrue(layout.controlX(i) >= layout.left());
+                    assertTrue(layout.controlX(i) + layout.controlWidth() < layout.mapLeft());
+                    assertTrue(layout.controlTop(i) >= layout.top());
                     assertTrue(layout.controlBottom(i) + 18 < layout.bottom());
                 }
                 assertTrue(layout.top() + 116 + 16 <= layout.bottom() - 28); // at least one checklist row

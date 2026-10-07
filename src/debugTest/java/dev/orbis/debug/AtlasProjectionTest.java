@@ -53,13 +53,12 @@ class AtlasProjectionTest {
         assertEquals(-896, DebugMapMath.clampCenter(-10000, -1024, 2048, 256));
         assertEquals(-1024, DebugMapMath.canonical(1024, -1024, 2048));
     }
-    @Test void exploredBlocksHaveIndividualColorsAndCoarseLevelsAverageThem() {
+    @Test void exploredBlocksHaveIndividualColors() {
         List<Integer> colors = new ArrayList<>(Collections.nCopies(256, 0xff000000));
         colors.set(0, 0xffffffff); colors.set(1, 0xffff0000);
         var cell = new DebugSnapshot.Cell(-1, -1, 0xff00ff00, colors);
-        assertEquals(0xffffffff, cell.colorAt(-16, -16, 1));
-        assertEquals(0xffff0000, cell.colorAt(-15, -16, 1));
-        assertEquals(0xff1f0f0f, cell.colorAt(-16, -16, 4));
+        assertEquals(0xffffffff, cell.colorAt(-16, -16));
+        assertEquals(0xffff0000, cell.colorAt(-15, -16));
         int[] pixels = new DebugMapRaster(64, 64).render(world(Map.of(), List.of(cell)),
                 new DebugMapRaster.View(64, 64, -8, -8, 2, false, 0, 0, false, false));
         assertEquals(0xffffffff, pixels[16 * 64 + 16]);

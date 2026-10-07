@@ -18,12 +18,9 @@ class AtlasWorldIdentityTest {
         assertEquals(identity, AtlasWorldIdentity.resolve(save.resolve("..").resolve("world"), 42));
         assertNotEquals(identity, AtlasWorldIdentity.resolve(save, 43));
         assertNotEquals(identity, AtlasWorldIdentity.resolve(Files.createDirectory(directory.resolve("other")), 42));
-        assertNotEquals(AtlasWorldIdentity.waypointKey(identity, "minecraft:overworld"),
-                AtlasWorldIdentity.waypointKey(identity, "minecraft:the_nether"));
-        assertNull(AtlasWorldIdentity.waypointKey(null, "minecraft:overworld"));
     }
 
-    @Test void newCreationTimeAtTheSamePathDoesNotReuseMarkersOrCache() throws Exception {
+    @Test void newCreationTimeAtTheSamePathDoesNotReuseCache() throws Exception {
         Path save = Files.createDirectory(directory.resolve("world"));
         String before = AtlasWorldIdentity.resolve(save, 42);
         FileTime old = Files.readAttributes(save, BasicFileAttributes.class).creationTime();
@@ -33,7 +30,6 @@ class AtlasWorldIdentityTest {
         assumeTrue(!old.equals(Files.readAttributes(save, BasicFileAttributes.class).creationTime()),
                 "Filesystem does not support updating creation time");
         String after = AtlasWorldIdentity.resolve(save, 42);
-        assertNotEquals(AtlasWorldIdentity.waypointKey(before, "dimension"), AtlasWorldIdentity.waypointKey(after, "dimension"));
         assertNotEquals(AtlasCache.fileFor(directory, before, "dimension"), AtlasCache.fileFor(directory, after, "dimension"));
     }
 

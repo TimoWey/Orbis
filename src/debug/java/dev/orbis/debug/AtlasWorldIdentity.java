@@ -9,7 +9,7 @@ import java.util.Map;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
-/** One immutable save identity shared by predictions and markers; published by the server thread. */
+/** One immutable save identity shared by atlas caches; published by the server thread. */
 final class AtlasWorldIdentity {
     private static final Map<MinecraftServer, String> IDENTITIES = new IdentityHashMap<>();
 
@@ -30,10 +30,6 @@ final class AtlasWorldIdentity {
     static String resolve(Path root, long seed) throws IOException {
         Path real = root.toRealPath();
         return real + "|" + Files.readAttributes(real, BasicFileAttributes.class).creationTime() + "|" + seed;
-    }
-
-    static String waypointKey(String identity, String dimension) {
-        return identity == null ? null : "v2|" + identity + "|" + dimension;
     }
 
     private AtlasWorldIdentity() { }
