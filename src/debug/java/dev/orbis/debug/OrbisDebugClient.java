@@ -35,7 +35,6 @@ public final class OrbisDebugClient implements ClientModInitializer {
                     activeServer = server;
                     activeDimension = dimension;
                     DebugSurvey.open(client.level.dimension(), client.player.getUUID());
-                    AtlasWaypoints.SHARED.open(client, dimension);
 
                 }
             }

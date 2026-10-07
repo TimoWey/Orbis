@@ -15,7 +15,7 @@ final class AtlasFixtures {
                 true, 0, 64, 0, 10, chunks, loaded, List.of(), places, colors, false, "", List.of(),
                 false, 0, "Not checked yet", new AtlasSearch.View(
                         new AtlasSearch.Saved(0, AtlasSearch.QUICK_MAX, false, 0, AtlasSearch.MAP_COARSE, false), false),
-                false, layers);
+                false, layers, null);
     }
     private AtlasFixtures() {}
 }

@@ -11,16 +11,16 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
 import com.mojang.blaze3d.platform.InputConstants;
 
-/** Client atlas window: navigation and local waypoints; the world keeps running. */
+/** Client atlas window: navigation and terrain inspection; the world keeps running. */
 final class OrbisDebugScreen extends Screen {
     private static final int TEXT = 0xffedf3fa, MUTED = 0xffafbecf, ACCENT = 0xff70dfbd;
     private DebugSnapshot data;
     private String dimension;
     private int mapRight, mapBottom, panelX, page, tab;
     private int left, top, right, bottom, mapLeft, mapTop;
-    private final AtlasWaypoints waypoints = AtlasWaypoints.SHARED;
     private double centerX, centerZ, zoom = 1, yaw, pitch;
-    private boolean globe, dragging, initialized;
+    private boolean globe, dragging, initialized, followPlayer = true;
+    private Button followButton;
     private int overlayMode; // Off, chunk grid, structures, both.
     private double globeZoom = 1;
     private Button scanButton, detailButton, resetButton, viewButton, filterButton, sortButton, previousButton, nextButton;
@@ -45,24 +45,28 @@ final class OrbisDebugScreen extends Screen {
         viewButton = button(layout.controlX(1), layout.controlTop(1), controlWidth, tr("globe"), b -> setGlobe(true), () -> globe);
         button(layout.controlX(2), layout.controlTop(2), controlWidth, "-", b -> zoom(1 / 1.5));
         button(layout.controlX(3), layout.controlTop(3), controlWidth, "+", b -> zoom(1.5));
-        button(layout.controlX(0), layout.controlBottom(0), controlWidth, tr("you"), b -> focusPlayer());
-        button(layout.controlX(1), layout.controlBottom(1), controlWidth, tr("all"), b -> resetView());
-        var overlayButton = button(layout.controlX(2), layout.controlBottom(2), controlWidth, overlayLabel(), b -> {
+        followButton = button(left + 8, layout.controlBottom(0), panelWidth, followLabel(), b -> {
+            followPlayer = !followPlayer;
+            if (followPlayer) focusPlayer();
+            updateFollowLabel();
+        }, () -> followPlayer);
+        followButton.setTooltip(Tooltip.create(Component.literal(tr("follow_tip"))));
+        button(left + 8, layout.controlBottom(1), panelWidth, tr("all"), b -> resetView());
+        var overlayButton = button(left + 8, layout.controlBottom(2), panelWidth, overlayLabel(), b -> {
             overlayMode = (overlayMode + 1) % 4; b.setMessage(Component.literal(overlayLabel()));
         }, () -> overlayMode != 0);
         overlayButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.layers_tip")));
-        var cornerButton = button(layout.controlX(3), layout.controlBottom(3), controlWidth, cornerLabel(), b -> {
+        var cornerButton = button(left + 8, layout.controlBottom(3), panelWidth, cornerLabel(), b -> {
             AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel()));
         });
         cornerButton.setTooltip(Tooltip.create(Component.literal(tr("corner_tip"))));
-        button(panelX, top + 28, 44, tr("biomes"), b -> changeTab(0), () -> tab == 0);
-        button(panelX + 48, top + 28, panelWidth - 90, Component.translatable("orbis.atlas.structures").getString(), b -> changeTab(1), () -> tab == 1);
-        button(right - 46, top + 28, 38, tr("stats"), b -> changeTab(2), () -> tab == 2);
-        var sizeButton = button(right - 119, top + 5, 66, sizeLabel(), b -> {
+        button(panelX, top + 28, panelWidth, tr("biomes"), b -> changeTab(0), () -> tab == 0);
+        button(panelX, top + 50, panelWidth, tr("structures"), b -> changeTab(1), () -> tab == 1);
+        var sizeButton = button(left + 8, top + 162, panelWidth, sizeLabel(), b -> {
             AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel()));
         });
         sizeButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.size_tip")));
-        scanButton = button(right - 68, bottom - 22, 60, tr("sample"), b -> {
+        scanButton = button(panelX + 44, bottom - 22, panelWidth - 44, tr("sample"), b -> {
             if (data != null) {
                 DebugSurvey.act(tab == 1 ? DebugSurvey.Action.STRUCTURES : DebugSurvey.Action.BIOMES);
             }
@@ -75,18 +79,18 @@ final class OrbisDebugScreen extends Screen {
         resetButton = button(panelX + half + 4, bottom - 44, panelWidth - half - 4, tr("resample"), b -> {
             if (data != null) DebugSurvey.act(tab == 1 ? DebugSurvey.Action.RESET_STRUCTURES : DebugSurvey.Action.RESAMPLE);
         });
-        filterButton = button(panelX, top + 86, half, tr("all"), b -> {
+        filterButton = button(panelX, top + 108, half, tr("all"), b -> {
             filter = BiomeOverview.Filter.values()[(filter.ordinal() + 1) % BiomeOverview.Filter.values().length];
             page = 0; updateRows();
         });
         filterButton.setTooltip(Tooltip.create(Component.literal(tr("filter_tip"))));
-        sortButton = button(panelX + half + 4, top + 86, panelWidth - half - 4, tr("name"), b -> {
+        sortButton = button(panelX + half + 4, top + 108, panelWidth - half - 4, tr("name"), b -> {
             sort = sort == BiomeOverview.Sort.NAME ? BiomeOverview.Sort.HITS : BiomeOverview.Sort.NAME;
             page = 0; updateRows();
         });
         sortButton.setTooltip(Tooltip.create(Component.literal(tr("sort_tip"))));
         int rowHeight = tab != 2 ? 16 : 23;
-        for (int y = top + (tab != 2 ? 116 : 110); y + rowHeight <= bottom - 48; y += rowHeight) {
+        for (int y = top + (tab != 2 ? 138 : 132); y + rowHeight <= bottom - 48; y += rowHeight) {
             final int row = rows.size();
             rows.add(addRenderableWidget(new AtlasButton(panelX, y, panelWidth, rowHeight - 1, "", b -> {
                 int index = page * rows.size() + row;
@@ -104,7 +108,6 @@ final class OrbisDebugScreen extends Screen {
             if (!current.equals(dimension)) {
                 dimension = current;
                 globe = AtlasPreferences.globe(dimension);
-                waypoints.open(minecraft, dimension);
                 data = null;
                 initialized = false;
             }
@@ -116,7 +119,7 @@ final class OrbisDebugScreen extends Screen {
     private static String tr(String key, Object... args) { return Component.translatable("orbis.atlas." + key, args).getString(); }
     private static String sizeLabel() { return Component.translatable("orbis.atlas.size").getString() + ": " + new String[]{"S", "M", "L"}[AtlasPreferences.sizeIndex()]; }
     private static String cornerLabel() { return tr(new String[]{"corner_tr", "corner_tl", "corner_br", "corner_bl"}[AtlasPreferences.corner()]); }
-    private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(dimension, value); }
+    private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(dimension, value); focusPlayer(); }
     private Button button(int x, int y, int w, String label, Button.OnPress action) {
         return button(x, y, w, label, action, () -> false);
     }
@@ -136,10 +139,13 @@ final class OrbisDebugScreen extends Screen {
         DebugSnapshot latest = DebugSurvey.snapshot;
         if (latest != null && latest != data && latest.dimension().equals(dimension)) {
             data = latest;
-            if (!initialized) { resetView(); initialized = true; }
+            if (!initialized) { resetView(); focusPlayer(); initialized = true; }
             updateRows();
         }
     }
+    private String followLabel() { return tr(followPlayer ? "follow_on" : "follow_off"); }
+    private void updateFollowLabel() { if (followButton != null) followButton.setMessage(Component.literal(followLabel())); }
+    private void stopFollowing() { followPlayer = false; updateFollowLabel(); }
     private void changeTab(int value) { tab = value; page = 0; rebuildWidgets(); }
     private void movePage(int step) {
         page = Math.clamp(page + step, 0, Math.max(0, (entries.size() - 1) / Math.max(1, rows.size())));
@@ -238,6 +244,7 @@ final class OrbisDebugScreen extends Screen {
     }
     private void resetView() {
         if (data == null) return;
+        stopFollowing();
         selected = null;
         centerX = data.minX() + data.span() / 2.0;
         centerZ = data.minZ() + data.span() / 2.0;
@@ -251,10 +258,24 @@ final class OrbisDebugScreen extends Screen {
         yaw = pitch = 0;
     }
     private void focusPlayer() {
-        if (data != null && minecraft.player != null) focus(new DebugSnapshot.Place("Player", minecraft.player.getBlockX(), minecraft.player.getBlockY(), minecraft.player.getBlockZ()));
+        if (data == null || minecraft.player == null) return;
+        followPlayer = true; selected = null; updateFollowLabel();
+        if (!globe) zoom = Math.max(zoom, data.span() / 512.0);
+        centerOnPlayer();
+    }
+    private void centerOnPlayer() {
+        if (data == null || minecraft.player == null) return;
+        centerX = minecraft.player.getX(); centerZ = minecraft.player.getZ();
+        if (data.wrapped()) {
+            centerX = DebugMapMath.canonical(centerX, data.minX(), data.span());
+            centerZ = DebugMapMath.canonical(centerZ, data.minZ(), data.span());
+        }
+        yaw = -(unitX(centerX) - .5) * Math.PI * 2;
+        pitch = (.5 - unitZ(centerZ)) * Math.PI;
     }
     private void focus(DebugSnapshot.Place place) {
         if (data == null) return;
+        stopFollowing();
         selected = place;
         centerX = place.x(); centerZ = place.z();
         yaw = -(unitX(place.x()) - .5) * Math.PI * 2;
@@ -273,14 +294,14 @@ final class OrbisDebugScreen extends Screen {
     private AtlasViewBounds knownBounds() {
         int x = minecraft.player == null ? data.playerX() : minecraft.player.getBlockX();
         int z = minecraft.player == null ? data.playerZ() : minecraft.player.getBlockZ();
-        return AtlasViewBounds.known(data.chunks(), waypoints.points(), x, z);
+        return AtlasViewBounds.known(data.chunks(), x, z);
     }
     private double minimumZoom() {
         if (data == null || data.wrapped()) return 1;
         return Math.min(1, knownBounds().zoom(data.span(), mapRight - mapLeft, mapBottom - mapTop));
     }
     private void constrainView() {
-        if (data == null || !data.wrapped() || globe) return;
+        if (data == null || !data.wrapped() || globe || followPlayer) return;
         centerX = DebugMapMath.clampCenter(centerX, data.minX(), data.span(), (mapRight - mapLeft) / scale());
         centerZ = DebugMapMath.clampCenter(centerZ, data.minZ(), data.span(), (mapBottom - mapTop) / scale());
     }
@@ -294,12 +315,14 @@ final class OrbisDebugScreen extends Screen {
     private int sz(double z) { return (int) Math.clamp(midY() + (z - centerZ) * scale(), -1000000, 1000000); }
 
     @Override public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+        if (followPlayer) centerOnPlayer();
         constrainView();
         g.fill(left, top, right, bottom, 0xe0282828);
         g.outline(left, top, right - left, bottom - top, 0xff777777);
+        g.fill(left + 1, top + 25, mapLeft - 8, bottom - 1, 0x80333333);
         g.fill(panelX - 8, top + 25, right - 1, bottom - 1, 0x80333333);
-        g.text(font, "ORBIS", mapLeft, top + 10, ACCENT, false);
-        g.text(font, "Atlas", mapLeft + 38, top + 10, TEXT, false);
+        g.text(font, "ORBIS", left + 8, top + 10, ACCENT, false);
+        g.text(font, "Atlas", left + 46, top + 10, TEXT, false);
         if (data != null) g.text(font, ellipsis(data.wrapped() ? tr("blocks_chunks", String.format(Locale.ROOT, "%,d", data.span()), String.format(Locale.ROOT, "%,d", data.span() / 16)) : tr("unwrapped"), Math.max(0, right - 123 - (mapLeft + 78))), mapLeft + 78, top + 10, MUTED, false);
         // Transparent map margins reuse the window's surface, including outside the globe.
         if (data == null) {
@@ -308,8 +331,7 @@ final class OrbisDebugScreen extends Screen {
             g.enableScissor(mapLeft, mapTop, mapRight, mapBottom);
             mapTexture.draw(g, data, new DebugMapRaster.View(mapRight - mapLeft, mapBottom - mapTop, centerX, centerZ,
                     globe ? globeZoom : scale(), globe, yaw, pitch, (overlayMode & 1) != 0, (overlayMode & 2) != 0), mapLeft, mapTop);
-            for (var waypoint : waypoints.points()) marker(g, waypoint.x(), waypoint.z(), "+", 0xffffd279);
-            if (minecraft.player != null) marker(g, minecraft.player.getX(), minecraft.player.getZ(), "P", 0xffffffff);
+            drawPlayer(g);
             if (selected != null) marker(g, selected.x(), selected.z(), "X", ACCENT);
             if (selected != null) {
                 g.fill(mapLeft, mapBottom - 25, mapRight, mapBottom, 0xe0101923);
@@ -320,30 +342,30 @@ final class OrbisDebugScreen extends Screen {
             }
             g.disableScissor();
             int panelWidth = right - panelX - 8;
-            g.text(font, ellipsis(data.dimension(), panelWidth), panelX, top + 48, MUTED, true);
+            g.text(font, ellipsis(data.dimension(), panelWidth), panelX, top + 70, MUTED, true);
             if (tab == 1) {
                 long found = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL) && e.found()).count();
                 long expected = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL)).count();
-                g.text(font, ellipsis(tr("structures_found", found, expected), panelWidth), panelX, top + 59, ACCENT, false);
-                g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 71, MUTED, false);
-                g.text(font, ellipsis(tr("structure_legend"), panelWidth), panelX, top + 106, MUTED, false);
-                g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
-                if (expected > 0) g.fill(panelX, top + 82, panelX + (int) (panelWidth * found / expected), top + 83, ACCENT);
+                g.text(font, ellipsis(tr("structures_found", found, expected), panelWidth), panelX, top + 81, ACCENT, false);
+                g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 93, MUTED, false);
+                g.text(font, ellipsis(tr("structure_legend"), panelWidth), panelX, top + 128, MUTED, false);
+                g.fill(panelX, top + 104, right - 8, top + 105, 0xff777777);
+                if (expected > 0) g.fill(panelX, top + 104, panelX + (int) (panelWidth * found / expected), top + 105, ACCENT);
             } else {
-                g.text(font, ellipsis(tr("biomes_found", coverage.found(), coverage.total()), panelWidth), panelX, top + 59, ACCENT, false);
+                g.text(font, ellipsis(tr("biomes_found", coverage.found(), coverage.total()), panelWidth), panelX, top + 81, ACCENT, false);
                 String state = !data.error().isEmpty() ? tr("error") : searchLabel();
-                g.text(font, ellipsis(tr("unknown_state", coverage.unknown(), state), panelWidth), panelX, top + 71, MUTED, false);
-                g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
-                g.fill(panelX, top + 82, panelX + (int) ((long) panelWidth * data.search().progress().cursor() / data.search().progress().limit()), top + 83, ACCENT);
+                g.text(font, ellipsis(tr("unknown_state", coverage.unknown(), state), panelWidth), panelX, top + 93, MUTED, false);
+                g.fill(panelX, top + 104, right - 8, top + 105, 0xff777777);
+                g.fill(panelX, top + 104, panelX + (int) ((long) panelWidth * data.search().progress().cursor() / data.search().progress().limit()), top + 105, ACCENT);
             }
-            if (tab == 2) g.text(font, ellipsis(tr("world", data.preset()), panelWidth), panelX, top + 92, TEXT, false);
+            if (tab == 2) g.text(font, ellipsis(tr("world", data.preset()), panelWidth), panelX, top + 114, TEXT, false);
             if (tab == 0) {
-                g.text(font, ellipsis(tr("biome_legend"), panelWidth - 4), panelX + 4, top + 106, MUTED, false);
-                if (mx >= panelX && my >= top + 48 && my < top + 84)
+                g.text(font, ellipsis(tr("biome_legend"), panelWidth - 4), panelX + 4, top + 128, MUTED, false);
+                if (mx >= panelX && my >= top + 70 && my < top + 106)
                     tip(g, tr("dimension_tip", data.dimension()), mx, my);
             }
-            g.fill(panelX, top + (tab != 2 ? 114 : 107), right - 8, top + (tab != 2 ? 115 : 108), 0xff777777);
-            if (entries.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? tr("no_biomes") : tr("no_entries")), panelX + 4, top + (tab != 2 ? 122 : 115), panelWidth - 8, MUTED);
+            g.fill(panelX, top + (tab != 2 ? 136 : 129), right - 8, top + (tab != 2 ? 137 : 130), 0xff777777);
+            if (entries.isEmpty()) g.textWithWordWrap(font, Component.literal(tab == 0 ? tr("no_biomes") : tr("no_entries")), panelX + 4, top + (tab != 2 ? 144 : 137), panelWidth - 8, MUTED);
             String pagination = (page + 1) + " / " + Math.max(1, (entries.size() + Math.max(1, rows.size()) - 1) / Math.max(1, rows.size()));
             if (font.width(pagination) < panelWidth - 112) g.text(font, pagination, panelX + 44, bottom - 17, MUTED, false);
             if (!globe && inside(mx, my)) {
@@ -353,6 +375,12 @@ final class OrbisDebugScreen extends Screen {
                 if (data.loaded().contains(ChunkPos.pack(x >> 4, z >> 4))) coordinate += "   " + tr("loaded");
                 g.text(font, ellipsis(coordinate, mapRight - mapLeft - 4), mapLeft, mapBottom + 5, MUTED, false);
             } else g.text(font, ellipsis(globe ? tr("drag_globe") : tr("drag_flat"), mapRight - mapLeft - 4), mapLeft, mapBottom + 5, MUTED, false);
+        }
+        if (data != null) {
+            g.text(font, tr("stats"), left + 8, bottom - 24, MUTED, false);
+            g.text(font, ellipsis(mapTexture.resolution(), panelX - mapRight + 70), left + 8, bottom - 13, MUTED, false);
+            if (mx >= left + 8 && mx < mapLeft - 8 && my >= bottom - 28 && my < bottom)
+                tip(g, String.join("\n", stats().stream().map(e -> e[0] + ": " + e[1]).toList()), mx, my);
         }
         super.extractRenderState(g, mx, my, delta);
         // Text is rendered independently of navigation widgets, including all read-only entries.
@@ -410,20 +438,12 @@ final class OrbisDebugScreen extends Screen {
         int[] position = markerPosition(x, z);
         if (position != null) g.text(font, label, position[0] - 2, position[1] - 4, color);
     }
-    private DebugSnapshot.Place waypointAt(double x, double y) {
-        DebugSnapshot.Place nearest = null;
-        double distance = 6;
-        for (var point : waypoints.points()) {
-            int[] position = markerPosition(point.x(), point.z());
-            if (position == null) continue;
-            double candidate = Math.hypot(position[0] - x, position[1] - y);
-            if (candidate <= distance) { nearest = point; distance = candidate; }
-        }
-        return nearest;
-    }
-    private void toggleWaypoint(DebugSnapshot.Place point) {
-        if (!waypoints.toggle(point, 0) && minecraft.player != null)
-            minecraft.player.sendSystemMessage(Component.literal(tr("waypoint_failed")));
+    private void drawPlayer(GuiGraphicsExtractor g) {
+        if (minecraft.player == null) return;
+        var player = minecraft.player;
+        int[] point = markerPosition(player.getX(), player.getZ());
+        if (point != null) AtlasPlayerMarker.draw(g, point[0], point[1], AtlasPlayerMarker.direction(
+                globe, unitX(player.getX()), unitZ(player.getZ()), yaw, pitch, player.getYRot()));
     }
     private List<String[]> stats() {
         return List.of(new String[]{tr("preset"), data.preset()},
@@ -442,36 +462,12 @@ final class OrbisDebugScreen extends Screen {
                 new String[]{tr("structure_check"), data.structureState()},
                 new String[]{tr("cache"), DebugSurvey.cacheStatus},
                 new String[]{tr("preferences"), AtlasPreferences.status().isEmpty() ? tr("saved") : AtlasPreferences.status()},
-                new String[]{tr("waypoints"), waypoints.status().isEmpty() ? tr("saved") : waypoints.status()},
-                new String[]{tr("history"), data.historyLimited() ? tr("history_capped") : tr("persistent")},
+                new String[]{tr("history"), data.terrainArchive() != null ? tr("terrain_archived")
+                        : data.historyLimited() ? tr("history_capped") : tr("persistent")},
                 new String[]{tr("survey_status"), data.error().isEmpty() ? tr("status_ok") : data.error()});
     }
     private boolean inside(double x, double y) { return x >= mapLeft && x < mapRight && y >= mapTop && y < mapBottom; }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT && inside(event.x(), event.y()) && data != null) {
-            var existing = waypointAt(event.x(), event.y());
-            if (existing != null) { toggleWaypoint(existing); return true; }
-            if (selected != null && event.y() >= mapBottom - 25) return true;
-            double x, z;
-            if (globe) {
-                double[] uv = DebugMapMath.unproject((event.x() - midX()) / radius(), (midY() - event.y()) / radius(), yaw, pitch);
-                if (uv == null) return true;
-                x = data.minX() + uv[0] * data.span();
-                z = data.minZ() + Math.min(Math.nextDown(1.0), uv[1]) * data.span();
-            } else {
-                x = centerX + (event.x() - midX()) / scale();
-                z = centerZ + (event.y() - midY()) / scale();
-                if (data.wrapped() && (x < data.minX() || x >= (double) data.minX() + data.span()
-                        || z < data.minZ() || z >= (double) data.minZ() + data.span())) return true;
-            }
-            if (data.wrapped()) {
-                x = data.minX() + DebugMapMath.unit((x - data.minX()) / data.span()) * data.span();
-                z = data.minZ() + DebugMapMath.unit((z - data.minZ()) / data.span()) * data.span();
-            }
-            int y = minecraft.player == null ? data.playerY() : minecraft.player.getBlockY();
-            toggleWaypoint(new DebugSnapshot.Place("Waypoint", (int) Math.floor(x), y, (int) Math.floor(z)));
-            return true;
-        }
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && inside(event.x(), event.y())) {
             dragging = true;
             setDragging(true);
@@ -487,6 +483,7 @@ final class OrbisDebugScreen extends Screen {
     }
     @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) {
+            stopFollowing();
             if (globe) { yaw += dx * .015; pitch += dy * .0075; }
             else { centerX -= dx / scale(); centerZ -= dy / scale(); }
             return true;
@@ -497,7 +494,7 @@ final class OrbisDebugScreen extends Screen {
         if (inside(x, y) && dy != 0) {
             double before = scale();
             zoom(Math.pow(1.25, Math.clamp(dy, -4, 4)));
-            if (!globe) {
+            if (!globe && !followPlayer) {
                 centerX += (x - midX()) * (1 / before - 1 / scale());
                 centerZ += (y - midY()) * (1 / before - 1 / scale());
             }
@@ -523,6 +520,7 @@ final class OrbisDebugScreen extends Screen {
         return true;
     }
     private void move(int dx, int dz) {
+        stopFollowing();
         if (globe) { yaw -= dx * .15; pitch -= dz * .075; }
         else { centerX += dx * 24 / scale(); centerZ += dz * 24 / scale(); }
     }
