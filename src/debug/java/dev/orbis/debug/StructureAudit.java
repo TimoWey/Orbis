@@ -44,6 +44,7 @@ final class StructureAudit {
     private final List<Task> tasks = new ArrayList<>();
     private final StructureCounts counts = new StructureCounts();
     private boolean initialized, running;
+    private StructureSearchPolicy policy = StructureSearchPolicy.quick(0);
     private int nextTask, nextInitialization;
     private AddedStructureStarts added;
     private PalettedContainerFactory palettes;
@@ -77,6 +78,21 @@ final class StructureAudit {
     }
     void running(boolean value) { running = value && finite && error.isEmpty() && !complete() && !counts.limited(); }
     boolean running() { return running; }
+    boolean counting() { return policy.counting(); }
+    StructureSearchPolicy policy() { return policy; }
+    void startQuick() {
+        if (policy.counting() || checks >= policy.limit()) policy = StructureSearchPolicy.quick(checks);
+        running(true);
+    }
+    void startCount() {
+        if (finished()) resample();
+        policy = new StructureSearchPolicy(true, 0); running(true);
+    }
+    private boolean allExpectedFound() { return !expected.isEmpty() && found.keySet().containsAll(expected); }
+    private boolean eligible(Task task) { return policy.needs(task.ids, found.keySet()); }
+    private boolean quickComplete() {
+        return !policy.counting() && tasks.stream().noneMatch(t -> !t.done && eligible(t));
+    }
     boolean finished() { return complete() || counts.limited() || !error.isEmpty(); }
     long checks() { return checks; }
     long revision() { return revision; }
@@ -86,7 +102,11 @@ final class StructureAudit {
         if (!level.structureManager().shouldGenerateStructures()) return "Structure generation is disabled";
         if (counts.limited()) return "Count limit reached (lower bounds)";
         if (complete()) return "Generator count complete";
-        return running ? "Counting structures..." : checks > 0 ? "Check paused" : "Not checked yet";
+        if (!policy.counting() && allExpectedFound()) return "All types found / counts partial";
+        if (quickComplete()) return "Existence check complete / partial counts";
+        if (!policy.counting() && checks >= policy.limit()) return "Pass complete / counts partial";
+        return running ? policy.counting() ? "Counting all structures..." : "Checking existence..."
+                : checks > 0 ? "Check paused / counts partial" : "Not checked yet";
     }
     static boolean allFound(List<Entry> entries) { return !entries.isEmpty() && entries.stream().allMatch(Entry::found); }
     private boolean complete() { return tasks.stream().allMatch(t -> t.done); }
@@ -103,10 +123,10 @@ final class StructureAudit {
 
     record Progress(long cursor, int extraCursor, int ringCursor, boolean done) {}
     record Saved(Map<String, DebugSnapshot.Place> found, Set<String> observed,
-                 List<Progress> tasks, long checks, int nextTask, boolean running, StructureCounts.Saved counts) {}
+                 List<Progress> tasks, long checks, int nextTask, boolean running, StructureCounts.Saved counts, StructureSearchPolicy policy) {}
     Saved save() {
         return new Saved(Map.copyOf(found), Set.copyOf(observed), tasks.stream()
-                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running, counts.save());
+                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running, counts.save(), policy);
     }
     void restore(Saved saved) {
         if (saved.tasks().size() != tasks.size()) return;
@@ -117,14 +137,15 @@ final class StructureAudit {
             var p = saved.tasks().get(i); var t = tasks.get(i);
             t.cursor = p.cursor(); t.extraCursor = p.extraCursor(); t.ringCursor = p.ringCursor(); t.done = p.done();
         }
-        running = saved.running() && finite && !complete();
+        policy = saved.policy();
+        running = saved.running() && finite && !complete() && policy.allows(checks, allExpectedFound());
         revision++;
     }
     void resample() {
         found.keySet().removeIf(id -> !observed.contains(id));
         counts.clearPredictions();
         for (var t : tasks) { t.cursor = 0; t.extraCursor = 0; t.ringCursor = 0; t.done = false; }
-        checks = 0; nextTask = 0; error = ""; running = finite; revision++;
+        checks = 0; nextTask = 0; error = ""; policy = StructureSearchPolicy.quick(0); running = finite; revision++;
     }
 
     /** At most one layout generation per tick; caller also enforces its scheduling deadline. */
@@ -134,7 +155,7 @@ final class StructureAudit {
             if (!level.structureManager().shouldGenerateStructures()) { running = false; return; }
             var source = level.getChunkSource();
             var state = source.getGeneratorState();
-            if (complete() || counts.limited()) { running = false; return; }
+            if (complete() || quickComplete() || counts.limited() || !policy.allows(checks, allExpectedFound())) { running = false; return; }
             if (!initialized) {
                 if (added == null) {
                     var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
@@ -150,11 +171,12 @@ final class StructureAudit {
                 initialized = true;
                 palettes = PalettedContainerFactory.create(level.registryAccess());
             }
-            if (complete() || counts.limited()) { running = false; return; }
+            if (complete() || quickComplete() || counts.limited() || !policy.allows(checks, allExpectedFound())) { running = false; return; }
             for (int probes = 0; probes < 32 && active.getAsBoolean() && System.nanoTime() < deadline; probes++) {
+                if (!policy.allows(checks, allExpectedFound())) { running = false; return; }
                 Task task = tasks.get(nextTask);
                 nextTask = (nextTask + 1) % tasks.size();
-                if (task.done) continue;
+                if (task.done || !eligible(task)) continue;
                 ChunkPos pos = task.next(state);
                 if (pos == null) { task.done = true; revision++; continue; }
                 checks++;

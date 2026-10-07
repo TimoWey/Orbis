@@ -98,4 +98,40 @@ class AtlasBiomeSamplerTest {
             }));
         }
     }
+
+    @Test void nativeQuickChecksShareFindsWithMapAndStopWithinSmallBudgetForTinyAndLarge() {
+        for (var preset : List.of(WorldSize.Preset.TINY, WorldSize.Preset.LARGE)) {
+            var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), preset.size);
+            for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
+                var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
+                var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),
+                        () -> RandomState.create(registries.lookupOrThrow(Registries.NOISE), 8172231L, generator.generatorSettings().value()));
+                boolean nether = dimension.equals(LevelStem.NETHER);
+                int span = nether ? preset.size.netherBlocks() : preset.size.overworldBlocks();
+                int[] heights = nether ? new int[]{32, 16, 32, 128} : new int[]{63, -48, 32, 128};
+                var sampler = AtlasBiomeSampler.create(generator.getBiomeSource(), random, -span / 2, -span / 2, span, heights);
+                var search = new AtlasSearch(-span / 2, -span / 2, span, nether ? 0 : -64, nether ? 255 : 319, heights, true);
+                Set<String> possible = new HashSet<>(), found = new HashSet<>();
+                generator.getBiomeSource().possibleBiomes().forEach(b -> possible.add(b.unwrapKey().orElseThrow().identifier().toString()));
+                var queries = new AtomicInteger();
+                AtlasSearch.Query query = (x,y,z) -> { queries.incrementAndGet(); return sampler.query(x,y,z); };
+                AtlasSearch.Evidence evidence = (x,y,z,id) -> { assertTrue(possible.contains(id)); found.add(id); };
+                search.search(Long.MAX_VALUE, () -> true, () -> found.containsAll(possible), query, evidence);
+                search.map(Long.MAX_VALUE, () -> true, query, evidence, (x,z,grid,color) -> {});
+                assertTrue(queries.get() <= (nether ? 768 : 1024) + 256);
+                assertFalse(search.save().running()); assertFalse(search.save().mapping());
+                System.out.printf("ATLAS_QUICK preset=%s dimension=%s queries=%d found=%d/%d%n",
+                        preset, dimension.identifier(), queries.get(), found.size(), possible.size());
+                if (!found.containsAll(possible)) {
+                    int before = queries.get(), known = found.size();
+                    search.toggle(false);
+                    search.search(Long.MAX_VALUE, () -> true, () -> found.containsAll(possible), query, evidence);
+                    assertTrue(queries.get() - before <= AtlasSearch.EXTRA);
+                    assertTrue(found.size() >= known);
+                    System.out.printf("ATLAS_DEEPEN preset=%s dimension=%s extra_queries=%d found=%d/%d%n",
+                            preset, dimension.identifier(), queries.get() - before, found.size(), possible.size());
+                }
+            }
+        }
+    }
 }

@@ -10,7 +10,17 @@ public record DebugSnapshot(String dimension, long seed, String preset, long map
         List<Cell> chunks, Set<Long> loaded, List<BiomeEntry> biomes, List<Place> places,
         Map<Integer, Integer> surveyColors, int surveyDone, int surveyTotal, boolean scanning,
         boolean historyLimited, String error, List<StructureAudit.Entry> structures,
+        boolean structuresScanning, long structureChecks, String structureState, AtlasSearch.View search, boolean structureCounting) {
+    public DebugSnapshot(String dimension, long seed, String preset, long mapRevision, int minX, int minZ, int span,
+        boolean wrapped, int playerX, int playerY, int playerZ, double tickMillis,
+        List<Cell> chunks, Set<Long> loaded, List<BiomeEntry> biomes, List<Place> places,
+        Map<Integer, Integer> surveyColors, int surveyDone, int surveyTotal, boolean scanning,
+        boolean historyLimited, String error, List<StructureAudit.Entry> structures,
         boolean structuresScanning, long structureChecks, String structureState) {
+        this(dimension, seed, preset, mapRevision, minX, minZ, span, wrapped, playerX, playerY, playerZ, tickMillis, chunks, loaded, biomes, places, surveyColors, surveyDone, surveyTotal, scanning, historyLimited, error, structures, structuresScanning, structureChecks, structureState,
+                new AtlasSearch.View(new AtlasSearch.Saved(0, AtlasSearch.QUICK_MAX, false, 0, AtlasSearch.MAP_COARSE, false), false), false);
+    }
+
     /** Block-resolution surface samples per chunk; copied before crossing to the render thread. */
     public static final class Cell {
         private final int x, z, color;

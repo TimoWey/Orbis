@@ -27,8 +27,8 @@ final class DebugSurvey {
     private static final int HISTORY_LIMIT = AtlasCache.CHUNK_LIMIT;
     private static final int PLACE_LIMIT = 4096;
     private static final Map<ServerLevel, State> worlds = new IdentityHashMap<>();
-    private record Request(ResourceKey<Level> dimension, UUID player, long command, boolean scan, boolean audit,
-            boolean refresh, boolean resample, long scanCommand, long auditCommand) {}
+    enum Action { NONE, BIOMES, RESAMPLE, MAP, STRUCTURES, COUNT, RESET_STRUCTURES }
+    private record Request(ResourceKey<Level> dimension, UUID player, long command, Action action) {}
     private static volatile Request request;
     static volatile DebugSnapshot snapshot;
     private static long command;
@@ -39,28 +39,13 @@ final class DebugSurvey {
         if (active != null && active.dimension.equals(dimension) && active.player.equals(player)) return;
         snapshot = null;
         cacheStatus = "Loading";
-        command++;
-        request = new Request(dimension, player, command, true, false, true, false, command, 0);
+        request = new Request(dimension, player, ++command, Action.NONE);
     }
-    static void scan(boolean enabled) {
+    static void act(Action action) {
         Request r = request;
-        if (r != null) {
-            command++;
-            request = new Request(r.dimension, r.player, command, enabled, r.audit, false, enabled && snapshot != null && snapshot.surveyDone() == TOTAL, command, r.auditCommand);
-        }
-    }
-    static void audit(boolean enabled) {
-        Request r = request;
-        if (r != null) {
-            command++;
-            request = new Request(r.dimension, r.player, command, r.scan, enabled, false, false, r.scanCommand, command);
-        }
+        if (r != null) request = new Request(r.dimension, r.player, ++command, action);
     }
     static void close() { request = null; snapshot = null; }
-
-    static boolean shouldScan(int cursor, boolean enabled, boolean resample) {
-        return enabled && (cursor < TOTAL || resample);
-    }
 
     static void register() {
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
@@ -86,8 +71,7 @@ final class DebugSurvey {
                 State replacement = new State(entry.getKey());
                 replacement.loaded.addAll(old.loaded); replacement.pending.addAll(old.loaded);
                 // A reload must not replay an already-consumed explicit resample command.
-                replacement.lastScanCommand = old.lastScanCommand;
-                replacement.lastAuditCommand = old.lastAuditCommand;
+                replacement.lastCommand = old.lastCommand;
                 worlds.put(entry.getKey(), replacement);
             }
             snapshot = null;
@@ -114,22 +98,21 @@ final class DebugSurvey {
             if (s.cacheTicks % 200 == 0) s.pending.addAll(s.loaded);
             if (s.lastCommand != r.command) {
                 s.lastCommand = r.command;
-                boolean scanChanged = s.lastScanCommand != r.scanCommand;
-                if (scanChanged) s.scanning = s.wrapped && shouldScan(s.cursor, r.scan, r.resample);
-                if (r.auditCommand != 0 && s.lastAuditCommand != r.auditCommand) {
-                    if (r.audit && s.audit.finished()) s.audit.resample(); else s.audit.running(r.audit);
+                if (s.wrapped) switch (r.action) {
+                    case BIOMES -> s.search.toggle(s.allBiomesFound());
+                    case RESAMPLE -> {
+                        s.hits.clear();
+                        s.locations.keySet().removeIf(id -> !s.observed.contains(id));
+                        s.search.resample(); s.mapRevision++;
+                    }
+                    case MAP -> s.search.toggleMap();
+                    case STRUCTURES -> {
+                        if (s.audit.running()) s.audit.running(false); else s.audit.startQuick();
+                    }
+                    case COUNT -> s.audit.startCount();
+                    case RESET_STRUCTURES -> s.audit.resample();
+                    case NONE -> { }
                 }
-                s.lastScanCommand = r.scanCommand;
-                s.lastAuditCommand = r.auditCommand;
-                if (scanChanged && r.resample) {
-                    s.cursor = 0;
-                    s.colors.clear();
-                    s.hits.clear();
-                    s.locations.keySet().removeIf(id -> !s.observed.contains(id));
-                    s.mapRevision++;
-                }
-                // Reinspect already-loaded chunks, including portal activation since the last opening.
-                if (r.refresh) s.pending.addAll(s.loaded);
             }
             try {
                 long deadline = System.nanoTime() + 3_000_000;
@@ -139,23 +122,21 @@ final class DebugSurvey {
                     inspect(level, s, key);
                 }
                 // Neither a long structure count nor a full-budget biome pass may starve the other.
-                boolean auditFirst = !s.scanning || (s.ticks & 3) == 3;
+                boolean auditFirst = (s.ticks & 3) == 3;
                 if (auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
-                if (s.scanning && s.wrapped) {
-                    if (s.sampler == null) {
-                        int[] heights = {level.dimensionType().hasCeiling() ? DebugTerrain.CEILING_SLICE_Y : level.getSeaLevel(),
-                                level.getMinY() + 16, 32, 128};
-                        for (int i = 0; i < heights.length; i++) heights[i] = Math.clamp(heights[i], level.getMinY(), level.getMaxY());
-                        s.sampler = AtlasBiomeSampler.create(level.getChunkSource().getGenerator().getBiomeSource(),
-                                level.getChunkSource().randomState(), s.minX, s.minZ, s.span, heights);
-                    }
-                    s.sampler.run(s.cursor, deadline, () -> request == r, (index, x, y, z, biome, color) -> {
-                        if (!s.locations.containsKey(biome)) s.locations.put(biome, new DebugSnapshot.Place(biome, x, y, z));
-                        s.hits.merge(biome, 1, Integer::sum);
-                        if (index % LAYERS == 0) { s.colors.put(index / LAYERS, color); s.mapRevision++; }
-                        s.cursor = index + 1;
-                    });
-                    if (s.cursor == TOTAL) s.scanning = false;
+                if (s.wrapped && (s.search.save().running() || s.search.save().mapping())) {
+                    if (s.sampler == null) s.sampler = AtlasBiomeSampler.create(level.getChunkSource().getGenerator().getBiomeSource(),
+                            level.getChunkSource().randomState(), s.minX, s.minZ, s.span, s.heights);
+                    s.search.search(Math.min(deadline, System.nanoTime() + 1_000_000), () -> request == r,
+                            s::allBiomesFound, s.sampler::query, s::evidence);
+                    s.search.map(Math.min(deadline, System.nanoTime() + 1_000_000), () -> request == r,
+                            s.sampler::query, s::evidence, (x, z, grid, color) -> {
+                                int size = GRID / grid;
+                                // Coarse biome preview only; explored block colors stay in their own layer.
+                                for (int dz = 0; dz < size; dz++) for (int dx = 0; dx < size; dx++)
+                                    s.colors.put((z * size + dz) * GRID + x * size + dx, color);
+                                s.mapRevision++;
+                            });
                 }
                 if (!auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
                 if (s.auditRevision != s.audit.revision()) {
@@ -163,7 +144,7 @@ final class DebugSurvey {
                     s.mapRevision++;
                 }
             } catch (RuntimeException failure) {
-                s.scanning = false;
+                s.search.pause(); s.search.pauseMap();
                 s.pending.clear();
                 if (s.error.isEmpty()) Orbis.LOGGER.warn("Orbis debug survey stopped", failure);
                 s.error = "Survey stopped: " + failure.getClass().getSimpleName();
@@ -189,8 +170,8 @@ final class DebugSurvey {
                         s.span, s.wrapped, player.getBlockX(), player.getBlockY(), player.getBlockZ(),
                         server.getAverageTickTimeNanos() / 1_000_000.0, s.cachedChunks,
                         s.cachedLoaded, biomes, s.cachedPlaces, s.cachedColors,
-                        s.cursor, TOTAL, s.scanning, s.limited, s.error, s.audit.entries(),
-                        s.audit.running(), s.audit.checks(), s.audit.state());
+                        s.search.save().cursor(), s.search.save().limit(), s.search.save().running(), s.limited, s.error, s.audit.entries(),
+                        s.audit.running(), s.audit.checks(), s.audit.state(), new AtlasSearch.View(s.search.save(), s.allBiomesFound()), s.audit.counting());
                 if (request == r) { snapshot = next; cacheStatus = s.cacheStatus; }
             }
         });
@@ -294,6 +275,8 @@ final class DebugSurvey {
         final boolean wrapped;
         final String preset;
         final StructureAudit audit;
+        final AtlasSearch search;
+        final int[] heights;
         java.util.concurrent.CompletableFuture<AtlasCache.Loaded> loading;
         java.util.concurrent.CompletableFuture<Void> writing;
         AtlasCache.Loaded cache;
@@ -301,19 +284,18 @@ final class DebugSurvey {
         int cacheTicks;
         volatile String cacheStatus = "Loading";
         long savedRevision = -1, savedChecks = -1;
-        int savedCursor = -1;
-        boolean savedScanning, savedAudit;
+        AtlasSearch.Saved savedSearch;
+        boolean savedAudit;
+        StructureSearchPolicy savedPolicy;
         void restore() {
             if (ready || !loading.isDone()) return;
             cache = loading.join(); loading = null; ready = true; cacheStatus = cache.status();
             var d = cache.data();
             cache = new AtlasCache.Loaded(cache.file(), cache.fingerprint(), null, cache.status());
             if (d == null) {
-                lastScanCommand = -1;
-                lastAuditCommand = -1;
                 return;
             }
-            cursor = d.cursor(); scanning = d.scanning(); limited = d.limited();
+            search.restore(d.search()); limited = d.limited();
             colors.putAll(d.colors()); hits.putAll(d.hits()); observed.addAll(d.observed()); locations.putAll(d.locations());
             for (var p : d.places()) places.put(p.label() + ":" + p.x() + ":" + p.y() + ":" + p.z(), p);
             for (var c : d.chunks()) history.put(ChunkPos.pack(c.x(), c.z()), c);
@@ -321,12 +303,12 @@ final class DebugSurvey {
         }
         void save(boolean force) {
             if (!ready || cache.file() == null || !force && writing != null && !writing.isDone()) return;
-            if (!force && (writing == null || !writing.isCompletedExceptionally()) && savedRevision == mapRevision && savedCursor == cursor && savedChecks == audit.checks()
-                    && savedScanning == scanning && savedAudit == audit.running()) return;
-            var d = new AtlasCache.Data(cursor, scanning, limited, Map.copyOf(colors), Map.copyOf(hits),
+            if (!force && (writing == null || !writing.isCompletedExceptionally()) && savedRevision == mapRevision && search.save().equals(savedSearch) && savedChecks == audit.checks()
+                    && savedAudit == audit.running() && audit.policy().equals(savedPolicy)) return;
+            var d = new AtlasCache.Data(search.save(), limited, Map.copyOf(colors), Map.copyOf(hits),
                     Set.copyOf(observed), Map.copyOf(locations), List.copyOf(places.values()), List.copyOf(history.values()), audit.save());
             long revision = mapRevision;
-            savedRevision = revision; savedCursor = cursor; savedChecks = audit.checks(); savedScanning = scanning; savedAudit = audit.running();
+            savedRevision = revision; savedSearch = search.save(); savedChecks = audit.checks(); savedAudit = audit.running(); savedPolicy = audit.policy();
             writing = java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try { AtlasCache.write(cache.file(), cache.fingerprint(), d); cacheStatus = "Saved / persistent"; }
                 catch (java.io.IOException | RuntimeException e) {
@@ -342,11 +324,16 @@ final class DebugSurvey {
         List<DebugSnapshot.Place> cachedPlaces = List.of();
         Map<Integer, Integer> cachedColors = Map.of();
         AtlasBiomeSampler sampler;
-        int cursor, ticks;
-        long lastCommand, lastScanCommand, lastAuditCommand;
+        int ticks;
+        long lastCommand;
         long mapRevision, cachedRevision = -1;
-        boolean scanning, limited;
+        boolean limited;
         String error = "";
+        boolean allBiomesFound() { return !possible.isEmpty() && locations.keySet().containsAll(possible); }
+        void evidence(int x, int y, int z, String biome) {
+            if (!locations.containsKey(biome)) { locations.put(biome, new DebugSnapshot.Place(biome, x, y, z)); mapRevision++; }
+            hits.merge(biome, 1, Integer::sum);
+        }
         State(ServerLevel level) {
             var overworld = ToroidalWorldApi.shapeOf(level.getServer().overworld()).orElse(null);
             preset = BiomeOverview.preset(overworld != null && overworld.loops(Direction.Axis.X)
@@ -356,6 +343,9 @@ final class DebugSurvey {
             minX = wrapped ? shape.minBlock(Direction.Axis.X) : -2048;
             minZ = wrapped ? shape.minBlock(Direction.Axis.Z) : -2048;
             span = wrapped ? shape.widthBlocks(Direction.Axis.X) : 4096;
+            heights = new int[] {level.dimensionType().hasCeiling() ? DebugTerrain.CEILING_SLICE_Y : level.getSeaLevel(),
+                    level.getMinY() + 16, 32, 128};
+            search = new AtlasSearch(minX, minZ, span, level.getMinY(), level.getMaxY(), heights, wrapped);
             audit = new StructureAudit(level, wrapped, minX, minZ, span);
             level.getChunkSource().getGenerator().getBiomeSource().possibleBiomes().forEach(b -> possible.add(id(b)));
             loading = AtlasCache.load(level, minX, minZ, span);

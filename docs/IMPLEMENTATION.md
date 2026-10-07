@@ -1,4 +1,4 @@
-# Implementation status — 0.1.0-alpha.4
+# Implementation status — 0.1.0-alpha.5
 
 Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned MIT source snapshot and ships inside the Orbis JAR. **Install Fabric Loader, Fabric API and Orbis. No Toroidal World mod is required.**
 
@@ -10,12 +10,14 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 - Explicit unwrapped End. An identity-shaped engine generator prevents automatic dimension wrapping; it does not impose finite End bounds.
 - World identity and bounds stored in the generator codec, with restoration on recreate.
 - English customization screen with responsive size controls, a live world overview, selected preset marks and inline validation; biome disclaimer on join, and `/orbis` information command.
-- Optional debug-only corner minimap and non-pausing M atlas window, per-dimension flat/globe preferences and saved per-world waypoints: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, faster bounded generator sampling, Y 32 Nether terrain, persistent structure and portal-room counts, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
+- Optional debug-only corner minimap and non-pausing M atlas window, per-dimension flat/globe preferences and saved per-world waypoints: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, small bounded biome checks, explicit Search+ and independent Map+ refinement, Y 32 Nether terrain, bounded structure existence checks and opt-in persistent full counts, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
 - Regression tests for bounds, seam math, serialization and shape ownership.
 
 ## Validation
 
-On 2026-10-07, Alpha.4 normal/debug builds passed 33/80 regression tests and standalone packaging verification for both JARs. The optional sampler benchmark also passed when explicitly enabled (skipped in default test runs). The faster sampler matched 786,432 native biome queries exactly across all three dimensions. Per-dimension preferences, Nether tint rules, persistent deduplicated structure counts and old-cache rejection are tested. See [Debug atlas](DEBUG_ATLAS.md#alpha4-sampler-benchmark-2026-10-07) for measured results and their limits. No new live gameplay or visual validation was performed.
+On 2026-10-07, Alpha.5 normal/debug builds passed 33/92 regression tests and both standalone packaging checks. The older opt-in sampler benchmark is skipped by default. Native quick-workflow tests cover Tiny and Large with the real generator; fixed-budget tests also cover Normal and Earth. Search/map progress and modes, pause/resume, caps, count opt-in and portal-room continuation have regression coverage. See [Alpha.5 results](DEBUG_ATLAS.md#alpha5-quick-search-validation-2026-10-07). No live gameplay/visual validation of this revision was performed.
+
+On 2026-10-07, Alpha.4 normal/debug builds passed 33/80 regression tests and standalone packaging verification for both JARs. The optional sampler benchmark also passed when explicitly enabled (skipped in default test runs). The faster sampler matched 786,432 native biome queries exactly across all three dimensions. Per-dimension preferences, Nether tint rules, persistent deduplicated structure counts and old-cache rejection are tested. See [Debug atlas](DEBUG_ATLAS.md#historical-alpha4-sampler-benchmark-2026-10-07) for measured results and their limits. No new live gameplay or visual validation was performed.
 
 On 2026-10-06, the revised alpha.3 atlas passed 33 normal-build tests and 69 debug-build tests with Java 25, plus standalone packaging checks on both clean-built JARs. Checks include persistent cache recovery/failure isolation, partial survey checkpoints, block-resolution terrain and LOD, single-world Flat bounds, moving-origin globe projection/inverse alignment, GUI layout geometry and waypoint persistence. Live Tiny-world re-entry, visual UI validation and gameplay performance remain pending; see [Debug atlas](DEBUG_ATLAS.md) for sources, cache limits and the interactive checklist.
 
@@ -37,9 +39,9 @@ The mod is an early development alpha, not completion of the requirements. Start
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). GitHub Actions performs the same build and publishes the JAR and test reports as workflow artifacts. Use the ordinary JAR, not the `-sources.jar`.
 
-For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.4-debug.jar` instead of the normal JAR. Separate CI release/debug artifacts await a workflow update; the current GitHub login lacks workflow permission. The debug JAR is available from the local build. The normal build excludes the debug classes and entrypoint entirely.
+For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.5-debug.jar` instead of the normal JAR. Separate CI release/debug artifacts await a workflow update; the current GitHub login lacks workflow permission. The debug JAR is available from the local build. The normal build excludes the debug classes and entrypoint entirely.
 
-The current local normal build is `build/libs/orbis-0.1.0-alpha.4.jar`. Place it in the test instance's `mods` folder. Older **orbis-fabric-26.3** CI artifacts belong to their recorded revision; they are not this Alpha.4 build. GitHub sign-in is required for this private repository.
+The current local normal build is `build/libs/orbis-0.1.0-alpha.5.jar`. Place it in the test instance's `mods` folder. Older **orbis-fabric-26.3** CI artifacts belong to their recorded revision; they are not this Alpha.5 build. GitHub sign-in is required for this private repository.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3 and Orbis. Create a new world, choose **World Shape: Orbis**, then **Customize**. Only Normal and Orbis are offered. If upgrading from alpha 1, remove the old Orbis and Toroidal World JARs first; simultaneous installation is explicitly rejected to prevent duplicate classes.
 

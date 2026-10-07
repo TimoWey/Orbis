@@ -23,7 +23,7 @@ final class OrbisDebugScreen extends Screen {
     private boolean globe, dragging, initialized;
     private boolean showChunks, showPlaces;
     private double globeZoom = 1;
-    private Button scanButton, viewButton, filterButton, sortButton, previousButton, nextButton;
+    private Button scanButton, detailButton, resetButton, viewButton, filterButton, sortButton, previousButton, nextButton;
     private final DebugMapTexture mapTexture = new DebugMapTexture();
     private BiomeOverview.Filter filter = BiomeOverview.Filter.ALL;
     private BiomeOverview.Sort sort = BiomeOverview.Sort.NAME;
@@ -64,12 +64,17 @@ final class OrbisDebugScreen extends Screen {
         sizeButton.setTooltip(Tooltip.create(Component.translatable("orbis.atlas.size_tip")));
         scanButton = button(right - 68, bottom - 22, 60, "Sample", b -> {
             if (data != null) {
-                if (tab == 1) DebugSurvey.audit(!data.structuresScanning());
-                else DebugSurvey.scan(!data.scanning());
+                DebugSurvey.act(tab == 1 ? DebugSurvey.Action.STRUCTURES : DebugSurvey.Action.BIOMES);
             }
         });
         scanButton.setTooltip(Tooltip.create(Component.literal("Check this world without loading terrain.")));
         int half = (panelWidth - 4) / 2;
+        detailButton = button(panelX, bottom - 44, half, "", b -> {
+            if (data != null) DebugSurvey.act(tab == 1 ? DebugSurvey.Action.COUNT : DebugSurvey.Action.MAP);
+        });
+        resetButton = button(panelX + half + 4, bottom - 44, panelWidth - half - 4, "Resample", b -> {
+            if (data != null) DebugSurvey.act(tab == 1 ? DebugSurvey.Action.RESET_STRUCTURES : DebugSurvey.Action.RESAMPLE);
+        });
         filterButton = button(panelX, top + 86, half, "All", b -> {
             filter = BiomeOverview.Filter.values()[(filter.ordinal() + 1) % BiomeOverview.Filter.values().length];
             page = 0; updateRows();
@@ -81,7 +86,7 @@ final class OrbisDebugScreen extends Screen {
         });
         sortButton.setTooltip(Tooltip.create(Component.literal("Sort by name, sample hits or discovery status.")));
         int rowHeight = tab != 2 ? 16 : 23;
-        for (int y = top + (tab != 2 ? 116 : 110); y + rowHeight <= bottom - 28; y += rowHeight) {
+        for (int y = top + (tab != 2 ? 116 : 110); y + rowHeight <= bottom - 48; y += rowHeight) {
             final int row = rows.size();
             rows.add(addRenderableWidget(new AtlasButton(panelX, y, panelWidth, rowHeight - 1, "", b -> {
                 int index = page * rows.size() + row;
@@ -145,9 +150,28 @@ final class OrbisDebugScreen extends Screen {
         if (data != null) {
             coverage = BiomeOverview.counts(data.biomes());
             scanButton.active = data.wrapped() && data.error().isEmpty();
+            var work = data.search().progress();
+            boolean allFound = data.search().allFound();
             scanButton.setMessage(Component.literal(tab == 1 ? data.structuresScanning() ? "Pause" : "Check"
-                    : data.scanning() ? "Pause" : data.surveyDone() == data.surveyTotal()
-                    ? "Resample" : data.surveyDone() > 0 ? "Resume" : "Sample"));
+                    : work.running() ? "Pause" : allFound ? "Found" : work.cursor() < work.limit() ? "Resume"
+                    : work.limit() < AtlasSearch.MAX ? "Search+" : "Done"));
+            if (tab != 1 && !work.running() && (allFound || work.cursor() == AtlasSearch.MAX)) scanButton.active = false;
+            scanButton.setTooltip(Tooltip.create(Component.literal(tab == 1
+                    ? "Check existence: up to 256 more candidate positions. Stop when all types, including portal rooms, are found. Counts remain lower bounds."
+                    : "Quick biome check: at most 1,024 queries. Search+ adds up to 4,096 queries for missing types. Stops when all expected types are found.")));
+            detailButton.active = data.wrapped() && data.error().isEmpty();
+            detailButton.setMessage(Component.literal(tab == 1 ? data.structureCounting() && data.structuresScanning() ? "Counting" : "Count all"
+                    : work.mapping() ? "Pause map" : work.mapCursor() < work.mapLimit() ? "Map: go"
+                    : work.mapCursor() < AtlasSearch.MAP_MAX ? "Map+" : "Map done"));
+            if (tab == 1 && data.structureCounting() && data.structuresScanning()
+                    || tab != 1 && work.mapCursor() == AtlasSearch.MAP_MAX) detailButton.active = false;
+            detailButton.setTooltip(Tooltip.create(Component.literal(tab == 1
+                    ? "Explicit full count across this finite dimension. Can take a long time in large worlds. Pause with Pause; Count all resumes it. Completed counts restart."
+                    : "Independent map preview: 256 coarse queries automatically. Map+ refines it with 65,536 surface queries. This does not require completing the biome checklist.")));
+            resetButton.active = data.wrapped() && data.error().isEmpty();
+            resetButton.setTooltip(Tooltip.create(Component.literal(tab == 1
+                    ? "Reset predicted counts and candidate cursors, retain observations, then run a bounded existence check."
+                    : "Restart the small biome search. Retains observations and map detail; does not start full map refinement.")));
             viewButton.active = data.wrapped();
             if (!data.wrapped() && globe) setGlobe(false);
             if (tab == 0) for (var biome : BiomeOverview.select(data.biomes(), filter, sort)) {
@@ -155,7 +179,7 @@ final class OrbisDebugScreen extends Screen {
                 values.add(biome.observed() ? "O" : biome.found() ? "~" : "?");
                 String status = biome.observed() ? "Observed in a loaded chunk" : biome.found() ? "Found by generator sampling" : "Not found yet; existence unconfirmed";
                 tips.add(biome.id() + "\n" + status + "\n" + String.format(Locale.ROOT, "%,d sample queries", biome.sampleHits())
-                        + " at four heights. Not a chunk count or area measurement.");
+                        + " across biome search and map preview. Not a chunk count or area measurement.");
                 colors.add(biome.observed() ? ACCENT : biome.found() ? 0xff8dbffa : MUTED);
                 places.add(biome.location());
             }
@@ -181,7 +205,7 @@ final class OrbisDebugScreen extends Screen {
                 labels.add(entry[0]); values.add(entry[1]); tips.add(entry[0] + ": " + entry[1]);
                 places.add(null); colors.add(MUTED);
             }
-        } else scanButton.active = false;
+        } else { scanButton.active = false; detailButton.active = false; resetButton.active = false; }
         rowLabels = labels; rowValues = values; rowTips = tips; rowColors = colors; rowPlaces = places;
         page = Math.clamp(page, 0, Math.max(0, (labels.size() - 1) / Math.max(1, rows.size())));
         filterButton.visible = tab != 2;
@@ -273,7 +297,7 @@ final class OrbisDebugScreen extends Screen {
                 g.text(font, ellipsis(displayName(selected.label()), mapRight - mapLeft - 12), mapLeft + 4, mapBottom - 22, ACCENT, false);
                 g.text(font, "X " + selected.x() + "  Y " + selected.y() + "  Z " + selected.z(), mapLeft + 4, mapBottom - 11, TEXT, false);
             } else if (data.surveyDone() == 0) {
-                g.text(font, ellipsis("Sampling reveals biome coverage", mapRight - mapLeft - 12), mapLeft + 6, mapTop + 6, MUTED, false);
+                g.text(font, ellipsis("Building coarse biome preview", mapRight - mapLeft - 12), mapLeft + 6, mapTop + 6, MUTED, false);
             }
             g.disableScissor();
             int panelWidth = right - panelX - 8;
@@ -288,10 +312,8 @@ final class OrbisDebugScreen extends Screen {
                 if (expected > 0) g.fill(panelX, top + 82, panelX + (int) (panelWidth * found / expected), top + 83, ACCENT);
             } else {
                 g.text(font, coverage.found() + " / " + coverage.total() + " biomes found", panelX, top + 59, ACCENT, false);
-                String state = !data.error().isEmpty() ? "error" : data.surveyDone() == data.surveyTotal() ? "sampled" : data.scanning() ? "sampling" : data.surveyDone() > 0 ? "paused" : "ready";
-                g.text(font, ellipsis(coverage.unknown() + " unconfirmed", Math.max(20, panelWidth - font.width(data.surveyDone() * 100 / data.surveyTotal() + "% " + state) - 8)), panelX, top + 71, MUTED, false);
-                String progress = data.surveyDone() * 100 / data.surveyTotal() + "% " + state;
-                g.text(font, progress, right - 8 - font.width(progress), top + 71, MUTED, false);
+                String state = !data.error().isEmpty() ? "Error" : data.search().label();
+                g.text(font, ellipsis(coverage.unknown() + " unconfirmed / " + state, panelWidth), panelX, top + 71, MUTED, false);
                 g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
                 g.fill(panelX, top + 82, panelX + (int) ((long) panelWidth * data.surveyDone() / data.surveyTotal()), top + 83, ACCENT);
             }
@@ -393,7 +415,8 @@ final class OrbisDebugScreen extends Screen {
                 new String[]{"Map refresh", String.format(Locale.ROOT, "%.2f ms", mapTexture.updateMillis())},
                 new String[]{"Terrain layer", minecraft.level != null && minecraft.level.dimensionType().hasCeiling() ? "Y 32 / biome-tinted" : "Surface"},
                 new String[]{"Map texture", mapTexture.resolution()}, new String[]{"Texture uploads", Integer.toString(mapTexture.uploads())},
-                new String[]{"Sampling", DebugSurvey.GRID + " x " + DebugSurvey.GRID + " / four heights"},
+                new String[]{"Biome search", data.surveyDone() + " / " + data.surveyTotal() + " queries / " + data.search().label()},
+                new String[]{"Map preview", data.search().progress().mapCursor() + " / " + data.search().progress().mapLimit() + " queries"},
                 new String[]{"Structure positions checked", String.format(Locale.ROOT, "%,d", data.structureChecks())},
                 new String[]{"Structure check", data.structureState()},
                 new String[]{"Queries completed", String.format(Locale.ROOT, "%,d / %,d", data.surveyDone(), data.surveyTotal())},
