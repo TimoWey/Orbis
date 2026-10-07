@@ -3,6 +3,7 @@
   "id": "orbis",
   "version": "${version}",
   "name": "Orbis",
+  "icon": "assets/orbis/icon.png",
   "description": "Standalone finite singleplayer worlds with X/Z wrapping, exact 1:8 Nether scaling and an unwrapped End.",
   "authors": [
     "Timo Wey"
