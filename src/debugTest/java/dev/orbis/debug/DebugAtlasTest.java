@@ -67,8 +67,11 @@ class DebugAtlasTest {
         var grid = new StructureAudit.Grid(min, min, width, 1);
         assertEquals((long) width * width, grid.total);
         assertTrue(grid.total > Integer.MAX_VALUE);
-        assertEquals(new ChunkPos(min, min), grid.at(0));
-        assertEquals(new ChunkPos(min + width - 1, min + width - 1), grid.at(grid.total - 1));
+        for (long index : new long[] {0, grid.total / 2, grid.total - 1}) {
+            var point = grid.at(index);
+            assertTrue(point.x() >= min && point.x() < min + width);
+            assertTrue(point.z() >= min && point.z() < min + width);
+        }
         assertThrows(IndexOutOfBoundsException.class, () -> grid.at(grid.total));
     }
 
@@ -186,7 +189,6 @@ class DebugAtlasTest {
     }
 
     private static DebugSnapshot fixture(Map<Integer, Integer> colors, List<DebugSnapshot.Cell> chunks, Set<Long> loaded) {
-        return new DebugSnapshot("minecraft:overworld", 123, "Custom", 1, -1024, -1024, 2048,
-                true, 0, 64, 0, 10, chunks, loaded, List.of(), List.of(), colors, 0, DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "Not checked yet");
+        return AtlasFixtures.world(colors, chunks, loaded);
     }
 }

@@ -12,9 +12,7 @@ final class DebugMapTexture implements AutoCloseable {
     private final Identifier id = Identifier.fromNamespaceAndPath("orbis", "atlas_" + nextId++);
     private DynamicTexture texture;
     private DebugMapRaster raster;
-    private DebugMapRaster.View previousView;
-    private String dimension;
-    private long revision = -1, seed;
+    private DebugMapKey previousKey;
     private int width, height, uploads;
     private double updateMillis;
     private long lastUpload;
@@ -32,15 +30,14 @@ final class DebugMapTexture implements AutoCloseable {
             Minecraft.getInstance().getTextureManager().register(id, texture);
         }
         // Coalesce input events; expensive globe reprojection is capped at 30 updates/s.
-        boolean changed = revision != data.mapRevision() || seed != data.seed()
-                || !data.dimension().equals(dimension) || !view.equals(previousView);
-        if (changed && (previousView == null || System.nanoTime() - lastUpload >= 33_333_333L)) {
+        var key = DebugMapKey.of(data, view);
+        if (!key.equals(previousKey) && (previousKey == null || System.nanoTime() - lastUpload >= 33_333_333L)) {
             long start = System.nanoTime();
             int[] pixels = raster.render(data, view);
             NativeImage target = texture.getPixels();
             for (int py = 0; py < height; py++) for (int px = 0; px < width; px++) target.setPixel(px, py, pixels[py * width + px]);
             texture.upload();
-            revision = data.mapRevision(); seed = data.seed(); dimension = data.dimension(); previousView = view;
+            previousKey = key;
             uploads++;
             lastUpload = System.nanoTime();
             updateMillis = (System.nanoTime() - start) / 1_000_000.0;
@@ -53,6 +50,6 @@ final class DebugMapTexture implements AutoCloseable {
     String resolution() { return width + " x " + height; }
     @Override public void close() {
         if (texture != null) Minecraft.getInstance().getTextureManager().release(id);
-        texture = null; raster = null; previousView = null; revision = -1;
+        texture = null; raster = null; previousKey = null;
     }
 }

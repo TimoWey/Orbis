@@ -1,18 +1,36 @@
 """Fail CI if the distributable needs or embeds the separate Toroidal World mod."""
 import io
+import argparse
 import json
-import sys
 import zipfile
 from pathlib import Path
 
-debug_expected = '--debug' in sys.argv[1:]
-jars = [Path(p) for p in sys.argv[1:] if p != '--debug' and not p.endswith('-sources.jar')]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--debug', action='store_true')
+parser.add_argument('--sources', type=Path, help='Matching sources JAR; inferred beside the binary when omitted')
+parser.add_argument('jars', nargs='+', type=Path)
+args = parser.parse_args()
+debug_expected = args.debug
+jars = [p for p in args.jars if not p.name.endswith('-sources.jar')]
 assert len(jars) == 1, f'Expected one distributable, found {jars}'
 with zipfile.ZipFile(jars[0]) as jar:
     names = set(jar.namelist())
     meta = json.loads(jar.read('fabric.mod.json'))
     assert meta['id'] == 'orbis'
+    assert meta['icon'] in names, 'Declared mod icon is missing'
+    provenance = json.loads(jar.read('META-INF/orbis-build.json'))
+    assert provenance['version'] == meta['version']
+    assert provenance['variant'] == ('debug' if debug_expected else 'normal')
+    assert len(provenance['source_sha256']) == 64
+    sources = args.sources or jars[0].with_name(jars[0].stem + '-sources.jar')
+    with zipfile.ZipFile(sources) as source_jar:
+        assert source_jar.read('META-INF/orbis-build.json') == jar.read('META-INF/orbis-build.json'), 'Binary/source provenance mismatch'
+        assert source_jar.read(meta['icon']) == jar.read(meta['icon']), 'Binary/source icon mismatch'
     assert meta['entrypoints']['main'] == ['dev.orbis.Orbis']
+    for entrypoints in meta['entrypoints'].values():
+        for entrypoint in entrypoints:
+            name = entrypoint['value'] if isinstance(entrypoint, dict) else entrypoint
+            assert name.replace('.', '/') + '.class' in names, f'Missing entrypoint {name}'
     debug_entrypoint = 'dev.orbis.debug.OrbisDebugClient'
     debug_classes = [name for name in names if name.startswith('dev/orbis/debug/')]
     assert (debug_entrypoint in meta['entrypoints']['client']) == debug_expected
@@ -62,4 +80,4 @@ with zipfile.ZipFile(jars[0]) as jar:
         with zipfile.ZipFile(io.BytesIO(jar.read(nested['file']))) as lib:
             nested_meta = json.loads(lib.read('fabric.mod.json'))
             assert nested_meta['id'] != 'toroidal_world', 'Separate engine mod was nested'
-print(f'{jars[0].name}: standalone packaging verified; debug={debug_expected}.')
+print(f'{jars[0].name}: standalone packaging and matching provenance verified; debug={debug_expected}.')

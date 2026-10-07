@@ -1,6 +1,6 @@
 package dev.orbis.debug;
 
-/** Full counting is opt-in; each existence pass has a fixed, world-size-independent probe budget. */
+/** Full counting is opt-in; each existence pass has a fixed budget of actual layout queries. */
 record StructureSearchPolicy(boolean counting, long limit) {
     static final int QUICK_CHECKS = 256;
     StructureSearchPolicy {

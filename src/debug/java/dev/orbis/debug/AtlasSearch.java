@@ -77,8 +77,10 @@ final class AtlasSearch {
                 x = minX + (int) (fraction(index, 2) * span);
                 z = minZ + (int) (fraction(index, 3) * span);
                 int layer = (index - 1) % (heights.length + 1);
+                // Advance the height sequence only for variable-height queries. Using index
+                // itself locks the four-height case to multiples of base 5 (the bottom 20%).
                 y = layer < heights.length ? heights[layer]
-                        : minY + (int) (fraction(index, 5) * (maxY - minY + 1));
+                        : minY + (int) (fraction(index / (heights.length + 1), 5) * (maxY - minY + 1));
             }
             var result = query.at(x, y, z);
             evidence.accept(x, y, z, result.id());

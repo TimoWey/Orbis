@@ -1,16 +1,21 @@
 """Dimension arithmetic and statistical planning; NOT a world simulation."""
 import json
 import math
+from pathlib import Path
 
+spec = json.loads((Path(__file__).resolve().parents[1] / 'spec/world-presets.json').read_text(encoding='utf-8'))
 rows = []
-for width in (128, 256, 512, 1024, 2048, 4096):
+for preset in spec['presets']:
+    width = preset['overworld_width_chunks']
     rows.append({
+        "preset": preset['id'],
         "overworld_chunks_per_axis": width,
         "overworld_blocks_per_axis": width * 16,
         "overworld_total_chunks": width * width,
-        "nether_chunks_per_axis": width // 8,
-        "nether_blocks_per_axis": width * 2,
-        "nether_total_chunks": (width // 8) ** 2,
+        "nether_chunks_per_axis": width // spec['nether_scale'],
+        "nether_blocks_per_axis": width * 16 // spec['nether_scale'],
+        "nether_total_chunks": (width // spec['nether_scale']) ** 2,
+        "overworld_area_km2": (width * 16) ** 2 / 1_000_000,
     })
 trials = []
 for target in (0.95, 0.99, 0.999):

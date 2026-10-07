@@ -7,6 +7,7 @@ import com.toroidalworld.api.v1.shape.LoopSpans;
 import com.toroidalworld.api.v1.shape.ShapeDimensions;
 import com.toroidalworld.api.v1.shape.ShapeModule;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldDimensions;
@@ -24,15 +25,21 @@ public final class OrbisShape {
         WorldDimensions result = ShapeDimensions.withSpans(dimensions, overworld,
                 overworld.scaledDown(8), LoopSpans.NONE,
                 GenerationOptions.DEFAULT.with(ENABLED, true));
-        if (read(result) == null) {
-            throw new IllegalArgumentException("Orbis requires compatible Overworld and Nether generators and vanilla dimension scaling.");
-        }
-        double owScale = result.get(LevelStem.OVERWORLD).orElseThrow().type().value().coordinateScale();
-        double netherScale = result.get(LevelStem.NETHER).orElseThrow().type().value().coordinateScale();
-        if (owScale != 1.0 || netherScale != 8.0) {
-            throw new IllegalArgumentException("Orbis requires Overworld coordinate scale 1 and Nether scale 8.");
-        }
+        requireValid(result);
         return result;
+    }
+
+    /** Validate the final registry too: datapacks can replace dimension types when a save is restored. */
+    public static void validateRestored(Registry<LevelStem> dimensions) {
+        var restored = new WorldDimensions(dimensions);
+        if (owns(restored)) requireValid(restored);
+    }
+
+    private static void requireValid(WorldDimensions dimensions) {
+        if (read(dimensions) == null) {
+            throw new IllegalArgumentException("Invalid Orbis dimensions: expected aligned square Overworld/Nether bounds, "
+                    + "coordinate scales 1/8 and an unwrapped End. Check dimension datapacks before loading this world.");
+        }
     }
 
     public static boolean owns(WorldDimensions dimensions) {
@@ -41,6 +48,11 @@ public final class OrbisShape {
 
     public static WorldSize read(WorldDimensions dimensions) {
         if (!owns(dimensions)) return null;
+        var overworldStem = dimensions.get(LevelStem.OVERWORLD).orElse(null);
+        var netherStem = dimensions.get(LevelStem.NETHER).orElse(null);
+        if (overworldStem == null || netherStem == null
+                || overworldStem.type().value().coordinateScale() != 1.0
+                || netherStem.type().value().coordinateScale() != 8.0) return null;
         LoopSpans ow = ShapeDimensions.spansOf(dimensions, LevelStem.OVERWORLD);
         LoopSpans nether = ShapeDimensions.spansOf(dimensions, LevelStem.NETHER);
         LoopSpans end = ShapeDimensions.spansOf(dimensions, LevelStem.END);

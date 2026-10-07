@@ -93,4 +93,32 @@ class AtlasSearchTest {
         assertThrows(IllegalArgumentException.class, () -> new AtlasSearch.Saved(0, AtlasSearch.MAX + 1, true, 0, 256, true));
         assertThrows(IllegalArgumentException.class, () -> new AtlasSearch.Saved(0, 1024, true, 0, Integer.MAX_VALUE, true));
     }
+
+    @Test void extraHeightsExploreEveryVerticalBandForOneToFourFixedHeights() {
+        for (int[] heights : new int[][] {{63}, {63, -48}, {63, -48, 32}, {63, -48, 32, 128}}) {
+            var search = search(16384, heights);
+            search.search(1, () -> true, () -> false, (x,y,z) -> PLAINS, (x,y,z,id) -> {});
+            search.toggle(false);
+            var bands = new HashSet<Integer>();
+            var query = new AtomicInteger();
+            search.search(1, () -> true, () -> false, (x,y,z) -> {
+                if (query.incrementAndGet() % (heights.length + 1) == 0) bands.add((y + 64) / 48);
+                return PLAINS;
+            }, (x,y,z,id) -> {});
+            assertEquals(Set.of(0, 1, 2, 3, 4, 5, 6, 7), bands,
+                    "Variable-height queries must cover the full dimension height");
+        }
+    }
+
+    @Test void slowQueryStopsBeforeStartingAnotherAfterDeadline() {
+        var clock = new AtomicInteger();
+        var search = new AtlasSearch(-1024, -1024, 2048, -64, 319,
+                new int[]{63, -48, 32, 128}, true, clock::get);
+        var queries = new AtomicInteger();
+        search.search(3, () -> true, () -> false, (x,y,z) -> {
+            queries.incrementAndGet(); clock.addAndGet(5); return PLAINS;
+        }, (x,y,z,id) -> {});
+        assertEquals(1, queries.get());
+        assertEquals(1, search.save().cursor());
+    }
 }

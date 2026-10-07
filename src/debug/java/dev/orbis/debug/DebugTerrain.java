@@ -1,6 +1,5 @@
 package dev.orbis.debug;
 
-import java.util.ArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -9,21 +8,20 @@ import net.minecraft.world.level.material.MapColor;
 /** Reads only the supplied, already-loaded chunk, never requests neighbouring chunks. */
 final class DebugTerrain {
     static final int CEILING_SLICE_Y = 32;
+    static final int EMPTY_SLICE_COLOR = 0xff283039;
     static DebugSnapshot.Cell sample(LevelChunk chunk, int fallbackColor) {
         boolean ceiling = chunk.getLevel().dimensionType().hasCeiling();
-        var colors = new ArrayList<Integer>(256);
+        var colors = new int[256];
         var pos = new BlockPos.MutableBlockPos();
         int originX = chunk.getPos().x() * 16, originZ = chunk.getPos().z() * 16;
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
             if (ceiling) {
-                // The Nether roof is not a useful map. Read an actual horizontal slice
-                // instead; biome tint keeps netherrack/lava expanses distinguishable.
+                // A fixed horizontal slice avoids the Nether roof. Air is neutral;
+                // observed blocks retain their actual map colors without biome tint.
                 int y = sliceY(chunk.getMinY(), chunk.getMaxY());
                 pos.set(originX + x, y, originZ + z);
-                String biome = chunk.getNoiseBiome(pos.getX() >> 2, y >> 2, pos.getZ() >> 2).unwrapKey()
-                        .map(key -> key.identifier().toString()).orElse("unregistered");
                 var map = chunk.getBlockState(pos).getMapColor(chunk, pos);
-                colors.add(sliceColor(DebugMapMath.biomeColor(biome), map == MapColor.NONE ? null : map.col));
+                colors[z * 16 + x] = sliceColor(map.col, map != MapColor.NONE);
                 continue;
             }
             int y = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
@@ -38,16 +36,13 @@ final class DebugTerrain {
                     break;
                 }
             }
-            colors.add(color);
+            colors[z * 16 + x] = color;
         }
         return new DebugSnapshot.Cell(chunk.getPos().x(), chunk.getPos().z(), fallbackColor, colors);
     }
     static int sliceY(int minY, int maxY) { return Math.clamp(CEILING_SLICE_Y, minY, maxY); }
-    static int sliceColor(int biome, Integer block) {
-        if (block == null) return biome;
-        return 0xff000000 | (((biome >> 16 & 255) * 3 + (block >> 16 & 255)) / 4 << 16)
-                | (((biome >> 8 & 255) * 3 + (block >> 8 & 255)) / 4 << 8)
-                | ((biome & 255) * 3 + (block & 255)) / 4;
+    static int sliceColor(int block, boolean present) {
+        return present ? 0xff000000 | block : EMPTY_SLICE_COLOR;
     }
     private DebugTerrain() {}
 }

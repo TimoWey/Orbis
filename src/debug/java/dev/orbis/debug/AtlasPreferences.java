@@ -1,5 +1,6 @@
 package dev.orbis.debug;
 
+import dev.orbis.Orbis;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -17,6 +18,7 @@ final class AtlasPreferences {
     private static final Properties VALUES = STORE.values;
     static boolean globe(String dimension) { return STORE.globe(dimension); }
     static void setGlobe(String dimension, boolean globe) { STORE.setGlobe(dimension, globe); }
+    static String status() { return STORE.status(); }
     static int corner() {
         try { return Math.floorMod(Integer.parseInt(VALUES.getProperty("corner", "0")), 4); }
         catch (NumberFormatException ignored) { return 0; }
@@ -34,11 +36,19 @@ final class AtlasPreferences {
     static final class Store {
         private final Path file;
         private final Properties values = new Properties();
+        private String status = "";
+        private boolean readable = true;
         Store(Path file) {
             this.file = file.toAbsolutePath();
-            if (Files.isRegularFile(file)) try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
-            catch (IOException | IllegalArgumentException ignored) { }
+            if (Files.exists(file)) try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
+            catch (IOException | IllegalArgumentException failure) {
+                values.clear();
+                readable = false;
+                status = "Preferences could not be loaded; saving disabled";
+                Orbis.LOGGER.warn("Could not load Orbis atlas preferences {}", file, failure);
+            }
         }
+        String status() { return status; }
         boolean globe(String dimension) {
             return Boolean.parseBoolean(values.getProperty("globe." + dimension, values.getProperty("globe", "false")));
         }
@@ -47,6 +57,7 @@ final class AtlasPreferences {
             values.setProperty("globe." + dimension, Boolean.toString(globe)); save();
         }
         private void save() {
+            if (!readable) return;
             Path temporary = null;
             try {
                 Files.createDirectories(file.getParent());
@@ -54,8 +65,15 @@ final class AtlasPreferences {
                 try (Writer writer = Files.newBufferedWriter(temporary)) { values.store(writer, "Orbis atlas; globe per dimension"); }
                 try { Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
                 catch (AtomicMoveNotSupportedException ignored) { Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING); }
-            } catch (IOException ignored) { }
-            finally { if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) { } }
+                status = "";
+            } catch (IOException failure) {
+                status = "Preferences could not be saved";
+                Orbis.LOGGER.warn("Could not save Orbis atlas preferences {}", file, failure);
+            }
+            finally {
+                if (temporary != null) try { Files.deleteIfExists(temporary); }
+                catch (IOException failure) { Orbis.LOGGER.warn("Could not remove temporary atlas preferences {}", temporary, failure); }
+            }
         }
     }
     private AtlasPreferences() { }

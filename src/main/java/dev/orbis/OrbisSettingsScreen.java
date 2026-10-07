@@ -16,6 +16,7 @@ import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.layouts.SpacerElement;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.CommonComponents;
 
 public final class OrbisSettingsScreen extends Screen {
     private final Screen parent;
@@ -34,7 +35,7 @@ public final class OrbisSettingsScreen extends Screen {
     private WorldSize lastValid;
 
     public OrbisSettingsScreen(Screen parent, WorldSize current, Consumer<WorldSize> onDone) {
-        super(Component.literal("Orbis world settings"));
+        super(Component.translatable("gui.orbis.settings.title"));
         this.parent = parent;
         this.onDone = onDone;
         this.chosen = Integer.toString(current.overworldChunks());
@@ -54,20 +55,20 @@ public final class OrbisSettingsScreen extends Screen {
         LinearLayout controls = contents.addChild(LinearLayout.vertical().spacing(8));
         controls.defaultCellSetting().alignHorizontallyLeft();
         controls.addChild(SpacerElement.width(controlsWidth));
-        controls.addChild(heading("Choose a size"));
+        controls.addChild(heading("choose_size"));
         slider = controls.addChild(new SizeSlider(lastValid, controlsWidth));
-        controls.addChild(text("Tiny minimum · Earth maximum", controlsWidth, ChatFormatting.GRAY));
+        controls.addChild(text("range", controlsWidth, ChatFormatting.GRAY));
         LinearLayout presets = controls.addChild(LinearLayout.horizontal().spacing(4));
         int presetWidth = (controlsWidth - 16) / 5;
         for (WorldSize.Preset preset : WorldSize.Preset.values()) {
-            var button = presets.addChild(Button.builder(Component.literal(preset.label),
+            var button = presets.addChild(Button.builder(sizeLabel(preset.size),
                     b -> widthInput.setValue(Integer.toString(preset.size.overworldChunks())))
                     .width(presetWidth).build());
             presetButtons.put(preset, button);
         }
         controls.addChild(SpacerElement.height(4));
-        controls.addChild(heading("Exact side length"));
-        widthInput = controls.addChild(new EditBox(font, controlsWidth, 20, Component.literal("Exact side length in chunks")));
+        controls.addChild(heading("exact_side"));
+        widthInput = controls.addChild(new EditBox(font, controlsWidth, 20, tr("exact_chunks")));
         widthInput.setMaxLength(7);
         widthInput.setValue(chosen);
         inputHint = controls.addChild(text("", controlsWidth, ChatFormatting.GRAY));
@@ -75,18 +76,18 @@ public final class OrbisSettingsScreen extends Screen {
         LinearLayout overview = contents.addChild(LinearLayout.vertical().spacing(8));
         overview.defaultCellSetting().alignHorizontallyLeft();
         overview.addChild(SpacerElement.width(summaryWidth));
-        overview.addChild(heading("World overview"));
+        overview.addChild(heading("overview"));
         summary = overview.addChild(text("", summaryWidth, ChatFormatting.WHITE));
         overview.addChild(SpacerElement.height(4));
         dimensions = overview.addChild(text("", summaryWidth, ChatFormatting.GRAY));
         overview.addChild(SpacerElement.height(4));
-        overview.addChild(text("Opposite edges connect. Keep exploring in any direction.", summaryWidth, ChatFormatting.GRAY));
+        overview.addChild(text("edges", summaryWidth, ChatFormatting.GRAY));
         warning = overview.addChild(text("", summaryWidth, ChatFormatting.YELLOW));
         scroll = new ScrollableLayout(minecraft, contents, layout.getContentHeight());
         layout.addToContents(scroll);
         LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
         int actionWidth = Math.min(150, (width - 40 - 8) / 2);
-        footer.addChild(Button.builder(Component.literal("Done"), b -> {
+        footer.addChild(Button.builder(CommonComponents.GUI_DONE, b -> {
             validate(chosen);
             if (valid != null) {
                 onDone.accept(valid);
@@ -96,7 +97,7 @@ public final class OrbisSettingsScreen extends Screen {
                 triggerImmediateNarration(false);
             }
         }).width(actionWidth).build());
-        footer.addChild(Button.builder(Component.literal("Cancel"), b -> onClose()).width(actionWidth).build());
+        footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, b -> onClose()).width(actionWidth).build());
         widthInput.setResponder(this::validate);
         validate(chosen);
         layout.visitWidgets(this::addRenderableWidget);
@@ -105,12 +106,23 @@ public final class OrbisSettingsScreen extends Screen {
     }
 
     private StringWidget heading(String label) {
-        return new StringWidget(Component.literal(label).withStyle(ChatFormatting.BOLD), font);
+        return new StringWidget(tr(label).withStyle(ChatFormatting.BOLD), font);
     }
 
     private MultiLineTextWidget text(String message, int maxWidth, ChatFormatting color) {
-        return new MultiLineTextWidget(Component.literal(message).withStyle(color), font).setMaxWidth(maxWidth);
+        return new MultiLineTextWidget((message.isEmpty() ? Component.empty() : tr(message)).withStyle(color), font).setMaxWidth(maxWidth);
     }
+
+    private static net.minecraft.network.chat.MutableComponent tr(String key, Object... arguments) {
+        return Component.translatable("gui.orbis.settings." + key, arguments);
+    }
+
+    private static net.minecraft.network.chat.MutableComponent sizeLabel(WorldSize size) {
+        return Component.translatable("gui.orbis.size." + size.label().toLowerCase(Locale.ROOT));
+    }
+
+    private static String number(long value) { return String.format(Locale.ROOT, "%,d", value); }
+    private static String area(WorldSize size) { return String.format(Locale.ROOT, "%,.2f", size.areaSquareKilometres()); }
 
     private void validate(String value) {
         chosen = value;
@@ -118,44 +130,34 @@ public final class OrbisSettingsScreen extends Screen {
             valid = WorldSize.select(Integer.parseInt(value));
             lastValid = valid;
             slider.show(valid);
-            widthInput.setMessage(Component.literal("Exact side length in chunks"));
-            inputHint.setMessage(Component.literal(String.format(Locale.US,
-                    "%,d–%,d chunks · Steps of 16\n1 chunk = 16 × 16 blocks",
-                    WorldSize.MIN_CHUNKS, WorldSize.EARTH_CHUNKS)).withStyle(ChatFormatting.GRAY));
-            summary.setMessage(Component.literal(valid.label()).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)
-                    .append(Component.literal(String.format(Locale.US, "\n%,.2f km²", valid.areaSquareKilometres()))
-                            .withStyle(ChatFormatting.WHITE)));
-            dimensions.setMessage(Component.literal(String.format(Locale.US,
-                    "Overworld side\n%,d chunks · %,d blocks\n\nNether side\n%,d chunks · %,d blocks\n\nEnd · Unchanged",
-                    valid.overworldChunks(), valid.overworldBlocks(), valid.netherChunks(), valid.netherBlocks()))
+            widthInput.setMessage(tr("exact_chunks"));
+            inputHint.setMessage(tr("input_hint", number(WorldSize.MIN_CHUNKS), number(WorldSize.EARTH_CHUNKS))
                     .withStyle(ChatFormatting.GRAY));
-            warning.setMessage(Component.literal(valid.equals(WorldSize.Preset.EARTH.size)
-                    ? "Earth is experimental. Biomes and structures are not guaranteed."
-                    : "Some biomes and structures may be missing.").withStyle(ChatFormatting.YELLOW));
+            summary.setMessage(sizeLabel(valid).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)
+                    .append(tr("area", area(valid)).withStyle(ChatFormatting.WHITE)));
+            dimensions.setMessage(tr("dimensions", number(valid.overworldChunks()), number(valid.overworldBlocks()),
+                    number(valid.netherChunks()), number(valid.netherBlocks())).withStyle(ChatFormatting.GRAY));
+            warning.setMessage(tr(valid.equals(WorldSize.Preset.EARTH.size) ? "earth_warning" : "biome_warning")
+                    .withStyle(ChatFormatting.YELLOW));
         } catch (IllegalArgumentException bad) {
             valid = null;
-            Component error = Component.literal(String.format(Locale.US,
-                    "Enter %,d–%,d chunks in steps of 16, or choose a preset.",
-                    WorldSize.MIN_CHUNKS, WorldSize.EARTH_CHUNKS));
-            widthInput.setMessage(Component.literal("Exact side length in chunks. ").append(error));
+            Component error = tr("invalid", number(WorldSize.MIN_CHUNKS), number(WorldSize.EARTH_CHUNKS));
+            widthInput.setMessage(tr("exact_chunks").append(". ").append(error));
             inputHint.setMessage(error.copy().withStyle(ChatFormatting.YELLOW));
-            summary.setMessage(Component.literal("Choose a valid size").withStyle(ChatFormatting.YELLOW));
-            dimensions.setMessage(Component.literal("Adjust the side length or choose a preset to see its area and dimensions.")
-                    .withStyle(ChatFormatting.GRAY));
+            summary.setMessage(tr("choose_valid").withStyle(ChatFormatting.YELLOW));
+            dimensions.setMessage(tr("invalid_hint").withStyle(ChatFormatting.GRAY));
             warning.setMessage(Component.empty());
         }
         presetButtons.forEach((preset, button) -> {
             boolean selected = preset.size.equals(valid);
-            button.setMessage(selected ? Component.literal(preset.label).withStyle(ChatFormatting.GREEN, ChatFormatting.UNDERLINE)
-                    : Component.literal(preset.label));
-            button.setTooltip(Tooltip.create(Component.literal(String.format(Locale.US,
-                    "%s%s\n%,d chunks per side\n%,.2f km²%s", preset.label, selected ? " · Selected" : "",
-                    preset.size.overworldChunks(), preset.size.areaSquareKilometres(),
-                    preset == WorldSize.Preset.NORMAL ? "\nDefault size" : ""))));
+            button.setMessage(selected ? sizeLabel(preset.size).withStyle(ChatFormatting.GREEN, ChatFormatting.UNDERLINE)
+                    : sizeLabel(preset.size));
+            button.setTooltip(Tooltip.create(tr("preset_hint", sizeLabel(preset.size),
+                    selected ? tr("selected") : Component.empty(), number(preset.size.overworldChunks()), area(preset.size),
+                    preset == WorldSize.Preset.NORMAL ? tr("default_size") : Component.empty())));
         });
         if (scroll != null) repositionElements();
     }
-
     private final class SizeSlider extends AbstractSliderButton {
         private WorldSize displayed;
 
@@ -163,8 +165,7 @@ public final class OrbisSettingsScreen extends Screen {
             super(0, 0, width, 20, Component.empty(), initial.sliderPosition());
             displayed = initial.overworldChunks() < WorldSize.MIN_CHUNKS ? WorldSize.Preset.TINY.size : initial;
             updateMessage();
-            setTooltip(Tooltip.create(Component.literal(
-                    "Adjust world size from Tiny to Earth. Type a side length below for an exact value.")));
+            setTooltip(Tooltip.create(tr("slider_hint")));
         }
 
         void show(WorldSize size) {
@@ -174,8 +175,7 @@ public final class OrbisSettingsScreen extends Screen {
         }
 
         @Override protected void updateMessage() {
-            setMessage(Component.literal(String.format(Locale.US, "%s · %,d chunks",
-                    displayed.label(), displayed.overworldChunks())));
+            setMessage(tr("slider", sizeLabel(displayed), number(displayed.overworldChunks())));
         }
 
         @Override protected void applyValue() {

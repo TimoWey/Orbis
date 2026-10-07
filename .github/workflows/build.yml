@@ -5,6 +5,8 @@ on:
       - 'src/**'
       - 'vendor/**'
       - 'tools/**'
+      - 'spec/**'
+      - 'analysis/**'
       - '*.gradle'
       - 'gradle.properties'
       - 'gradle/**'
@@ -20,28 +22,36 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: normal
+            debug: 'false'
+            output: build
+          - variant: debug
+            debug: 'true'
+            output: build/debug
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-      - name: Build and regression tests
-        run: bash gradlew build --no-daemon --stacktrace
-      - name: Verify standalone JAR
-        run: python3 tools/verify_standalone.py build/libs/orbis-*.jar
+      - name: Build, regression tests and exact artifact verification
+        run: bash gradlew build -PorbisDebug=${{ matrix.debug }} --no-daemon --stacktrace
       - name: Upload mod JAR and sources
         uses: actions/upload-artifact@v4
         with:
-          name: orbis-fabric-26.3
-          path: build/libs/*.jar
+          name: orbis-fabric-26.3-${{ matrix.variant }}
+          path: ${{ matrix.output }}/libs/*.jar
           if-no-files-found: error
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.variant }}
           path: |
-            build/reports/tests/
-            build/test-results/
+            ${{ matrix.output }}/reports/tests/
+            ${{ matrix.output }}/test-results/
           if-no-files-found: ignore

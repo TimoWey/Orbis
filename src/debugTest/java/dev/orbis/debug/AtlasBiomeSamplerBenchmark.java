@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Optional local microbenchmark; set ORBIS_ATLAS_BENCHMARK=1 and select this test class. */
+/** Historical full-grid resolver microbenchmark (not live atlas scheduling); set ORBIS_ATLAS_BENCHMARK=1 and select this test class. */
 @EnabledIfEnvironmentVariable(named = "ORBIS_ATLAS_BENCHMARK", matches = "1")
 class AtlasBiomeSamplerBenchmark {
     private static final long BUDGET = 3_000_000L;
@@ -34,10 +34,10 @@ class AtlasBiomeSamplerBenchmark {
             int[] heights = dimension.equals(LevelStem.NETHER) ? new int[] {32, 16, 32, 128} : new int[] {63, -48, 32, 128};
             // One whole untimed survey per implementation warms the real noise functions and JIT.
             baseline(generator.getBiomeSource().createUncachedResolver(random), span, heights);
-            optimized(AtlasBiomeSampler.create(generator.getBiomeSource(), random, -span / 2, -span / 2, span, heights));
+            optimized(new FullGridBiomeSurvey(AtlasBiomeSampler.create(generator.getBiomeSource(), random), -span / 2, -span / 2, span, heights));
             for (int round = 1; round <= 3; round++) {
                 Result old = baseline(generator.getBiomeSource().createUncachedResolver(random), span, heights);
-                Result next = optimized(AtlasBiomeSampler.create(generator.getBiomeSource(), random, -span / 2, -span / 2, span, heights));
+                Result next = optimized(new FullGridBiomeSurvey(AtlasBiomeSampler.create(generator.getBiomeSource(), random), -span / 2, -span / 2, span, heights));
                 assertEquals(old.hits, next.hits);
                 assertEquals(old.locations, next.locations);
                 assertEquals(old.colors, next.colors);
@@ -74,11 +74,11 @@ class AtlasBiomeSamplerBenchmark {
         return new Result(ticks, System.nanoTime() - start, hits, locations, colors);
     }
 
-    private static Result optimized(AtlasBiomeSampler sampler) {
+    private static Result optimized(FullGridBiomeSurvey sampler) {
         Map<String, Integer> hits = new HashMap<>();
         Map<String, DebugSnapshot.Place> locations = new HashMap<>();
         Map<Integer, Integer> colors = new HashMap<>();
-        AtlasBiomeSampler.Sink sink = (index, x, y, z, id, color) -> {
+        FullGridBiomeSurvey.Sink sink = (index, x, y, z, id, color) -> {
             if (!locations.containsKey(id)) locations.put(id, new DebugSnapshot.Place(id, x, y, z));
             hits.merge(id, 1, Integer::sum);
             if (index % DebugSurvey.LAYERS == 0) colors.put(index / DebugSurvey.LAYERS, color);

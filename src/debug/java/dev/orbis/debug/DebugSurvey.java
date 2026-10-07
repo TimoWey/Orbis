@@ -32,6 +32,8 @@ final class DebugSurvey {
     private static volatile Request request;
     static volatile DebugSnapshot snapshot;
     private static long command;
+    // Server-thread serial also distinguishes replacement states after a datapack reload.
+    private static long revisionSerial;
     static volatile String cacheStatus = "Loading";
 
     static void open(ResourceKey<Level> dimension, UUID player) {
@@ -48,24 +50,29 @@ final class DebugSurvey {
     static void close() { request = null; snapshot = null; }
 
     static void register() {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            try { AtlasWorldIdentity.prepare(server, server.overworld().getSeed()); }
+            catch (java.io.IOException failure) { Orbis.LOGGER.warn("Atlas world identity unavailable", failure); }
+        });
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
             State s = worlds.computeIfAbsent(level, State::new);
             long key = chunk.getPos().pack();
             s.loaded.add(key);
             s.pending.add(key);
-            s.mapRevision++;
+            s.loadedChanged();
         });
         ServerChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> {
             State s = worlds.get(level);
             if (s != null) {
                 s.loaded.remove(chunk.getPos().pack());
                 s.pending.remove(chunk.getPos().pack());
-                s.mapRevision++;
+                s.loadedChanged();
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> worlds.values().forEach(s -> s.save(true)));
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, manager, success) -> {
             if (!success) return;
+            AtlasCache.invalidateResources(server);
             for (var entry : new ArrayList<>(worlds.entrySet())) {
                 State old = entry.getValue(); old.save(true);
                 State replacement = new State(entry.getKey());
@@ -81,6 +88,8 @@ final class DebugSurvey {
             try { AtlasCache.IO.submit(() -> {}).get(10, java.util.concurrent.TimeUnit.SECONDS); }
             catch (Exception e) { Orbis.LOGGER.warn("Atlas final cache write still pending", e); }
             worlds.clear();
+            AtlasCache.clear(server);
+            AtlasWorldIdentity.clear(server);
             close();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -101,16 +110,18 @@ final class DebugSurvey {
                 if (s.wrapped) switch (r.action) {
                     case BIOMES -> s.search.toggle(s.allBiomesFound());
                     case RESAMPLE -> {
+                        s.error = "";
+                        s.pending.addAll(s.loaded);
                         s.hits.clear();
                         s.locations.keySet().removeIf(id -> !s.observed.contains(id));
-                        s.search.resample(); s.mapRevision++;
+                        s.search.resample(); s.changed();
                     }
                     case MAP -> s.search.toggleMap();
                     case STRUCTURES -> {
                         if (s.audit.running()) s.audit.running(false); else s.audit.startQuick();
                     }
                     case COUNT -> s.audit.startCount();
-                    case RESET_STRUCTURES -> s.audit.resample();
+                    case RESET_STRUCTURES -> { s.error = ""; s.audit.resample(); }
                     case NONE -> { }
                 }
             }
@@ -126,7 +137,7 @@ final class DebugSurvey {
                 if (auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
                 if (s.wrapped && (s.search.save().running() || s.search.save().mapping())) {
                     if (s.sampler == null) s.sampler = AtlasBiomeSampler.create(level.getChunkSource().getGenerator().getBiomeSource(),
-                            level.getChunkSource().randomState(), s.minX, s.minZ, s.span, s.heights);
+                            level.getChunkSource().randomState());
                     s.search.search(Math.min(deadline, System.nanoTime() + 1_000_000), () -> request == r,
                             s::allBiomesFound, s.sampler::query, s::evidence);
                     s.search.map(Math.min(deadline, System.nanoTime() + 1_000_000), () -> request == r,
@@ -135,13 +146,14 @@ final class DebugSurvey {
                                 // Coarse biome preview only; explored block colors stay in their own layer.
                                 for (int dz = 0; dz < size; dz++) for (int dx = 0; dx < size; dx++)
                                     s.colors.put((z * size + dz) * GRID + x * size + dx, color);
-                                s.mapRevision++;
+                                s.biomesChanged();
                             });
                 }
                 if (!auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
                 if (s.auditRevision != s.audit.revision()) {
                     s.auditRevision = s.audit.revision();
-                    s.mapRevision++;
+                    s.changed();
+                    s.markersDirty = true;
                 }
             } catch (RuntimeException failure) {
                 s.search.pause(); s.search.pauseMap();
@@ -156,22 +168,38 @@ final class DebugSurvey {
                 List<DebugSnapshot.BiomeEntry> biomes = ids.stream().map(id ->
                         new DebugSnapshot.BiomeEntry(id, s.observed.contains(id), s.locations.get(id), s.hits.getOrDefault(id, 0))).toList();
                 // Share immutable geometry until it changes; live tick statistics do not invalidate the map.
-                if (s.cachedRevision != s.mapRevision) {
+                if (s.cachedTerrainRevision != s.terrainRevision) {
                     s.cachedChunks = List.copyOf(s.history.values());
+                    s.cachedTerrainRevision = s.terrainRevision;
+                }
+                if (s.cachedLoadedRevision != s.loadedRevision) {
                     s.cachedLoaded = Set.copyOf(s.loaded);
-                    var markers = new ArrayList<>(s.places.values());
-                    for (var entry : s.audit.entries()) if (entry.location() != null && !markers.contains(entry.location())) markers.add(entry.location());
-                    s.cachedPlaces = List.copyOf(markers);
+                    s.cachedLoadedRevision = s.loadedRevision;
+                }
+                var structureEntries = s.audit.entries();
+                if (s.markersDirty) {
+                    var markers = new LinkedHashSet<>(s.places.values());
+                    for (var entry : structureEntries) if (entry.location() != null) markers.add(entry.location());
+                    var nextMarkers = List.copyOf(markers);
+                    if (!nextMarkers.equals(s.cachedPlaces)) {
+                        s.cachedPlaces = nextMarkers;
+                        s.changed();
+                        s.placesRevision = s.mapRevision;
+                    }
+                    s.markersDirty = false;
+                }
+                if (s.cachedBiomesRevision != s.biomesRevision) {
                     s.cachedColors = Map.copyOf(s.colors);
-                    s.cachedRevision = s.mapRevision;
+                    s.cachedBiomesRevision = s.biomesRevision;
                 }
                 DebugSnapshot next = new DebugSnapshot(r.dimension.identifier().toString(), level.getSeed(), s.preset,
                         s.mapRevision, s.minX, s.minZ,
                         s.span, s.wrapped, player.getBlockX(), player.getBlockY(), player.getBlockZ(),
                         server.getAverageTickTimeNanos() / 1_000_000.0, s.cachedChunks,
                         s.cachedLoaded, biomes, s.cachedPlaces, s.cachedColors,
-                        s.search.save().cursor(), s.search.save().limit(), s.search.save().running(), s.limited, s.error, s.audit.entries(),
-                        s.audit.running(), s.audit.checks(), s.audit.state(), new AtlasSearch.View(s.search.save(), s.allBiomesFound()), s.audit.counting());
+                        s.limited, s.error, structureEntries,
+                        s.audit.running(), s.audit.checks(), s.audit.state(), new AtlasSearch.View(s.search.save(), s.allBiomesFound()), s.audit.counting(),
+                        new DebugSnapshot.MapLayers(s.terrainRevision, s.biomesRevision, s.loadedRevision, s.placesRevision));
                 if (request == r) { snapshot = next; cacheStatus = s.cacheStatus; }
             }
         });
@@ -187,9 +215,9 @@ final class DebugSurvey {
         String surface = id(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2));
         var tile = DebugTerrain.sample(chunk, DebugMapMath.biomeColor(surface));
         var previous = s.history.get(key);
-        if (previous == null || previous.color() != tile.color() || !previous.terrain().equals(tile.terrain())) {
+        if (previous == null || previous.color() != tile.color() || !previous.sameTerrain(tile)) {
             putBounded(s.history, key, tile, HISTORY_LIMIT, s);
-            s.mapRevision++;
+            s.terrainChanged();
         }
         // Locate cells only for newly observed palette entries, not all cells in every chunk.
         for (int section = 0; section < chunk.getSections().length; section++) {
@@ -202,7 +230,7 @@ final class DebugSurvey {
                 String biome = id(palette.getNoiseBiome(bx, by, bz));
                 if (unseen.remove(biome)) {
                     s.observed.add(biome);
-                    s.mapRevision++;
+                    s.changed();
                     s.locations.put(biome, new DebugSnapshot.Place(biome,
                             cx * 16 + bx * 4, chunk.getMinY() + section * 16 + by * 4, cz * 16 + bz * 4));
                     if (unseen.isEmpty()) break search;
@@ -238,7 +266,7 @@ final class DebugSurvey {
             return (p.label().equals("End gateway (seen)") || p.label().equals("End portal block (seen)"))
                     && (p.x() >> 4) == cx && (p.z() >> 4) == cz && !portals.containsKey(e.getKey());
         });
-        if (removed) s.mapRevision++;
+        if (removed) s.placesChanged();
         portals.values().forEach(p -> putPlace(s, p.label(), p.x(), p.y(), p.z()));
 
     }
@@ -248,7 +276,7 @@ final class DebugSurvey {
         String key = label + ":" + x + ":" + y + ":" + z;
         if (!place.equals(s.places.get(key))) {
             putBounded(s.places, key, place, PLACE_LIMIT, s);
-            s.mapRevision++;
+            s.placesChanged();
         }
     }
     private static <K, V> void putBounded(LinkedHashMap<K, V> map, K key, V value, int limit, State s) {
@@ -299,7 +327,8 @@ final class DebugSurvey {
             colors.putAll(d.colors()); hits.putAll(d.hits()); observed.addAll(d.observed()); locations.putAll(d.locations());
             for (var p : d.places()) places.put(p.label() + ":" + p.x() + ":" + p.y() + ":" + p.z(), p);
             for (var c : d.chunks()) history.put(ChunkPos.pack(c.x(), c.z()), c);
-            audit.restore(d.audit()); mapRevision++;
+            audit.restore(d.audit());
+            invalidateLayers();
         }
         void save(boolean force) {
             if (!ready || cache.file() == null || !force && writing != null && !writing.isDone()) return;
@@ -326,15 +355,28 @@ final class DebugSurvey {
         AtlasBiomeSampler sampler;
         int ticks;
         long lastCommand;
-        long mapRevision, cachedRevision = -1;
+        long mapRevision, terrainRevision, biomesRevision, loadedRevision, placesRevision;
+        long cachedTerrainRevision = -1, cachedBiomesRevision = -1, cachedLoadedRevision = -1;
+        boolean markersDirty = true;
+        void changed() { mapRevision = ++revisionSerial; }
+        void terrainChanged() { changed(); terrainRevision = mapRevision; }
+        void biomesChanged() { changed(); biomesRevision = mapRevision; }
+        void loadedChanged() { changed(); loadedRevision = mapRevision; }
+        void placesChanged() { changed(); markersDirty = true; }
+        void invalidateLayers() {
+            changed();
+            terrainRevision = biomesRevision = loadedRevision = placesRevision = mapRevision;
+            markersDirty = true;
+        }
         boolean limited;
         String error = "";
         boolean allBiomesFound() { return !possible.isEmpty() && locations.keySet().containsAll(possible); }
         void evidence(int x, int y, int z, String biome) {
-            if (!locations.containsKey(biome)) { locations.put(biome, new DebugSnapshot.Place(biome, x, y, z)); mapRevision++; }
+            if (!locations.containsKey(biome)) { locations.put(biome, new DebugSnapshot.Place(biome, x, y, z)); changed(); }
             hits.merge(biome, 1, Integer::sum);
         }
         State(ServerLevel level) {
+            invalidateLayers();
             var overworld = ToroidalWorldApi.shapeOf(level.getServer().overworld()).orElse(null);
             preset = BiomeOverview.preset(overworld != null && overworld.loops(Direction.Axis.X)
                     ? overworld.widthChunks(Direction.Axis.X) : 0);

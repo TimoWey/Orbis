@@ -4,23 +4,24 @@ import dev.orbis.Orbis;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 import java.util.zip.*;
 import com.mojang.serialization.JsonOps;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.storage.LevelResource;
 
 /** Disposable, bounded debug data. No Java deserialization and no writes to the world save. */
 final class AtlasCache {
-    // v3: separate bounded biome/existence, map and opt-in structure-count checkpoints.
-    static final int VERSION = 3, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
+    // v4: progressive search order changed; old cursor checkpoints must never resume in it.
+    static final int VERSION = 4, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
     private static final int MAGIC = 0x4f524241;
+    private static final Map<MinecraftServer, ResourceFingerprint> RESOURCE_FINGERPRINTS = new IdentityHashMap<>();
     static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Orbis atlas cache"); t.setDaemon(true); return t;
     });
@@ -30,39 +31,28 @@ final class AtlasCache {
     record Loaded(Path file, String fingerprint, Data data, String status) {}
 
     static CompletableFuture<Loaded> load(ServerLevel level, int minX, int minZ, int span) {
-        Path root = level.getServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
         String dimension = level.dimension().identifier().toString();
         long seed = level.getSeed();
-        var resources = level.getServer().getResourceManager();
-        String generator;
+        String generator, identity;
+        CompletableFuture<String> resourceFingerprint;
         try {
+            identity = AtlasWorldIdentity.prepare(level.getServer(), level.getServer().overworld().getSeed());
             generator = ChunkGenerator.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, level.registryAccess()),
                     level.getChunkSource().getGenerator()).getOrThrow().toString();
-        } catch (RuntimeException e) {
-            Orbis.LOGGER.warn("Atlas cache disabled: generator cannot be fingerprinted", e);
-            return CompletableFuture.completedFuture(new Loaded(null, "", null, "Unavailable: generator identity"));
+            resourceFingerprint = resourcesFingerprint(level.getServer());
+        } catch (IOException | RuntimeException e) {
+            Orbis.LOGGER.warn("Atlas cache disabled: world or generator cannot be fingerprinted", e);
+            return CompletableFuture.completedFuture(new Loaded(null, "", null, "Unavailable: world / generator identity"));
         }
         String mods = FabricLoader.getInstance().getAllMods().stream()
                 .map(m -> m.getMetadata().getId() + "=" + m.getMetadata().getVersion().getFriendlyString()).sorted().toList().toString();
         String config = seed + "|" + dimension + "|" + minX + "|" + minZ + "|" + span + "|" + generator + "|" + mods
                 + "|structures=" + level.structureManager().shouldGenerateStructures();
-        return CompletableFuture.supplyAsync(() -> {
+        Path file = fileFor(FabricLoader.getInstance().getGameDir().resolve("orbis-atlas-cache"), identity, dimension);
+        return resourceFingerprint.handleAsync((resourceHash, failure) -> {
             try {
-                String identity = root.toRealPath() + "|" + Files.readAttributes(root, BasicFileAttributes.class).creationTime() + "|" + seed;
-                Path file = fileFor(FabricLoader.getInstance().getGameDir().resolve("orbis-atlas-cache"), identity, dimension);
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                digest.update(config.getBytes(StandardCharsets.UTF_8));
-                // Hash effective resource contents, not just pack names: editing an existing pack invalidates predictions.
-                var entries = new ArrayList<>(resources.listResources("", id -> true).entrySet());
-                entries.sort(Comparator.comparing(e -> e.getKey().toString()));
-                byte[] buffer = new byte[8192];
-                for (var entry : entries) {
-                    digest.update(entry.getKey().toString().getBytes(StandardCharsets.UTF_8));
-                    try (InputStream in = entry.getValue().open()) {
-                        int n; while ((n = in.read(buffer)) != -1) digest.update(buffer, 0, n);
-                    }
-                }
-                String fingerprint = HexFormat.of().formatHex(digest.digest());
+                if (failure != null) throw new CompletionException(failure);
+                String fingerprint = hash(config + "|resources=" + resourceHash);
                 Data data = read(file, fingerprint);
                 return new Loaded(file, fingerprint, data, data == null ? "New / invalidated" : "Restored");
             } catch (Exception e) {
@@ -70,6 +60,70 @@ final class AtlasCache {
                 return new Loaded(null, "", null, "Unavailable; memory only");
             }
         }, IO);
+    }
+
+    /** Capture resource handles on the owner thread; workers never traverse the server or resource manager. */
+    private static CompletableFuture<String> resourcesFingerprint(MinecraftServer server) {
+        var resources = server.getResourceManager();
+        return RESOURCE_FINGERPRINTS.computeIfAbsent(server, ignored -> new ResourceFingerprint()).get(resources, () -> {
+            Map<String, ResourceContent> contents = new TreeMap<>();
+            resources.listResources("", id -> true).forEach((id, resource) -> contents.put(id.toString(), resource::open));
+            return Map.copyOf(contents);
+        });
+    }
+
+    static void invalidateResources(MinecraftServer server) {
+        ResourceFingerprint previous = RESOURCE_FINGERPRINTS.remove(server);
+        if (previous != null) previous.invalidate();
+    }
+    static void clear(MinecraftServer server) {
+        invalidateResources(server);
+        AtlasWorldIdentity.clear(server);
+    }
+
+    @FunctionalInterface interface ResourceContent { InputStream open() throws IOException; }
+    /** Shared once per reload. Closed pack streams fail safely; stale completions are never accepted. */
+    static final class ResourceFingerprint {
+        private Object generation;
+        private CompletableFuture<String> value;
+        private long revision;
+        synchronized CompletableFuture<String> get(Object current, Supplier<Map<String, ResourceContent>> capture) {
+            if (current != generation || value == null) {
+                Map<String, ResourceContent> contents = capture.get();
+                generation = current;
+                long expected = ++revision;
+                value = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        String fingerprint = hashResources(contents);
+                        synchronized (this) {
+                            if (revision != expected) throw new CancellationException("Atlas resources reloaded");
+                        }
+                        return fingerprint;
+                    } catch (IOException e) { throw new CompletionException(e); }
+                }, IO);
+            }
+            return value;
+        }
+        synchronized void invalidate() { revision++; generation = null; value = null; }
+    }
+
+    static String hashResources(Map<String, ResourceContent> contents) throws IOException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            for (String name : new TreeSet<>(contents.keySet())) {
+                byte[] id = name.getBytes(StandardCharsets.UTF_8);
+                digest.update(java.nio.ByteBuffer.allocate(Integer.BYTES).putInt(id.length).array());
+                digest.update(id);
+                MessageDigest content = MessageDigest.getInstance("SHA-256");
+                try (InputStream in = contents.get(name).open()) {
+                    int n;
+                    while ((n = in.read(buffer)) != -1) content.update(buffer, 0, n);
+                }
+                digest.update(content.digest());
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
     static Path fileFor(Path base, String world, String dimension) {
         return base.resolve(hash(world)).resolve(hash(dimension) + ".atlas.gz");
@@ -100,8 +154,8 @@ final class AtlasCache {
             for (int n = count(in, CHUNK_LIMIT); n > 0; n--) {
                 int x = in.readInt(), z = in.readInt(), color = in.readInt(), size = in.readInt();
                 if (size != 0 && size != 16 && size != 256) throw new IOException("Invalid tile");
-                List<Integer> pixels = new ArrayList<>(size);
-                for (int i = 0; i < size; i++) pixels.add(in.readInt());
+                int[] pixels = new int[size];
+                for (int i = 0; i < size; i++) pixels[i] = in.readInt();
                 chunks.add(new DebugSnapshot.Cell(x, z, color, pixels));
             }
             var found = places(in); var seen = strings(in);
@@ -151,8 +205,8 @@ final class AtlasCache {
                 places(out, markers);
                 out.writeInt(data.chunks().size());
                 for (var c : data.chunks()) {
-                    out.writeInt(c.x()); out.writeInt(c.z()); out.writeInt(c.color()); out.writeInt(c.terrain().size());
-                    for (int pixel : c.terrain()) out.writeInt(pixel);
+                    out.writeInt(c.x()); out.writeInt(c.z()); out.writeInt(c.color()); out.writeInt(c.terrainSize());
+                    for (int i = 0; i < c.terrainSize(); i++) out.writeInt(c.terrainPixel(i));
                 }
                 var audit = data.audit(); places(out, audit.found()); strings(out, audit.observed());
                 out.writeInt(audit.tasks().size());

@@ -19,6 +19,9 @@
     ],
     "client": [
       "dev.orbis.OrbisClient"
+    ],
+    "modmenu": [
+      "dev.orbis.OrbisModMenu"
     ]
   },
   "mixins": [
