@@ -18,7 +18,8 @@ import net.minecraft.world.level.storage.LevelResource;
 
 /** Disposable, bounded debug data. No Java deserialization and no writes to the world save. */
 final class AtlasCache {
-    static final int VERSION = 1, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
+    // v2: Y=32 ceiling tiles, Nether colors and deduplicated structure occurrences.
+    static final int VERSION = 2, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
     private static final int MAGIC = 0x4f524241;
     static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Orbis atlas cache"); t.setDaemon(true); return t;
@@ -110,10 +111,17 @@ final class AtlasCache {
                 tasks.add(new StructureAudit.Progress(position, count(in, Integer.MAX_VALUE), count(in, Integer.MAX_VALUE), in.readBoolean()));
             }
             long checks = in.readLong(); int next = count(in, ENTRY_LIMIT); boolean running = in.readBoolean();
+            var actualStarts = occurrences(in);
+            var predictedStarts = occurrences(in);
+            boolean countLimited = in.readBoolean();
+            if (actualStarts.values().stream().mapToInt(Set::size).sum()
+                    + predictedStarts.values().stream().mapToInt(Set::size).sum() > StructureCounts.LIMIT)
+                throw new IOException("Too many structure occurrences");
             if (checks < 0 || in.read() != -1) throw new IOException("Invalid trailer"); // also verifies gzip CRC
             return new Data(cursor, scanning, limited, Map.copyOf(colors), Map.copyOf(hits), Set.copyOf(observed),
                     Map.copyOf(locations), List.copyOf(markers), List.copyOf(chunks),
-                    new StructureAudit.Saved(Map.copyOf(found), Set.copyOf(seen), List.copyOf(tasks), checks, next, running));
+                    new StructureAudit.Saved(Map.copyOf(found), Set.copyOf(seen), List.copyOf(tasks), checks, next, running,
+                            new StructureCounts.Saved(actualStarts, predictedStarts, countLimited)));
         } catch (IOException | RuntimeException e) {
             Orbis.LOGGER.warn("Ignoring damaged atlas cache {}", file, e); return null;
         }
@@ -143,6 +151,8 @@ final class AtlasCache {
                 out.writeInt(audit.tasks().size());
                 for (var p : audit.tasks()) { out.writeLong(p.cursor()); out.writeInt(p.extraCursor()); out.writeInt(p.ringCursor()); out.writeBoolean(p.done()); }
                 out.writeLong(audit.checks()); out.writeInt(audit.nextTask()); out.writeBoolean(audit.running());
+                occurrences(out, audit.counts().observed()); occurrences(out, audit.counts().predicted());
+                out.writeBoolean(audit.counts().limited());
             }
             try { Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING); }
@@ -150,6 +160,26 @@ final class AtlasCache {
     }
     private static int bounded(int value, int max) throws IOException {
         if (value < 0 || value > max) throw new IOException("Invalid cache count"); return value;
+    }
+    private static Map<String, Set<Long>> occurrences(DataInputStream in) throws IOException {
+        Map<String, Set<Long>> result = new HashMap<>();
+        int total = 0;
+        for (int n = count(in, ENTRY_LIMIT); n > 0; n--) {
+            String id = in.readUTF();
+            int size = count(in, StructureCounts.LIMIT);
+            if ((total += size) > StructureCounts.LIMIT) throw new IOException("Too many structure occurrences");
+            Set<Long> starts = new HashSet<>();
+            for (int i = 0; i < size; i++) starts.add(in.readLong());
+            result.put(id, Set.copyOf(starts));
+        }
+        return Map.copyOf(result);
+    }
+    private static void occurrences(DataOutputStream out, Map<String, Set<Long>> values) throws IOException {
+        out.writeInt(values.size());
+        for (var entry : values.entrySet()) {
+            out.writeUTF(entry.getKey()); out.writeInt(entry.getValue().size());
+            for (long start : entry.getValue()) out.writeLong(start);
+        }
     }
     /** Bounds the decompressed stream too, including malicious string lengths / compression bombs. */
     private static final class LimitedInput extends FilterInputStream {

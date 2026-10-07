@@ -5,19 +5,18 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.Properties;
 import net.fabricmc.loader.api.FabricLoader;
 
 /** Small client-only preferences; no world save data is modified. */
 final class AtlasPreferences {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("orbis-atlas.properties");
-    private static final Properties VALUES = new Properties();
-    static {
-        if (Files.isRegularFile(FILE)) try (Reader reader = Files.newBufferedReader(FILE)) { VALUES.load(reader); }
-        catch (IOException | IllegalArgumentException ignored) { }
-    }
-    static boolean globe() { return Boolean.parseBoolean(VALUES.getProperty("globe", "false")); }
-    static void setGlobe(boolean globe) { VALUES.setProperty("globe", Boolean.toString(globe)); save(); }
+    private static final Store STORE = new Store(FILE);
+    private static final Properties VALUES = STORE.values;
+    static boolean globe(String dimension) { return STORE.globe(dimension); }
+    static void setGlobe(String dimension, boolean globe) { STORE.setGlobe(dimension, globe); }
     static int corner() {
         try { return Math.floorMod(Integer.parseInt(VALUES.getProperty("corner", "0")), 4); }
         catch (NumberFormatException ignored) { return 0; }
@@ -29,11 +28,35 @@ final class AtlasPreferences {
     }
     static int size() { return new int[] {72, 96, 128}[sizeIndex()]; }
     static void cycleSize() { VALUES.setProperty("size", Integer.toString((sizeIndex() + 1) % 3)); save(); }
-    private static void save() {
-        try {
-            Files.createDirectories(FILE.getParent());
-            try (Writer writer = Files.newBufferedWriter(FILE)) { VALUES.store(writer, "Orbis atlas"); }
-        } catch (IOException ignored) { }
+    private static void save() { STORE.save(); }
+
+    /** Separate file-backed store keeps dimension persistence testable without touching user settings. */
+    static final class Store {
+        private final Path file;
+        private final Properties values = new Properties();
+        Store(Path file) {
+            this.file = file.toAbsolutePath();
+            if (Files.isRegularFile(file)) try (Reader reader = Files.newBufferedReader(file)) { values.load(reader); }
+            catch (IOException | IllegalArgumentException ignored) { }
+        }
+        boolean globe(String dimension) {
+            return Boolean.parseBoolean(values.getProperty("globe." + dimension, values.getProperty("globe", "false")));
+        }
+        void setGlobe(String dimension, boolean globe) {
+            if (dimension == null) return;
+            values.setProperty("globe." + dimension, Boolean.toString(globe)); save();
+        }
+        private void save() {
+            Path temporary = null;
+            try {
+                Files.createDirectories(file.getParent());
+                temporary = Files.createTempFile(file.getParent(), "orbis-atlas-", ".tmp");
+                try (Writer writer = Files.newBufferedWriter(temporary)) { values.store(writer, "Orbis atlas; globe per dimension"); }
+                try { Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+                catch (AtomicMoveNotSupportedException ignored) { Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING); }
+            } catch (IOException ignored) { }
+            finally { if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) { } }
+        }
     }
     private AtlasPreferences() { }
 }

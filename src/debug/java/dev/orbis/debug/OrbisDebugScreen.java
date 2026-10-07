@@ -20,7 +20,7 @@ final class OrbisDebugScreen extends Screen {
     private int left, top, right, bottom, mapLeft, mapTop;
     private final AtlasWaypoints waypoints = AtlasWaypoints.SHARED;
     private double centerX, centerZ, zoom = 1, yaw, pitch;
-    private boolean globe = AtlasPreferences.globe(), dragging, initialized;
+    private boolean globe, dragging, initialized;
     private boolean showChunks, showPlaces;
     private double globeZoom = 1;
     private Button scanButton, viewButton, filterButton, sortButton, previousButton, nextButton;
@@ -98,7 +98,7 @@ final class OrbisDebugScreen extends Screen {
             String current = minecraft.level.dimension().identifier().toString();
             if (!current.equals(dimension)) {
                 dimension = current;
-                globe = AtlasPreferences.globe();
+                globe = AtlasPreferences.globe(dimension);
                 waypoints.open(minecraft, dimension);
                 data = null;
                 initialized = false;
@@ -109,7 +109,7 @@ final class OrbisDebugScreen extends Screen {
 
     private static String sizeLabel() { return Component.translatable("orbis.atlas.size").getString() + ": " + new String[]{"S", "M", "L"}[AtlasPreferences.sizeIndex()]; }
     private static String cornerLabel() { return new String[]{"TR", "TL", "BR", "BL"}[AtlasPreferences.corner()]; }
-    private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(value); }
+    private void setGlobe(boolean value) { globe = value; AtlasPreferences.setGlobe(dimension, value); }
     private Button button(int x, int y, int w, String label, Button.OnPress action) {
         return button(x, y, w, label, action, () -> false);
     }
@@ -149,7 +149,7 @@ final class OrbisDebugScreen extends Screen {
                     : data.scanning() ? "Pause" : data.surveyDone() == data.surveyTotal()
                     ? "Resample" : data.surveyDone() > 0 ? "Resume" : "Sample"));
             viewButton.active = data.wrapped();
-            if (!data.wrapped()) globe = false;
+            if (!data.wrapped() && globe) setGlobe(false);
             if (tab == 0) for (var biome : BiomeOverview.select(data.biomes(), filter, sort)) {
                 labels.add(displayName(biome.id()));
                 values.add(biome.observed() ? "O" : biome.found() ? "~" : "?");
@@ -165,8 +165,8 @@ final class OrbisDebugScreen extends Screen {
                 if (filter == BiomeOverview.Filter.FOUND && !entry.found()) continue;
                 if (filter == BiomeOverview.Filter.UNCONFIRMED && entry.found()) continue;
                 labels.add(entry.id().equals(StructureAudit.PORTAL) ? "Stronghold / portal room" : displayName(entry.id()));
-                values.add(entry.observed() ? "O" : entry.found() ? "~" : "?");
-                tips.add((entry.id().equals(StructureAudit.PORTAL) ? "Stronghold portal room: part of a structure, not a separate structure type.\n" : "") + entry.id() + "\n" + entry.status() + (entry.observed() ? "\nObserved in loaded terrain." : "\nGenerator prediction; saved terrain may differ. Not found does not prove absence."));
+                values.add(entry.countLabel() + " " + (entry.observed() ? "O" : entry.found() ? "~" : "?"));
+                tips.add((entry.id().equals(StructureAudit.PORTAL) ? "Stronghold portal room: counts layouts, not active portals or proof of intact frame blocks.\n" : "") + entry.id() + "\n" + entry.status() + "\n" + entry.countDetails() + (entry.observed() ? "\nObserved in loaded terrain." : "\nGenerator prediction; saved terrain may differ. Not found does not prove absence."));
                 colors.add(entry.observed() ? ACCENT : entry.found() ? 0xff8dbffa : MUTED);
                 places.add(entry.location());
             }
@@ -258,7 +258,7 @@ final class OrbisDebugScreen extends Screen {
         g.text(font, "ORBIS", mapLeft, top + 10, ACCENT, false);
         g.text(font, "Atlas", mapLeft + 38, top + 10, TEXT, false);
         if (right - left > 560 && data != null) g.text(font, data.preset(), mapLeft + 78, top + 10, MUTED, false);
-        g.fill(mapLeft, mapTop, mapRight, mapBottom, DebugMapRaster.BACKGROUND);
+        // Transparent map margins reuse the window's surface, including outside the globe.
         if (data == null) {
             g.textWithWordWrap(font, Component.literal("Waiting for the integrated server..."), mapLeft + 6, mapTop + 6, Math.max(40, mapRight - mapLeft - 16), MUTED);
         } else {
@@ -283,7 +283,7 @@ final class OrbisDebugScreen extends Screen {
                 long expected = data.structures().stream().filter(e -> !e.id().equals(StructureAudit.PORTAL)).count();
                 g.text(font, found + " / " + expected + " structure types", panelX, top + 59, ACCENT, false);
                 g.text(font, ellipsis(data.structureState(), panelWidth), panelX, top + 71, MUTED, false);
-                g.text(font, "O: observed / ~: predicted", panelX, top + 106, MUTED, false);
+                g.text(font, "N+ = partial / ~ predicted", panelX, top + 106, MUTED, false);
                 g.fill(panelX, top + 82, right - 8, top + 83, 0xff777777);
                 if (expected > 0) g.fill(panelX, top + 82, panelX + (int) (panelWidth * found / expected), top + 83, ACCENT);
             } else {
@@ -329,8 +329,9 @@ final class OrbisDebugScreen extends Screen {
                     g.fill(panelX + 7, y + 5, panelX + 8, y + 8, color);
                     g.fill(panelX + 8, y + 4, panelX + 10, y + 6, color);
                 }
-                g.text(font, ellipsis(rowLabels.get(index), right - panelX - 40), panelX + 15, y + 3, TEXT, false);
-                g.text(font, rowValues.get(index), right - 19, y + 3, color, false);
+                int valueX = right - 12 - font.width(rowValues.get(index));
+                g.text(font, ellipsis(rowLabels.get(index), valueX - panelX - 20), panelX + 15, y + 3, TEXT, false);
+                g.text(font, rowValues.get(index), valueX, y + 3, color, false);
             } else {
                 g.text(font, ellipsis(rowLabels.get(index), right - panelX - 18), panelX + 4, y + 2, tab == 2 ? MUTED : TEXT, false);
                 g.text(font, ellipsis(rowValues.get(index), right - panelX - 18), panelX + 4, y + 12, tab == 2 ? TEXT : MUTED, false);
@@ -390,6 +391,7 @@ final class OrbisDebugScreen extends Screen {
                 new String[]{"Observed / sampled biomes", coverage.observed() + " / " + coverage.sampled()},
                 new String[]{"Server tick", String.format(Locale.ROOT, "%.1f ms", data.tickMillis())},
                 new String[]{"Map refresh", String.format(Locale.ROOT, "%.2f ms", mapTexture.updateMillis())},
+                new String[]{"Terrain layer", minecraft.level != null && minecraft.level.dimensionType().hasCeiling() ? "Y 32 / biome-tinted" : "Surface"},
                 new String[]{"Map texture", mapTexture.resolution()}, new String[]{"Texture uploads", Integer.toString(mapTexture.uploads())},
                 new String[]{"Sampling", DebugSurvey.GRID + " x " + DebugSurvey.GRID + " / four heights"},
                 new String[]{"Structure positions checked", String.format(Locale.ROOT, "%,d", data.structureChecks())},

@@ -17,9 +17,23 @@ import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
 /** Server-thread layout audit. Scratch chunks are never installed, populated or saved. */
 final class StructureAudit {
     static final String PORTAL = "orbis:end_portal_room";
-    record Entry(String id, DebugSnapshot.Place location, boolean observed, boolean exhausted) {
+    record Entry(String id, DebugSnapshot.Place location, boolean observed, boolean exhausted,
+                 long observedCount, long predictedCount, long distinctCount, boolean countLimited) {
+        Entry(String id, DebugSnapshot.Place location, boolean observed, boolean exhausted) {
+            this(id, location, observed, exhausted, observed ? 1 : 0, !observed && location != null ? 1 : 0,
+                    observed || location != null ? 1 : 0, false);
+        }
         String status() { return observed ? "Observed" : location != null ? "Predicted" : exhausted ? "Not found in check" : "Unconfirmed"; }
         boolean found() { return observed || location != null; }
+        // Even if the occurrence ledger is full, a retained example proves at least one.
+        String countLabel() { return Math.max(distinctCount, found() ? 1 : 0) + (exhausted && !countLimited ? "" : "+"); }
+        String countDetails() {
+            return "Observed starts: " + observedCount + "\nPredicted starts: " + predictedCount
+                    + "\nDistinct start chunks: " + Math.max(distinctCount, found() ? 1 : 0) + " (overlapping evidence counted once).\n"
+                    + (countLimited ? "Count storage limit reached; lower bound only."
+                    : exhausted ? "Generator candidate count complete. Saved terrain may differ."
+                    : "At least this many so far; the search is incomplete. This is not a world total.");
+        }
     }
     private final ServerLevel level;
     private final int minX, minZ, width;
@@ -28,6 +42,7 @@ final class StructureAudit {
     private final Map<String, DebugSnapshot.Place> found = new HashMap<>();
     private final Set<String> observed = new HashSet<>();
     private final List<Task> tasks = new ArrayList<>();
+    private final StructureCounts counts = new StructureCounts();
     private boolean initialized, running;
     private int nextTask, nextInitialization;
     private AddedStructureStarts added;
@@ -54,49 +69,48 @@ final class StructureAudit {
         if (expected.contains("minecraft:stronghold")) expected.add(PORTAL);
     }
 
-    void observe(String id, DebugSnapshot.Place place) {
+    void observe(String id, DebugSnapshot.Place place, ChunkPos start) {
         expected.add(id);
+        if (counts.add(id, startKey(start), true)) revision++;
         // Keep a stable observed example instead of alternating between loaded starts every refresh.
         if (observed.add(id)) { found.put(id, place); revision++; }
     }
-    void running(boolean value) { running = value && finite && error.isEmpty() && !complete(); }
+    void running(boolean value) { running = value && finite && error.isEmpty() && !complete() && !counts.limited(); }
     boolean running() { return running; }
-    boolean finished() { return complete(); }
+    boolean finished() { return complete() || counts.limited() || !error.isEmpty(); }
     long checks() { return checks; }
     long revision() { return revision; }
     String state() {
         if (!error.isEmpty()) return error;
         if (!finite) return "Visit a finite dimension to audit";
         if (!level.structureManager().shouldGenerateStructures()) return "Structure generation is disabled";
-        if (allFound(entries())) return "All listed types found";
-        if (complete()) return "Generator check complete (predictions)";
-        return running ? "Checking generator..." : checks > 0 ? "Check paused" : "Not checked yet";
+        if (counts.limited()) return "Count limit reached (lower bounds)";
+        if (complete()) return "Generator count complete";
+        return running ? "Counting structures..." : checks > 0 ? "Check paused" : "Not checked yet";
     }
     static boolean allFound(List<Entry> entries) { return !entries.isEmpty() && entries.stream().allMatch(Entry::found); }
-    private boolean complete() { return tasks.stream().allMatch(t -> t.done || satisfied(t)); }
-    private boolean satisfied(Task task) {
-        return task.ids.stream().allMatch(found::containsKey)
-                && (!task.ids.contains("minecraft:stronghold") || found.containsKey(PORTAL));
-    }
+    private boolean complete() { return tasks.stream().allMatch(t -> t.done); }
     List<Entry> entries() {
         return expected.stream().map(id -> {
             String target = id.equals(PORTAL) ? "minecraft:stronghold" : id;
             var relevant = tasks.stream().filter(t -> t.ids.contains(target)).toList();
             boolean exhausted = error.isEmpty() && !relevant.isEmpty() && relevant.stream().allMatch(t -> t.done);
-            return new Entry(id, found.get(id), observed.contains(id), exhausted);
+            var count = counts.count(id);
+            return new Entry(id, found.get(id), observed.contains(id), exhausted,
+                    count.observed(), count.predicted(), count.distinct(), counts.limited());
         }).toList();
     }
 
     record Progress(long cursor, int extraCursor, int ringCursor, boolean done) {}
     record Saved(Map<String, DebugSnapshot.Place> found, Set<String> observed,
-                 List<Progress> tasks, long checks, int nextTask, boolean running) {}
+                 List<Progress> tasks, long checks, int nextTask, boolean running, StructureCounts.Saved counts) {}
     Saved save() {
         return new Saved(Map.copyOf(found), Set.copyOf(observed), tasks.stream()
-                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running);
+                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running, counts.save());
     }
     void restore(Saved saved) {
         if (saved.tasks().size() != tasks.size()) return;
-        found.putAll(saved.found()); observed.addAll(saved.observed());
+        found.putAll(saved.found()); observed.addAll(saved.observed()); counts.restore(saved.counts());
         expected.addAll(observed);
         checks = saved.checks(); nextTask = Math.floorMod(saved.nextTask(), Math.max(1, tasks.size()));
         for (int i = 0; i < tasks.size(); i++) {
@@ -108,6 +122,7 @@ final class StructureAudit {
     }
     void resample() {
         found.keySet().removeIf(id -> !observed.contains(id));
+        counts.clearPredictions();
         for (var t : tasks) { t.cursor = 0; t.extraCursor = 0; t.ringCursor = 0; t.done = false; }
         checks = 0; nextTask = 0; error = ""; running = finite; revision++;
     }
@@ -119,7 +134,7 @@ final class StructureAudit {
             if (!level.structureManager().shouldGenerateStructures()) { running = false; return; }
             var source = level.getChunkSource();
             var state = source.getGeneratorState();
-            if (complete()) { running = false; return; }
+            if (complete() || counts.limited()) { running = false; return; }
             if (!initialized) {
                 if (added == null) {
                     var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
@@ -135,11 +150,11 @@ final class StructureAudit {
                 initialized = true;
                 palettes = PalettedContainerFactory.create(level.registryAccess());
             }
-            if (complete()) { running = false; return; }
+            if (complete() || counts.limited()) { running = false; return; }
             for (int probes = 0; probes < 32 && active.getAsBoolean() && System.nanoTime() < deadline; probes++) {
                 Task task = tasks.get(nextTask);
                 nextTask = (nextTask + 1) % tasks.size();
-                if (task.done || satisfied(task)) continue;
+                if (task.done) continue;
                 ChunkPos pos = task.next(state);
                 if (pos == null) { task.done = true; revision++; continue; }
                 checks++;
@@ -163,12 +178,17 @@ final class StructureAudit {
     }
     private boolean inside(ChunkPos p) { return p.x() >= minX && p.x() < minX + width && p.z() >= minZ && p.z() < minZ + width; }
     private void record(String id, StructureStart start) {
+        if (counts.add(id, startKey(start.getChunkPos()), false)) revision++;
         var p = start.getBoundingBox().getCenter();
         if (!found.containsKey(id)) { found.put(id, location(id, p.getX(), p.getY(), p.getZ())); revision++; }
         for (var piece : start.getPieces()) if (piece instanceof StrongholdPieces.PortalRoom) {
+            if (counts.add(PORTAL, startKey(start.getChunkPos()), false)) revision++;
             var room = piece.getBoundingBox().getCenter();
             if (!found.containsKey(PORTAL)) { found.put(PORTAL, location(PORTAL, room.getX(), room.getY(), room.getZ())); revision++; }
         }
+    }
+    private long startKey(ChunkPos start) {
+        return finite ? ChunkPos.pack(minX + Math.floorMod(start.x() - minX, width), minZ + Math.floorMod(start.z() - minZ, width)) : start.pack();
     }
     private DebugSnapshot.Place location(String id, int x, int y, int z) {
         return new DebugSnapshot.Place(id + " (predicted)", minX * 16 + Math.floorMod(x - minX * 16, width * 16),

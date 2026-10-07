@@ -5,7 +5,7 @@ import net.minecraft.world.level.ChunkPos;
 
 /** Bounded CPU raster. There are no per-cell GUI elements, GPU calls or world reads here. */
 final class DebugMapRaster {
-    static final int BACKGROUND = 0xff080f17;
+    static final int BACKGROUND = 0x00000000;
     static final int LOADED = 0xff70dfbd;
     record View(int width, int height, double centerX, double centerZ, double scale,
                 boolean globe, double yaw, double pitch, boolean chunks, boolean places) {}

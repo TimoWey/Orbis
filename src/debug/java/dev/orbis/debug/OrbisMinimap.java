@@ -16,7 +16,7 @@ final class OrbisMinimap implements AutoCloseable {
         int corner = AtlasPreferences.corner();
         int left = corner % 2 == 0 ? g.guiWidth() - size - 16 : 16;
         int top = corner < 2 ? 16 : g.guiHeight() - size - 78;
-        boolean globe = AtlasPreferences.globe() && data.wrapped();
+        boolean globe = AtlasPreferences.globe(data.dimension()) && data.wrapped();
         // Quantized camera movement avoids rebuilding a terrain texture for subpixel motion.
         double x = Math.floor(client.player.getX() / 4) * 4;
         double z = Math.floor(client.player.getZ() / 4) * 4;

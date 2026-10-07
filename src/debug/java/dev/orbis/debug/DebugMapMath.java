@@ -36,6 +36,15 @@ public final class DebugMapMath {
     }
 
     public static int biomeColor(String name) {
+        // Check these before generic forest/desert matching so Nether biomes stay distinguishable.
+        switch (name) {
+            case "minecraft:nether_wastes": return 0xff914c47;
+            case "minecraft:soul_sand_valley": return 0xff917761;
+            case "minecraft:crimson_forest": return 0xffad354d;
+            case "minecraft:warped_forest": return 0xff318d83;
+            case "minecraft:basalt_deltas": return 0xff616478;
+            default: break;
+        }
         if (name.contains("ocean") || name.contains("river")) return 0xff397fbd;
         if (name.contains("snow") || name.contains("frozen") || name.contains("ice")) return 0xffc9e6ed;
         if (name.contains("desert") || name.contains("beach")) return 0xffd4bb70;

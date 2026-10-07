@@ -14,7 +14,9 @@ class AtlasCacheTest {
         var observed = new DebugSnapshot.Place("minecraft:plains", -12, 72, 17);
         var predicted = new DebugSnapshot.Place("mod:grove", 64, 32, -80);
         var audit = new StructureAudit.Saved(Map.of("minecraft:village_plains", observed), Set.of("minecraft:village_plains"),
-                List.of(new StructureAudit.Progress(891, 2, 3, false), new StructureAudit.Progress(9, 0, 0, true)), 71, 1, true);
+                List.of(new StructureAudit.Progress(891, 2, 3, false), new StructureAudit.Progress(9, 0, 0, true)), 71, 1, true,
+                new StructureCounts.Saved(Map.of("minecraft:village_plains", Set.of(12L, 13L)),
+                        Map.of("minecraft:village_plains", Set.of(13L, 14L)), false));
         List<Integer> pixels = new ArrayList<>();
         for (int i = 0; i < 256; i++) pixels.add(0xff123400 | i);
         return new AtlasCache.Data(cursor, cursor < DebugSurvey.TOTAL, false, Map.of(0, 0xff123456, 1, 0xff345678),
@@ -76,6 +78,10 @@ class AtlasCacheTest {
             out.writeInt(0x4f524241); out.writeInt(AtlasCache.VERSION + 1); out.writeUTF("v1");
         }
         assertNull(AtlasCache.read(file, "v1"));
+        try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(file)))) {
+            out.writeInt(0x4f524241); out.writeInt(1); out.writeUTF("v1");
+        }
+        assertNull(AtlasCache.read(file, "v1"), "Old roof pixels and first-find-only structure results cannot be reused");
         AtlasCache.write(file, "v2", fixture(456));
         assertEquals(456, AtlasCache.read(file, "v2").cursor());
     }

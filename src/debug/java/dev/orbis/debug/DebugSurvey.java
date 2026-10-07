@@ -14,7 +14,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.block.entity.TheEndPortalBlockEntity;
 import net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -139,35 +138,26 @@ final class DebugSurvey {
                     s.pending.remove(key);
                     inspect(level, s, key);
                 }
+                // Neither a long structure count nor a full-budget biome pass may starve the other.
+                boolean auditFirst = !s.scanning || (s.ticks & 3) == 3;
+                if (auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
                 if (s.scanning && s.wrapped) {
-                    if (s.resolver == null) s.resolver = level.getChunkSource().getGenerator().getBiomeSource()
-                            .createUncachedResolver(level.getChunkSource().randomState());
-                    for (int count = 0; count < 256 && s.cursor < TOTAL && request == r && System.nanoTime() < deadline; count++) {
-                        int cell = s.cursor / LAYERS;
-                        int layer = s.cursor % LAYERS;
-                        int x = DebugMapMath.sampleCoordinate(s.minX, s.span, cell % GRID, GRID);
-                        int z = DebugMapMath.sampleCoordinate(s.minZ, s.span, cell / GRID, GRID);
-                        int y = switch (layer) {
-                            case 0 -> level.getSeaLevel();
-                            case 1 -> level.getMinY() + 16;
-                            case 2 -> 32;
-                            default -> 128;
-                        };
-                        y = Math.clamp(y, level.getMinY(), level.getMaxY());
-                        String id = id(s.resolver.getNoiseBiome(x >> 2, y >> 2, z >> 2));
-                        s.locations.putIfAbsent(id, new DebugSnapshot.Place(id, x, y, z));
-                        s.hits.merge(id, 1, Integer::sum);
-                        if (layer == 0) {
-                            s.colors.put(cell, DebugMapMath.biomeColor(id));
-                            s.mapRevision++;
-                        }
-                        s.cursor++;
+                    if (s.sampler == null) {
+                        int[] heights = {level.dimensionType().hasCeiling() ? DebugTerrain.CEILING_SLICE_Y : level.getSeaLevel(),
+                                level.getMinY() + 16, 32, 128};
+                        for (int i = 0; i < heights.length; i++) heights[i] = Math.clamp(heights[i], level.getMinY(), level.getMaxY());
+                        s.sampler = AtlasBiomeSampler.create(level.getChunkSource().getGenerator().getBiomeSource(),
+                                level.getChunkSource().randomState(), s.minX, s.minZ, s.span, heights);
                     }
+                    s.sampler.run(s.cursor, deadline, () -> request == r, (index, x, y, z, biome, color) -> {
+                        if (!s.locations.containsKey(biome)) s.locations.put(biome, new DebugSnapshot.Place(biome, x, y, z));
+                        s.hits.merge(biome, 1, Integer::sum);
+                        if (index % LAYERS == 0) { s.colors.put(index / LAYERS, color); s.mapRevision++; }
+                        s.cursor = index + 1;
+                    });
                     if (s.cursor == TOTAL) s.scanning = false;
                 }
-                // Sampling and queued chunk inspection share a deadline. A structure layout is
-                // indivisible, so start at most one only when there is still time this tick.
-                if (request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
+                if (!auditFirst && request == r && System.nanoTime() < deadline) s.audit.tick(deadline, () -> request == r);
                 if (s.auditRevision != s.audit.revision()) {
                     s.auditRevision = s.audit.revision();
                     s.mapRevision++;
@@ -211,7 +201,8 @@ final class DebugSurvey {
         var chunk = level.getChunkSource().getChunkNow(cx, cz);
         if (chunk == null) return;
         int x = cx * 16 + 8, z = cz * 16 + 8;
-        int y = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, 8, 8);
+        int y = level.dimensionType().hasCeiling() ? DebugTerrain.sliceY(level.getMinY(), level.getMaxY())
+                : chunk.getHeight(Heightmap.Types.WORLD_SURFACE, 8, 8);
         String surface = id(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2));
         var tile = DebugTerrain.sample(chunk, DebugMapMath.biomeColor(surface));
         var previous = s.history.get(key);
@@ -243,12 +234,12 @@ final class DebugSurvey {
             var pos = start.getBoundingBox().getCenter();
             String label = String.valueOf(registry.getKey(structure));
             putPlace(s, label, pos.getX(), pos.getY(), pos.getZ());
-            s.audit.observe(label, new DebugSnapshot.Place(label, pos.getX(), pos.getY(), pos.getZ()));
+            s.audit.observe(label, new DebugSnapshot.Place(label, pos.getX(), pos.getY(), pos.getZ()), start.getChunkPos());
             for (var piece : start.getPieces()) {
                 if (piece instanceof StrongholdPieces.PortalRoom) {
                     var room = piece.getBoundingBox().getCenter();
                     putPlace(s, "End portal room (layout)", room.getX(), room.getY(), room.getZ());
-                    s.audit.observe(StructureAudit.PORTAL, new DebugSnapshot.Place(StructureAudit.PORTAL, room.getX(), room.getY(), room.getZ()));
+                    s.audit.observe(StructureAudit.PORTAL, new DebugSnapshot.Place(StructureAudit.PORTAL, room.getX(), room.getY(), room.getZ()), start.getChunkPos());
                 }
             }
         });
@@ -350,7 +341,7 @@ final class DebugSurvey {
         Set<Long> cachedLoaded = Set.of();
         List<DebugSnapshot.Place> cachedPlaces = List.of();
         Map<Integer, Integer> cachedColors = Map.of();
-        BiomeResolver resolver;
+        AtlasBiomeSampler sampler;
         int cursor, ticks;
         long lastCommand, lastScanCommand, lastAuditCommand;
         long mapRevision, cachedRevision = -1;
