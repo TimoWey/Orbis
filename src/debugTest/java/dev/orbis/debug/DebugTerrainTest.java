@@ -56,4 +56,29 @@ class DebugTerrainTest {
                 true, 0, 64, 0, 10, chunks, Set.of(), List.of(), List.of(), Map.of(), 0,
                 DebugSurvey.TOTAL, false, false, "", List.of(), false, 0, "Not checked yet");
     }
+
+    @Test void ceilingLayerUsesLavaLevelAndRespectsCustomVerticalBounds() {
+        assertEquals(32, DebugTerrain.sliceY(0, 255));
+        assertEquals(32, DebugTerrain.sliceY(-64, 319));
+        assertEquals(64, DebugTerrain.sliceY(64, 127));
+        assertEquals(15, DebugTerrain.sliceY(-64, 15));
+    }
+
+    @Test void allFiveNetherBiomesStayDistinctUnderUniformRockOrLava() {
+        var ids = List.of("nether_wastes", "soul_sand_valley", "crimson_forest", "warped_forest", "basalt_deltas");
+        var colors = ids.stream().map(id -> DebugMapMath.biomeColor("minecraft:" + id)).toList();
+        assertEquals(5, colors.stream().distinct().count());
+        for (int block : new int[] {0x700200, 0xff0000, 0x707070}) {
+            var slices = colors.stream().map(biome -> DebugTerrain.sliceColor(biome, block)).toList();
+            assertEquals(5, slices.stream().distinct().count());
+            for (int i = 0; i < colors.size(); i++) {
+                assertEquals(255, slices.get(i) >>> 24);
+                for (int shift : new int[] {0, 8, 16})
+                    assertTrue(Math.abs((slices.get(i) >> shift & 255) - (colors.get(i) >> shift & 255)) <= 64);
+            }
+        }
+        for (int color : colors) assertEquals(color, DebugTerrain.sliceColor(color, null));
+        assertNotEquals(DebugMapMath.biomeColor("minecraft:forest"), colors.get(2));
+        assertNotEquals(DebugMapMath.biomeColor("minecraft:forest"), colors.get(3));
+    }
 }
