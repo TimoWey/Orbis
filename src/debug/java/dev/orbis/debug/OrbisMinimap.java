@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 /** Compact north-up terrain map, or a globe oriented toward the live player. */
 final class OrbisMinimap implements AutoCloseable {
     private final DebugMapTexture texture = new DebugMapTexture();
+    private final AtlasMinimapTexture flatTexture = new AtlasMinimapTexture();
 
     void draw(GuiGraphicsExtractor g) {
         Minecraft client = Minecraft.getInstance();
@@ -17,9 +18,8 @@ final class OrbisMinimap implements AutoCloseable {
         int left = corner % 2 == 0 ? g.guiWidth() - size - 16 : 16;
         int top = corner < 2 ? 16 : g.guiHeight() - size - 78;
         boolean globe = AtlasPreferences.globe(data.dimension()) && data.wrapped();
-        // Quantized camera movement avoids rebuilding a terrain texture for subpixel motion.
-        double x = Math.floor(client.player.getX() / 4) * 4;
-        double z = Math.floor(client.player.getZ() / 4) * 4;
+        // Follow the exact player position. Globe texture updates are already throttled.
+        double x = client.player.getX(), z = client.player.getZ();
         double yaw = -((x - data.minX()) / data.span() - .5) * Math.PI * 2;
         double pitch = (.5 - (z - data.minZ()) / data.span()) * Math.PI;
         double scale = size / (double) Math.min(256, data.span());
@@ -31,13 +31,16 @@ final class OrbisMinimap implements AutoCloseable {
             g.fill(left - 3, top - 3, left + size + 3, top + size + 3, 0xff202020);
             g.outline(left - 2, top - 2, size + 4, size + 4, 0xffaaaaaa);
         }
-        texture.draw(g, data, new DebugMapRaster.View(size, size, x, z, globe ? 1 : scale,
-                globe, yaw, pitch, false, false), left, top);
+        if (globe) texture.draw(g, data, new DebugMapRaster.View(size, size, x, z, 1,
+                true, yaw, pitch, false, false), left, top);
+        else flatTexture.draw(g, data, x, z, size / scale, left, top, size);
         g.enableScissor(left, top, left + size, top + size);
-        double[] player = project(data, client.player.getX(), client.player.getZ(), x, z, size, scale, globe, yaw, pitch);
-        if (player != null) AtlasPlayerMarker.draw(g, left + (int) player[0], top + (int) player[1],
-                AtlasPlayerMarker.direction(globe, (client.player.getX() - data.minX()) / data.span(),
-                        (client.player.getZ() - data.minZ()) / data.span(), yaw, pitch, client.player.getYRot()));
+        // The globe and its player position are one displayed frame. Between texture updates,
+        // keep the following marker at its exact center instead of projecting newer coordinates.
+        double[] player = globe ? new double[]{size * .5, size * .5}
+                : project(data, client.player.getX(), client.player.getZ(), x, z, size, scale, false, yaw, pitch);
+        if (player != null) AtlasPlayerMarker.draw(g, left + (int) Math.round(player[0]), top + (int) Math.round(player[1]),
+                AtlasPlayerMarker.direction(false, 0, 0, 0, 0, client.player.getYRot()));
         g.disableScissor();
         label(g, "N", left + size / 2, top - 11);
         label(g, net.minecraft.network.chat.Component.translatable("orbis.atlas.east").getString(), left + size + 8, top + size / 2 - 4);
@@ -58,19 +61,9 @@ final class OrbisMinimap implements AutoCloseable {
 
     static double[] project(DebugSnapshot data, double x, double z, double centerX, double centerZ,
             int size, double scale, boolean globe, double yaw, double pitch) {
-        if (globe) {
-            double[] point = DebugMapMath.globe((x - data.minX()) / data.span(), (z - data.minZ()) / data.span(), yaw, pitch);
-            if (point[2] <= 0) return null;
-            double radius = Math.max(8, size * .5 - 4);
-            return new double[] {size * .5 + point[0] * radius, size * .5 - point[1] * radius};
-        }
-        if (data.wrapped()) {
-            x = DebugMapMath.canonical(x, data.minX(), data.span());
-            z = DebugMapMath.canonical(z, data.minZ(), data.span());
-        }
-        double dx = x - centerX, dz = z - centerZ;
-        return new double[] {size * .5 + dx * scale, size * .5 + dz * scale};
+        return AtlasPlayerMarker.project(data, new DebugMapRaster.View(size, size, centerX, centerZ,
+                globe ? 1 : scale, globe, yaw, pitch, false, false), x, z);
     }
 
-    @Override public void close() { texture.close(); }
+    @Override public void close() { texture.close(); flatTexture.close(); }
 }

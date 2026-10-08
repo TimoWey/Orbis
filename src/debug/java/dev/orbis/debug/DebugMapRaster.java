@@ -12,6 +12,7 @@ final class DebugMapRaster {
     private final int width, height;
     private final int[] pixels;
     private double ratioX, ratioY;
+    private double fogScale;
     private double leftWorld, rightWorld, topWorld, bottomWorld;
     private View view;
     private DebugSnapshot data;
@@ -34,6 +35,8 @@ final class DebugMapRaster {
         this.data = data;
         this.view = view;
         this.archived = archived;
+        // Fit whole decorative repeats around wrapped worlds, including small Nether maps.
+        fogScale = data.wrapped() ? 4096.0 * Math.max(1, Math.round(data.span() / 4096.0)) / data.span() : 1;
         if (indexedChunks != data.chunks()) {
             indexedChunks = data.chunks();
             terrain.clear();
@@ -64,19 +67,19 @@ final class DebugMapRaster {
     private int x(double x) { return (int) Math.clamp((view.width * .5 + (x - view.centerX) * view.scale) * ratioX, -1000000, 1000000); }
     private int y(double z) { return (int) Math.clamp((view.height * .5 + (z - view.centerZ) * view.scale) * ratioY, -1000000, 1000000); }
     private void flat() {
-        double step = data.span() / (double) DebugSurvey.GRID;
-        int firstX = Math.clamp((int) Math.floor((leftWorld - data.minX()) / step), 0, DebugSurvey.GRID - 1);
-        int lastX = Math.clamp((int) Math.floor((rightWorld - data.minX()) / step), 0, DebugSurvey.GRID - 1);
-        int firstZ = Math.clamp((int) Math.floor((topWorld - data.minZ()) / step), 0, DebugSurvey.GRID - 1);
-        int lastZ = Math.clamp((int) Math.floor((bottomWorld - data.minZ()) / step), 0, DebugSurvey.GRID - 1);
-        for (int iz = firstZ; iz <= lastZ; iz++) for (int ix = firstX; ix <= lastX; ix++) {
-            Integer color = data.surveyColors().get(iz * DebugSurvey.GRID + ix);
-            if (color != null) worldFill(data.minX() + ix * step, data.minZ() + iz * step, step, color);
+        double densityX = view.scale * ratioX, densityY = view.scale * ratioY;
+        int fogLevel = AtlasUnknownTerrain.level(fogScale * Math.max(1 / densityX, 1 / densityY));
+        int fogLeft = data.wrapped() ? Math.clamp((int) Math.ceil((data.minX() - leftWorld) * densityX - .5), 0, width) : 0;
+        int fogRight = data.wrapped() ? Math.clamp((int) Math.ceil(((double) data.minX() + data.span() - leftWorld) * densityX - .5), 0, width) : width;
+        for (int py = 0; py < height; py++) {
+            double z = topWorld + (py + .5) / densityY;
+            if (data.wrapped() && (z < data.minZ() || z >= (double) data.minZ() + data.span())) continue;
+            for (int px = fogLeft; px < fogRight; px++)
+                pixels[py * width + px] = AtlasUnknownTerrain.color((leftWorld + (px + .5) / densityX) * fogScale, z * fogScale, fogLevel);
         }
         // Sample original block colors at visible pixel centers, regardless of zoom.
         if (archived != null) for (int i = 0; i < pixels.length; i++) if (archived[i] != 0) pixels[i] = archived[i];
         // Work stays bounded by screen coverage without replacing terrain with coarse averages.
-        double densityX = view.scale * ratioX, densityY = view.scale * ratioY;
         for (var cell : data.chunks()) {
             double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
             if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
@@ -105,27 +108,19 @@ final class DebugMapRaster {
         if (data.wrapped()) outline(x(data.minX()), y(data.minZ()), x((double) data.minX() + data.span()),
                 y((double) data.minZ() + data.span()), 0xffeac66c);
     }
-    /** Exactly one canonical world rectangle, with no neighbouring copies. */
-    private void worldFill(double bx, double bz, double size, int color) {
-        if (data.wrapped() && (bx < data.minX() || bz < data.minZ()
-                || bx >= (double) data.minX() + data.span() || bz >= (double) data.minZ() + data.span())) return;
-        if (bx + size <= leftWorld || bx >= rightWorld || bz + size <= topWorld || bz >= bottomWorld) return;
-        fill(x(bx), y(bz), x(bx + size), y(bz + size), color);
-    }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
         cacheProjection(radius);
         double originU = .5 - view.yaw / (2 * Math.PI), originV = .5 - view.pitch / Math.PI;
+        int fogLevel = AtlasUnknownTerrain.level(fogScale * data.span() / (2 * Math.PI * radius * Math.min(ratioX, ratioY)));
         for (int py = 0; py < height; py++) {
             for (int px = 0; px < width; px++) {
                 int index = py * width + px;
                 if (Double.isNaN(globeU[index])) continue;
                 double u = DebugMapMath.unit(originU + globeU[index]);
                 double v = DebugMapMath.unit(originV + globeV[index]);
-                int ix = Math.clamp((int) (u * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
-                int iz = Math.clamp((int) (v * DebugSurvey.GRID), 0, DebugSurvey.GRID - 1);
-                int color = data.surveyColors().getOrDefault(iz * DebugSurvey.GRID + ix, 0xff283b50);
-                if (data.surveyColors().isEmpty() && (ix % 16 == 0 || iz % 16 == 0)) color = 0xff536779;
+                int color = AtlasUnknownTerrain.color((data.minX() + u * data.span()) * fogScale,
+                        (data.minZ() + v * data.span()) * fogScale, fogLevel);
                 if (archived != null && archived[index] != 0) color = archived[index];
                 int bx = (int) Math.floor(data.minX() + u * data.span());
                 int bz = (int) Math.floor(data.minZ() + v * data.span());

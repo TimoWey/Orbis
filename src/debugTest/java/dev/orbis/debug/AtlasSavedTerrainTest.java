@@ -45,6 +45,23 @@ class AtlasSavedTerrainTest {
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
             assertEquals(color((x + z) % 2 == 0 ? Blocks.GOLD_BLOCK : Blocks.DIAMOND_BLOCK), tile.colorAt(x, z));
     }
+    @Test void nearbyImportVisitsOnlySavedChunksAndStartsAtThePlayerAcrossNegativeBoundaries() throws Exception {
+        for (String name : List.of("r.-1.-1.mca", "r.0.0.mca", "r.20.20.mca")) {
+            try (var file = new RandomAccessFile(directory.resolve(name).toFile(), "rw")) {
+                file.setLength(8192);
+                for (int slot = 0; slot < 1024; slot++) file.writeInt(0x201);
+            }
+        }
+        var chunks = AtlasSavedTerrain.nearby(directory, -1, -1, 12);
+        assertEquals(new ChunkPos(-1, -1), chunks.getFirst());
+        long previous = -1;
+        for (var chunk : chunks) {
+            assertTrue(Math.abs(chunk.x() + 1) <= 12 && Math.abs(chunk.z() + 1) <= 12);
+            long distance = AtlasTerrainQueue.distance(chunk.pack(), -1, -1);
+            assertTrue(distance >= previous); previous = distance;
+        }
+        assertEquals(13 * 13 + 12 * 12, chunks.size());
+    }
     @Test void savedNetherUsesTheSameSliceAndDoesNotPaintItsRoof() {
         var slice = section();
         slice.setBlockState(5, 0, 7, Blocks.LAVA.defaultBlockState());

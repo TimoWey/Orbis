@@ -6,6 +6,12 @@ import java.util.Set;
 
 /** Small render fixture; production snapshots have one authoritative search state. */
 final class AtlasFixtures {
+    static DebugSnapshot archive(DebugSnapshot d, AtlasTileArchive archive) {
+        return new DebugSnapshot(d.dimension(), d.seed(), d.preset(), d.mapRevision(), d.minX(), d.minZ(), d.span(),
+                d.wrapped(), d.playerX(), d.playerY(), d.playerZ(), d.tickMillis(), d.chunks(), d.loaded(), d.biomes(),
+                d.places(), d.surveyColors(), d.historyLimited(), d.error(), d.structures(), d.structuresScanning(),
+                d.structureChecks(), d.structureState(), d.search(), d.structureCounting(), d.layers(), archive);
+    }
     static DebugSnapshot world(Map<Integer, Integer> colors, List<DebugSnapshot.Cell> chunks, Set<Long> loaded) {
         return world(colors, chunks, loaded, List.of(), new DebugSnapshot.MapLayers(1, 1, 1, 1));
     }

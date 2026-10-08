@@ -16,6 +16,7 @@ final class AtlasTileArchive {
     private static final Object FILE_IO = new Object();
     private final Path directory;
     private final AtomicLong revision = new AtomicLong(1);
+    private final java.util.concurrent.ConcurrentHashMap<Long, Long> changes = new java.util.concurrent.ConcurrentHashMap<>();
     // Shared by minimap/fullscreen projections and retained when a screen is reopened.
     // At most 128 MiB of original block colors, plus cell/index overhead.
     private final LinkedHashMap<Long, DebugSnapshot.Cell[]> regions = new LinkedHashMap<>(128, .75f, true);
@@ -25,6 +26,14 @@ final class AtlasTileArchive {
 
     AtlasTileArchive(Path directory) { this.directory = directory; }
     long revision() { return revision.get(); }
+    /** Read-only, nonblocking invalidation for the few regions covered by the HUD texture. */
+    long revision(int blockX, int blockZ, int size) {
+        long latest = 1;
+        for (int rz = blockZ >> 9; rz <= (blockZ + size - 1) >> 9; rz++)
+            for (int rx = blockX >> 9; rx <= (blockX + size - 1) >> 9; rx++)
+                latest = Math.max(latest, changes.getOrDefault(ChunkPos.pack(rx, rz), 1L));
+        return latest;
+    }
     boolean closed() { return closed; }
     void close() { closed = true; synchronized (FILE_IO) { synchronized (regions) { regions.clear(); } existingRegions = null; } }
     private Path file(int x, int z) { return directory.resolve("r." + (x >> 5) + "." + (z >> 5) + ".tiles"); }
@@ -72,7 +81,7 @@ final class AtlasTileArchive {
                     regions.put(key, cached);
                 }
             }
-            revision.incrementAndGet();
+            changes.put(key, revision.incrementAndGet());
         }
     }
 

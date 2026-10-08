@@ -337,8 +337,6 @@ final class OrbisDebugScreen extends Screen {
                 g.fill(mapLeft, mapBottom - 25, mapRight, mapBottom, 0xe0101923);
                 g.text(font, ellipsis(displayName(selected.label()), mapRight - mapLeft - 12), mapLeft + 4, mapBottom - 22, ACCENT, false);
                 g.text(font, "X " + selected.x() + "  Y " + selected.y() + "  Z " + selected.z(), mapLeft + 4, mapBottom - 11, TEXT, false);
-            } else if (data.wrapped() && data.search().progress().mapping() && data.search().progress().mapCursor() < AtlasSearch.MAP_COARSE) {
-                g.text(font, ellipsis(tr("building_preview"), mapRight - mapLeft - 12), mapLeft + 6, mapTop + 6, MUTED, false);
             }
             g.disableScissor();
             int panelWidth = right - panelX - 8;
@@ -422,15 +420,11 @@ final class OrbisDebugScreen extends Screen {
 
     /** Rendering and hit testing share exactly the same projection and visibility rules. */
     private int[] markerPosition(double x, double z) {
-        int px, py;
-        if (globe) {
-            double[] xyz = DebugMapMath.globe(unitX(x), unitZ(z), yaw, pitch);
-            if (xyz[2] <= 0) return null;
-            px = (int) (midX() + xyz[0] * radius()); py = (int) (midY() - xyz[1] * radius());
-        } else {
-            px = sx(data.wrapped() ? DebugMapMath.canonical(x, data.minX(), data.span()) : x);
-            py = sz(data.wrapped() ? DebugMapMath.canonical(z, data.minZ(), data.span()) : z);
-        }
+        var view = mapTexture.displayedView();
+        if (view == null) return null;
+        double[] point = AtlasPlayerMarker.project(data, view, x, z);
+        if (point == null) return null;
+        int px = mapLeft + (int) Math.round(point[0]), py = mapTop + (int) Math.round(point[1]);
         if (!inside(px, py) || selected != null && py >= mapBottom - 25) return null;
         return new int[]{px, py};
     }
@@ -441,9 +435,14 @@ final class OrbisDebugScreen extends Screen {
     private void drawPlayer(GuiGraphicsExtractor g) {
         if (minecraft.player == null) return;
         var player = minecraft.player;
-        int[] point = markerPosition(player.getX(), player.getZ());
+        var view = mapTexture.displayedView();
+        if (view == null) return;
+        // Follow mode uses the center captured with the displayed globe, not a newer tick.
+        double x = followPlayer && view.globe() ? view.centerX() : player.getX();
+        double z = followPlayer && view.globe() ? view.centerZ() : player.getZ();
+        int[] point = markerPosition(x, z);
         if (point != null) AtlasPlayerMarker.draw(g, point[0], point[1], AtlasPlayerMarker.direction(
-                globe, unitX(player.getX()), unitZ(player.getZ()), yaw, pitch, player.getYRot()));
+                view.globe(), unitX(x), unitZ(z), view.yaw(), view.pitch(), player.getYRot()));
     }
     private List<String[]> stats() {
         return List.of(new String[]{tr("preset"), data.preset()},

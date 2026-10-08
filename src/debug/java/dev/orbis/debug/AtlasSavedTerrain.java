@@ -53,6 +53,24 @@ final class AtlasSavedTerrain implements AutoCloseable {
         }
     }
 
+    /** Enumerate only saved chunks around the HUD first; never load or generate world chunks. */
+    List<ChunkPos> nearby(int x, int z, int radius) throws IOException {
+        return nearby(regions, x, z, radius);
+    }
+
+    static List<ChunkPos> nearby(Path regions, int x, int z, int radius) throws IOException {
+        var result = new ArrayList<ChunkPos>();
+        for (int rz = (z - radius) >> 5; rz <= (z + radius) >> 5; rz++) {
+            for (int rx = (x - radius) >> 5; rx <= (x + radius) >> 5; rx++) {
+                Path path = regions.resolve("r." + rx + "." + rz + ".mca");
+                if (Files.isRegularFile(path)) for (var position : readHeader(path))
+                    if (Math.abs(position.x() - x) <= radius && Math.abs(position.z() - z) <= radius) result.add(position);
+            }
+        }
+        result.sort(Comparator.comparingLong(position -> AtlasTerrainQueue.distance(position.pack(), x, z)));
+        return result;
+    }
+
     ChunkPos next() throws IOException {
         while (!positions.hasNext()) {
             if (!files.hasNext()) {
