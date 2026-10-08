@@ -15,7 +15,10 @@ class DebugTerrainTest {
                 int bx = (int) Math.floor(-7.25 + ((x + .5) / factor - 32) / scale);
                 int bz = (int) Math.floor(3.25 + ((y + .5) / factor - 32) / scale);
                 int expected = bx >= -16 && bx < 16 && bz >= -16 && bz < 16
-                        ? blockColor(bx, bz) : DebugMapRaster.BACKGROUND;
+                        ? blockColor(bx, bz) : AtlasUnknownTerrain.color(
+                                2 * (-7.25 + ((x + .5) / factor - 32) / scale),
+                                2 * (3.25 + ((y + .5) / factor - 32) / scale),
+                                AtlasUnknownTerrain.level(2 / (factor * scale)));
                 assertEquals(expected, pixels[y * size + x], "Flat scale=" + scale + " factor=" + factor);
             }
         }
@@ -74,7 +77,7 @@ class DebugTerrainTest {
         int[] pixels = new DebugMapRaster(64, 64).render(fixture(List.of(cell)), view);
         assertEquals(0xff123456, pixels[18 * 64 + 18]);
         assertEquals(0xffabcdef, pixels[46 * 64 + 46]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[50 * 64 + 50]);
+        assertEquals(AtlasUnknownTerrain.color(2.5, 2.5, 0), pixels[50 * 64 + 50]);
     }
 
     @Test void globeUsesTerrainAcrossNegativeAndPositiveChunkBoundariesWithoutOverlay() {

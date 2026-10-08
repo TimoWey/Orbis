@@ -59,6 +59,7 @@ final class DebugSurvey {
             long key = chunk.getPos().pack();
             s.loaded.add(key);
             s.pending.add(key);
+            s.terrainPending.add(key);
             s.loadedChanged();
         });
         ServerChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> {
@@ -66,12 +67,13 @@ final class DebugSurvey {
             if (s != null) {
                 // Pregenerators can unload before the bounded tick queue reaches this chunk.
                 // Capture while the event still owns it; never retain the live chunk for a worker.
-                if (s.pending.contains(chunk.getPos().pack())) {
+                if (s.terrainPending.contains(chunk.getPos().pack())) {
                     try { s.acceptLive(sampleTerrain(level, chunk)); }
                     catch (RuntimeException failure) { Orbis.LOGGER.warn("Atlas terrain capture on unload failed", failure); }
                 }
                 s.loaded.remove(chunk.getPos().pack());
                 s.pending.remove(chunk.getPos().pack());
+                s.terrainPending.remove(chunk.getPos().pack());
                 s.loadedChanged();
             }
         });
@@ -85,6 +87,7 @@ final class DebugSurvey {
                 State old = entry.getValue(); old.importer.close(); old.save(true);
                 State replacement = new State(entry.getKey());
                 replacement.loaded.addAll(old.loaded); replacement.pending.addAll(old.loaded);
+                replacement.terrainPending.addAll(old.loaded);
                 // A reload must not replay an already-consumed explicit resample command.
                 replacement.lastCommand = old.lastCommand;
                 worlds.put(entry.getKey(), replacement);
@@ -125,7 +128,7 @@ final class DebugSurvey {
             if (level == null || player == null || player.level() != level) return;
             State s = worlds.computeIfAbsent(level, State::new);
             if (!s.ready) return; // Do not race a restore with a new survey.
-            if (s.cacheTicks % 200 == 0) s.pending.addAll(s.loaded);
+            if (s.cacheTicks % 200 == 0) { s.pending.addAll(s.loaded); s.terrainPending.addAll(s.loaded); }
             if (s.lastCommand != r.command) {
                 s.lastCommand = r.command;
                 if (s.wrapped) switch (r.action) {
@@ -133,6 +136,7 @@ final class DebugSurvey {
                     case RESAMPLE -> {
                         s.error = "";
                         s.pending.addAll(s.loaded);
+                        s.terrainPending.addAll(s.loaded);
                         s.hits.clear();
                         s.locations.keySet().removeIf(id -> !s.observed.contains(id));
                         s.search.resample(); s.changed();
@@ -148,6 +152,14 @@ final class DebugSurvey {
             }
             try {
                 long deadline = System.nanoTime() + 3_000_000;
+                s.terrainPending.focus(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+                long terrainDeadline = Math.min(deadline, System.nanoTime() + 2_000_000);
+                for (int count = 0; count < 32 && request == r && System.nanoTime() < terrainDeadline; count++) {
+                    Long key = s.terrainPending.poll();
+                    if (key == null) break;
+                    var chunk = level.getChunkSource().getChunkNow(ChunkPos.getX(key), ChunkPos.getZ(key));
+                    if (chunk != null) s.acceptLive(sampleTerrain(level, chunk));
+                }
                 for (int count = 0; count < 2 && !s.pending.isEmpty() && request == r && System.nanoTime() < deadline; count++) {
                     long key = s.pending.iterator().next();
                     s.pending.remove(key);
@@ -182,7 +194,8 @@ final class DebugSurvey {
                 if (s.error.isEmpty()) Orbis.LOGGER.warn("Orbis debug survey stopped", failure);
                 s.error = "Survey stopped: " + failure.getClass().getSimpleName();
             }
-            if (++s.ticks % 10 == 0 || snapshot == null) {
+            if (++s.ticks % 10 == 0 || snapshot == null
+                    || s.ticks % 2 == 0 && s.cachedTerrainRevision != s.terrainRevision) {
                 Set<String> ids = new TreeSet<>(s.possible);
                 // The checklist is the dimension generator's possible set, not a union of dimensions.
 
@@ -230,7 +243,6 @@ final class DebugSurvey {
         int cx = ChunkPos.getX(key), cz = ChunkPos.getZ(key);
         var chunk = level.getChunkSource().getChunkNow(cx, cz);
         if (chunk == null) return;
-        s.acceptLive(sampleTerrain(level, chunk));
         // Locate cells only for newly observed palette entries, not all cells in every chunk.
         for (int section = 0; section < chunk.getSections().length; section++) {
             var palette = chunk.getSection(section);
@@ -316,6 +328,7 @@ final class DebugSurvey {
         final Set<Long> liveTerrain = new HashSet<>(), distantTerrain = new HashSet<>();
         final Set<Long> loaded = new HashSet<>();
         final Set<Long> pending = new LinkedHashSet<>();
+        final AtlasTerrainQueue terrainPending = new AtlasTerrainQueue();
         final LinkedHashMap<Long, DebugSnapshot.Cell> history = new LinkedHashMap<>();
         final LinkedHashMap<String, DebugSnapshot.Place> places = new LinkedHashMap<>();
         final Map<String, DebugSnapshot.Place> locations = new HashMap<>();

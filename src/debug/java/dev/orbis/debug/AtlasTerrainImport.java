@@ -20,6 +20,9 @@ final class AtlasTerrainImport implements AutoCloseable {
     private CompletableFuture<Void> task;
     private boolean savedScanning, distantScanning;
     private long nextSavedScan, nextDistantScan;
+    private int focusX = Integer.MIN_VALUE, focusZ = Integer.MIN_VALUE;
+    private long nextNearbyScan;
+    private Iterator<ChunkPos> nearby = Collections.emptyIterator();
     private volatile boolean closed;
     private AtlasTileArchive archive;
     private final LinkedHashMap<Long, DebugSnapshot.Cell> live = new LinkedHashMap<>();
@@ -58,10 +61,20 @@ final class AtlasTerrainImport implements AutoCloseable {
             }
         }
         if (archive == null && completed.remainingCapacity() < 64) return;
+        // Capture immutable coordinates here; workers never inspect live players/world state.
+        var player = level.players().isEmpty() ? null : level.players().getFirst();
+        int playerX = player == null ? 0 : player.getBlockX() >> 4;
+        int playerZ = player == null ? 0 : player.getBlockZ() >> 4;
         task = CompletableFuture.runAsync(() -> {
             try {
                 writeLive(64);
                 long now = System.nanoTime();
+                if (player != null && (Math.abs((long) playerX - focusX) >= 4
+                        || Math.abs((long) playerZ - focusZ) >= 4 || now >= nextNearbyScan)) {
+                    nearby = saved.nearby(playerX, playerZ, 12).iterator();
+                    focusX = playerX; focusZ = playerZ;
+                    nextNearbyScan = now + TimeUnit.SECONDS.toNanos(30);
+                }
                 if (!savedScanning && now >= nextSavedScan) {
                     saved.startScan(); savedScanning = true;
                     nextSavedScan = now + TimeUnit.SECONDS.toNanos(30);
@@ -71,11 +84,16 @@ final class AtlasTerrainImport implements AutoCloseable {
                     nextDistantScan = now + TimeUnit.SECONDS.toNanos(30);
                 }
                 long savedDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(35);
-                for (int i = 0; i < 256 && savedScanning && !closed && System.nanoTime() < savedDeadline; i++) {
-                    ChunkPos position = saved.next();
-                    if (position == null) { savedScanning = false; break; }
-                    var tile = saved.read(position);
-                    if (tile != null) store(new Tile(tile, false));
+                try (var reader = archive == null ? null : archive.reader()) {
+                    for (int i = 0; i < 256 && (nearby.hasNext() || savedScanning) && !closed && System.nanoTime() < savedDeadline; i++) {
+                        boolean priority = nearby.hasNext();
+                        ChunkPos position = priority ? nearby.next() : saved.next();
+                        if (position == null) { savedScanning = false; break; }
+                        // Existing pixels are immediately usable. The background scan still refreshes saved data.
+                        if (priority && reader != null && reader.get(position.x(), position.z()) != null) continue;
+                        var tile = saved.read(position);
+                        if (tile != null) store(new Tile(tile, false));
+                    }
                 }
                 long distantDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(35);
                 if (distant != null) for (int i = 0; i < 32 && !closed && System.nanoTime() < distantDeadline; i++) {
