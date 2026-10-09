@@ -331,6 +331,8 @@ final class DeveloperScreen extends Screen {
             g.enableScissor(mapLeft, mapTop, mapRight, mapBottom);
             mapTexture.draw(g, data, new AtlasMapRaster.View(mapRight - mapLeft, mapBottom - mapTop, centerX, centerZ,
                     globe ? globeZoom : scale(), globe, yaw, pitch, (overlayMode & 1) != 0, (overlayMode & 2) != 0), mapLeft, mapTop);
+            if (mapTexture.displayedView() != null)
+                AtlasPlayersClient.draw(g, data, mapTexture.displayedView(), mapLeft, mapTop, mx, my, true);
             drawPlayer(g);
             if (selected != null) marker(g, selected.x(), selected.z(), "X", ACCENT);
             if (selected != null) {

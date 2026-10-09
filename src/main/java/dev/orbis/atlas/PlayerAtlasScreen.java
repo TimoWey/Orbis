@@ -75,6 +75,7 @@ final class PlayerAtlasScreen extends Screen {
             texture.draw(g, data, view, left, top);
             var shown = texture.displayedView();
             if (shown != null) {
+                AtlasPlayersClient.draw(g, data, shown, left, top, mx, my, true);
                 double px = follow && globe ? shown.centerX() : minecraft.player.getX();
                 double pz = follow && globe ? shown.centerZ() : minecraft.player.getZ();
                 var point = AtlasPlayerMarker.project(data, shown, px, pz);

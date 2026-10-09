@@ -4,17 +4,18 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AtlasPlayerMarkerTest {
-    @Test void smallMarkerUsesOnlyTwoFlatColorsAtEveryHeading() {
-        for (int heading = 0; heading < 16; heading++) {
-            double angle = heading * Math.PI / 8;
-            var colors = new java.util.HashSet<Integer>();
-            for (int y = -8; y <= 8; y++) for (int x = -8; x <= 8; x++) {
-                int color = AtlasPlayerMarker.colorAt(x, y, Math.cos(angle), Math.sin(angle));
-                if (Math.abs(x) > 6 || Math.abs(y) > 6) assertEquals(0, color);
-                else if (color != 0) colors.add(color);
-            }
-            assertEquals(java.util.Set.of(0xff17191b, 0xffdedbd2), colors);
+    @Test void usesOriginalMinecraftMapSpritesAndSixteenHeadings() {
+        assertEquals(net.minecraft.data.AtlasIds.MAP_DECORATIONS, AtlasPlayerMarker.PLAYER.atlasLocation());
+        assertEquals("minecraft:player", AtlasPlayerMarker.PLAYER.texture().toString());
+        assertEquals("minecraft:frame", AtlasPlayerMarker.OTHER.texture().toString());
+        for (int h = 0; h < 16; h++) {
+            double angle = h * Math.PI / 8;
+            assertEquals(h, AtlasPlayerMarker.heading(new double[]{Math.sin(angle), -Math.cos(angle)}));
         }
+        assertEquals(8, AtlasPlayerMarker.heading(AtlasPlayerMarker.direction(false, 0, 0, 0, 0, 0)));
+        assertEquals(12, AtlasPlayerMarker.heading(AtlasPlayerMarker.direction(false, 0, 0, 0, 0, 90)));
+        assertEquals(0, AtlasPlayerMarker.heading(AtlasPlayerMarker.direction(false, 0, 0, 0, 0, 180)));
+        assertEquals(4, AtlasPlayerMarker.heading(AtlasPlayerMarker.direction(false, 0, 0, 0, 0, 270)));
     }
 
     @Test void globeMarkerUsesTheDisplayedTerrainProjectionAtEveryRotationAndZoom() {
@@ -57,8 +58,6 @@ class AtlasPlayerMarkerTest {
                     var direction = AtlasPlayerMarker.direction(globe, position[0], position[1], yaw, pitch, heading[0]);
                     assertEquals(heading[1], direction[0], 1e-7);
                     assertEquals(heading[2], direction[1], 1e-7);
-                    assertTrue(AtlasPlayerMarker.filled(direction[0] * 4, direction[1] * 4, direction[0], direction[1]));
-                    assertFalse(AtlasPlayerMarker.filled(-direction[0] * 6, -direction[1] * 6, direction[0], direction[1]));
                 }
                 var center = AtlasMapMath.globe(position[0], position[1], yaw, pitch);
                 assertArrayEquals(new double[]{0, 0, 1}, center, 1e-7);
