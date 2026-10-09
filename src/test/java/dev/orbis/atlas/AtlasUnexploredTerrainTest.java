@@ -5,12 +5,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AtlasUnexploredTerrainTest {
-    private static final Set<Integer> INKS = Set.of(AtlasUnknownTerrain.WATER, AtlasUnknownTerrain.LAND,
-            AtlasUnknownTerrain.WOODED, AtlasUnknownTerrain.DRY);
+    private static final Set<Integer> INKS = Set.of(AtlasUnknownTerrain.WATER, AtlasUnknownTerrain.LAND);
 
     @Test void unsavedTerrainIsTheSameFictionalMapRegardlessOfBiomeSamples() {
         var samples = new HashMap<Integer, Integer>();
-        for (int i = 0; i < DeveloperSurvey.GRID * DeveloperSurvey.GRID; i++)
+        for (int i = 0; i < 256 * 256; i++)
             samples.put(i, i % 2 == 0 ? 0xff00ff00 : 0xff0000ff);
         var empty = AtlasFixtures.world(Map.of(), List.of(), Set.of());
         var sampled = AtlasFixtures.world(samples, List.of(), Set.of());
@@ -56,7 +55,7 @@ class AtlasUnexploredTerrainTest {
         assertEquals(6, AtlasUnknownTerrain.level(1e9));
     }
 
-    @Test void fictionalGeographyHasOnlyFourFlatInksAndPaleGrayWater() {
+    @Test void fictionalGeographyHasOnlyTwoNeutralGrayInksWithDarkerWater() {
         var colors = new HashSet<Integer>();
         for (int z = 0; z < 4096; z += 64) for (int x = 0; x < 4096; x += 64) {
             int color = AtlasUnknownTerrain.color(x, z, 0);
@@ -64,11 +63,11 @@ class AtlasUnexploredTerrainTest {
             assertEquals(color, AtlasUnknownTerrain.color(x + 63, z + 63, 0), "No fine texture within a map cell");
         }
         assertEquals(INKS, colors);
-        int water = AtlasUnknownTerrain.WATER;
-        assertEquals(water & 255, water >> 8 & 255);
-        assertEquals(water & 255, water >> 16 & 255);
-        for (int land : new int[]{AtlasUnknownTerrain.LAND, AtlasUnknownTerrain.WOODED, AtlasUnknownTerrain.DRY})
-            assertTrue((water & 255) > Math.max(land & 255, Math.max(land >> 8 & 255, land >> 16 & 255)));
+        for (int ink : INKS) {
+            assertEquals(ink & 255, ink >> 8 & 255);
+            assertEquals(ink & 255, ink >> 16 & 255);
+        }
+        assertTrue((AtlasUnknownTerrain.WATER & 255) < (AtlasUnknownTerrain.LAND & 255));
     }
 
     @Test void cachedMinimapDoesNotRebuildWhenOnlyBiomeSamplingProgresses() {

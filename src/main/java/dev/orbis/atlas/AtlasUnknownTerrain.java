@@ -4,11 +4,9 @@ package dev.orbis.atlas;
 final class AtlasUnknownTerrain {
     private static final int SIZE = 64;
     private static final double BLOCKS_PER_TEXEL = 64;
-    static final int WATER = 0xff929292;
-    static final int LAND = 0xff626b59;
-    static final int WOODED = 0xff505d50;
-    static final int DRY = 0xff7a725e;
-    private static final int[] PALETTE = {WATER, LAND, WOODED, DRY};
+    static final int WATER = 0xff5c5c5c;
+    static final int LAND = 0xffababab;
+    private static final int[] PALETTE = {WATER, LAND};
     private static final int[][] LEVELS = build();
 
     static int level(double blocksPerPixel) {
@@ -30,10 +28,9 @@ final class AtlasUnknownTerrain {
             double u = x / (double) SIZE, v = z / (double) SIZE;
             double coast = .72 * noise(u * 4, v * 4, 4) + .22 * noise(u * 8, v * 8, 8)
                     + .06 * noise(u * 16, v * 16, 16);
-            double region = noise(u * 4 + 11, v * 4 + 7, 4);
-            // Four flat map inks: pale water and broad, muted fictional land regions.
+            // Two flat gray inks distinguish fictional water and land only.
             // Deliberately no hill shading, fine grain, height contours or real biome data.
-            levels[0][z * SIZE + x] = coast < .48 ? WATER : region < .38 ? WOODED : region > .62 ? DRY : LAND;
+            levels[0][z * SIZE + x] = coast < .48 ? WATER : LAND;
         }
         for (int level = 1; level < levels.length; level++) {
             int size = SIZE >> level, previousSize = size * 2;
