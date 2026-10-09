@@ -1,5 +1,7 @@
 # Alpha.8 — aktueller Atlas, Multiplayer und Admin-Checks
 
+**Aktualisierte Oberfläche und aktuelles Download-JAR:** [UI-Nachtrag mit neuen Screenshots und Prüfsumme](UI_UPDATE.md). Das folgende Protokoll dokumentiert den ursprünglichen Alpha.8-Stand.
+
 Getestet am 9. Oktober 2026 mit echten Minecraft-26.3-Clients und einem dedizierten Fabric-Server. Alle PNGs sind unveränderte Aufnahmen der laufenden Minecraft-Fenster.
 
 ## Ausgangspunkt und Build
