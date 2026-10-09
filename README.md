@@ -43,7 +43,7 @@ Orbis is an early development alpha. These features are implemented. A [local de
 - **A connected Nether.** Its width stays eight times smaller than the Overworld, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
 - **A multiplayer atlas and server checks.** The normal build includes a centred map/globe (M to open), a configurable minimap with saved settings, and operator-only `/orbis check` for Overworld/Nether biomes and structures. [Server and player installation](docs/SERVER.md).
-- **An alpha atlas preview.** The optional debug build adds a corner minimap, Flat/Globe views, an M-key window, saved waypoints and biome/structure checklists. See [atlas installation and controls](docs/DEBUG_ATLAS.md).
+- **An alpha player atlas.** The normal build includes a corner minimap, centred map/globe views, mouse-wheel zoom and saved settings. Press M to open it, including on multiplayer servers. See [installation and controls](docs/SERVER.md); the separate [debug build](docs/DEBUG_ATLAS.md) adds developer surveys.
 - **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
 <!-- Replace each placeholder with an in-game capture when available. -->

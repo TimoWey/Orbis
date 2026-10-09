@@ -60,7 +60,7 @@ simulation-distance=6
 | `orbis:large` | 10.000.128 | 1.250.016 |
 | `orbis:earth` | 23.170.560 | 2.896.320 |
 
-Diese Größen entsprechen den aktuellen Alpha.6–8-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
+Diese Größen entsprechen den aktuellen Alpha.6–9-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
 
 `level-type` wird nur beim Erstellen einer **neuen** Welt angewendet. Eine schon vorhandene Welt wird dadurch weder konvertiert noch verkleinert. Für eine eigene Größe: eine neue Orbis-Welt im Einzelspieler erstellen, sauber beenden und den kompletten Save in den Server-Weltordner kopieren. Vor Änderungen vorhandene Welten sichern.
 

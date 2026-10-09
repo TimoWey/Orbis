@@ -1,0 +1,12 @@
+{
+  "baseline": "7a8f3e3af190f9313a39a0c50740c218a40c9178",
+  "identical_after_package_and_type_renames": {
+    "AtlasMinimapCache": true,
+    "AtlasMinimapTexture": true,
+    "AtlasTerrainBackdrop": true,
+    "AtlasTileArchive": true,
+    "AtlasTerrainImport": true,
+    "AtlasSavedTerrain": true,
+    "AtlasDistantTerrain": true
+  }
+}

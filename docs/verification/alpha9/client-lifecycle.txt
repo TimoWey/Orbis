@@ -1,0 +1,20 @@
+[14:45:40] [main/INFO]: Loading Minecraft 26.3 with Fabric Loader 0.19.5
+	- orbis 0.1.0-alpha.9
+[14:46:08] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.9 mc=26.3 loader=fabric 0.19.5
+[14:46:08] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.9 mc=26.3 loader=fabric 0.19.5
+[14:46:08] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.9 mc=26.3 loader=fabric 0.19.5
+[14:46:08] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[14:46:08] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[14:46:08] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[14:46:12] [Server thread/INFO]: OrbisTester[local:E:74ac0d59] logged in with entity id 32 at (-13.5, 87.0, 15.5)
+[14:46:13] [Server thread/INFO]: Player atlas persistent terrain ready for minecraft:overworld
+[14:47:03] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[14:47:03] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[14:47:03] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[14:47:04] [Server thread/INFO]: Stopping server
+[14:47:04] [Server thread/INFO]: OrbisTester lost connection: Verbindung getrennt
+[14:47:04] [Server thread/INFO]: Saving worlds
+[14:47:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[14:47:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[14:47:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[14:47:54] [Render thread/INFO]: Connecting to 127.0.0.1, 25565
