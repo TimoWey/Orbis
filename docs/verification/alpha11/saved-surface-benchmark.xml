@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.orbis.atlas.AtlasSavedSurfaceBenchmark" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-09T15:52:45.875Z" hostname="db2b0501505d" time="5.057">
+  <properties/>
+  <testcase name="compareOriginalDecoderWithSurfaceOnlyDecoder()" classname="dev.orbis.atlas.AtlasSavedSurfaceBenchmark" time="5.057"/>
+  <system-out><![CDATA[SAVED_SURFACE dimension=overworld chunks=512 round=0 old=699.47ms new=43.52ms speedup=16.07x checksum=-11824994560
+SAVED_SURFACE dimension=overworld chunks=512 round=1 old=287.99ms new=29.86ms speedup=9.65x checksum=-11824994560
+SAVED_SURFACE dimension=overworld chunks=512 round=2 old=431.82ms new=53.32ms speedup=8.10x checksum=-11824994560
+SAVED_SURFACE dimension=overworld chunks=512 round=3 old=392.89ms new=41.34ms speedup=9.50x checksum=-11824994560
+SAVED_SURFACE dimension=the_nether chunks=512 round=0 old=214.78ms new=12.54ms speedup=17.12x checksum=-12892256574
+SAVED_SURFACE dimension=the_nether chunks=512 round=1 old=105.99ms new=12.21ms speedup=8.68x checksum=-12892256574
+SAVED_SURFACE dimension=the_nether chunks=512 round=2 old=131.45ms new=8.69ms speedup=15.14x checksum=-12892256574
+SAVED_SURFACE dimension=the_nether chunks=512 round=3 old=111.27ms new=10.44ms speedup=10.66x checksum=-12892256574
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
