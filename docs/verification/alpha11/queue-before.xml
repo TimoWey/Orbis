@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.orbis.atlas.AtlasTerrainCollectorTest" tests="5" skipped="0" failures="2" errors="0" timestamp="2026-10-09T15:39:57.389Z" hostname="db2b0501505d" time="13.029">
+  <properties/>
+  <testcase name="temporarilyUnavailableChunkRetriesOnTheNextTick()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.046">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:150)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:145)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:531)
+	at knot//dev.orbis.atlas.AtlasTerrainCollectorTest.temporarilyUnavailableChunkRetriesOnTheNextTick(AtlasTerrainCollectorTest.java:25)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+</failure>
+  </testcase>
+  <testcase name="softBudgetStopsFurtherQueriesAndTeleportReordersPendingChunks()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.003"/>
+  <testcase name="playerAndHudLoadFirstInsteadOfWaitingForTheCornerScan()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.023"/>
+  <testcase name="unloadCapturesPendingChunkAndUnchangedSnapshotsReuseTheSameList()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.009"/>
+  <testcase name="slowInitialCaptureFinishesDespitePeriodicRefresh()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.033">
+    <failure message="org.opentest4j.AssertionFailedError: Refresh work must not starve uncaptured chunks ==&gt; expected: &lt;1089&gt; but was: &lt;200&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Refresh work must not starve uncaptured chunks ==&gt; expected: &lt;1089&gt; but was: &lt;200&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:150)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:563)
+	at knot//dev.orbis.atlas.AtlasTerrainCollectorTest.slowInitialCaptureFinishesDespitePeriodicRefresh(AtlasTerrainCollectorTest.java:19)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+</failure>
+  </testcase>
+  <system-out><![CDATA[TERRAIN_QUEUE alpha8Player=137 alpha8Hud=171 alpha9Player=1 alpha9Hud=4 ticks; budget=2ms maxBatch=32
+SLOW_INITIAL_CAPTURE unique=200/1089 after=1200 ticks; simulated cost=2.000001ms
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

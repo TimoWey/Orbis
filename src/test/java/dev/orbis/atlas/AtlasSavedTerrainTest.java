@@ -39,7 +39,7 @@ class AtlasSavedTerrainTest {
         var section = section();
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
             section.setBlockState(x, 3, z, ((x + z) % 2 == 0 ? Blocks.GOLD_BLOCK : Blocks.DIAMOND_BLOCK).defaultBlockState());
-        var tile = AtlasSavedTerrain.sample(new ChunkPos(-1, 2), LevelHeightAccessor.create(-64, 384), false,
+        var tile = AtlasSavedTerrainReference.sample(new ChunkPos(-1, 2), LevelHeightAccessor.create(-64, 384), false,
                 List.of(new SerializableChunkData.SectionData(4, section, null, null)));
         assertEquals(256, tile.terrainSize());
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
@@ -67,7 +67,7 @@ class AtlasSavedTerrainTest {
         slice.setBlockState(5, 0, 7, Blocks.LAVA.defaultBlockState());
         var roof = section();
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) roof.setBlockState(x, 15, z, Blocks.BEDROCK.defaultBlockState());
-        var tile = AtlasSavedTerrain.sample(new ChunkPos(0, 0), LevelHeightAccessor.create(0, 256), true,
+        var tile = AtlasSavedTerrainReference.sample(new ChunkPos(0, 0), LevelHeightAccessor.create(0, 256), true,
                 List.of(new SerializableChunkData.SectionData(2, slice, null, null),
                         new SerializableChunkData.SectionData(7, roof, null, null)));
         assertEquals(color(Blocks.LAVA), tile.colorAt(5, 7));

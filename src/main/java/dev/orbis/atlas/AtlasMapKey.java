@@ -11,7 +11,8 @@ record AtlasMapKey(String dimension, long seed, int minX, int minZ, int span, bo
                 view.globe(), view.globe() ? view.yaw() : 0, view.globe() ? view.pitch() : 0,
                 view.chunks(), view.places());
         return new AtlasMapKey(data.dimension(), data.seed(), data.minX(), data.minZ(), data.span(), data.wrapped(),
-                layers.terrain(), 0, view.chunks() ? layers.loaded() : 0,
+                // Loaded membership also selects live pixels over older archive pixels.
+                layers.terrain(), 0, layers.loaded(),
                 view.places() ? layers.places() : 0, effective);
     }
 }

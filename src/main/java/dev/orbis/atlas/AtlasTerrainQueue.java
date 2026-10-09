@@ -21,6 +21,7 @@ final class AtlasTerrainQueue {
     void add(long key) { if (present.add(key)) queue.add(key); }
     void addAll(Collection<Long> keys) { keys.forEach(this::add); }
     boolean contains(long key) { return present.contains(key); }
+    boolean isEmpty() { return present.isEmpty(); }
     void remove(long key) { if (present.remove(key)) queue.remove(key); }
     Long poll() {
         Long key = queue.poll();
