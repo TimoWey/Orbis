@@ -20,9 +20,10 @@ class AtlasProjectionTest {
         }
     }
     @Test void rasterAndInteractiveInverseUseIdenticalMovingOrigin() {
-        Map<Integer, Integer> colors = new HashMap<>();
-        for (int i = 0; i < 65536; i++) colors.put(i, 0xff000000 | i);
-        var data = world(colors, List.of());
+        var cells = new ArrayList<DebugSnapshot.Cell>();
+        for (int z = 0; z < 128; z++) for (int x = 0; x < 128; x++)
+            cells.add(new DebugSnapshot.Cell(x - 64, z - 64, 0xff000000 | z * 128 + x));
+        var data = world(Map.of(), cells);
         var raster = new DebugMapRaster(128, 128);
         for (double yaw : new double[]{-9.1, 0, 2.8}) for (double pitch : new double[]{-4, .7, 8}) {
             var view = new DebugMapRaster.View(128, 128, 0, 0, 1, true, yaw, pitch, false, false);
@@ -31,8 +32,8 @@ class AtlasProjectionTest {
             for (int y = 8; y < 120; y += 7) for (int x = 8; x < 120; x += 7) {
                 double[] uv = DebugMapMath.unproject((x + .5 - 64) / 60, (64 - y - .5) / 60, yaw, pitch);
                 if (uv == null) { assertEquals(0, pixels[y * 128 + x]); continue; }
-                int sample = (int) (uv[1] * 256) * 256 + (int) (uv[0] * 256);
-                assertEquals(colors.get(sample), pixels[y * 128 + x]);
+                int sample = (int) (uv[1] * 128) * 128 + (int) (uv[0] * 128);
+                assertEquals(0xff000000 | sample, pixels[y * 128 + x]);
                 var marker = DebugMapMath.globe(uv[0], uv[1], yaw, pitch);
                 assertEquals(x + .5, 64 + marker[0] * 60, 1e-8);
                 assertEquals(y + .5, 64 - marker[1] * 60, 1e-8);
@@ -47,24 +48,23 @@ class AtlasProjectionTest {
         for (int y = 0; y < 128; y++) for (int x = 0; x < 192; x++) {
             if (x < 32 || x >= 160) assertEquals(DebugMapRaster.BACKGROUND, pixels[y * 192 + x]);
         }
-        assertEquals(0xff456789, pixels[64 * 192 + 96]);
+        assertEquals(AtlasUnknownTerrain.color(16, 16, AtlasUnknownTerrain.level(32)), pixels[64 * 192 + 96]);
         assertEquals(0, DebugMapMath.clampCenter(10000, -1024, 2048, 3000));
         assertEquals(896, DebugMapMath.clampCenter(10000, -1024, 2048, 256));
         assertEquals(-896, DebugMapMath.clampCenter(-10000, -1024, 2048, 256));
         assertEquals(-1024, DebugMapMath.canonical(1024, -1024, 2048));
     }
-    @Test void exploredBlocksHaveIndividualColorsAndCoarseLevelsAverageThem() {
+    @Test void exploredBlocksHaveIndividualColors() {
         List<Integer> colors = new ArrayList<>(Collections.nCopies(256, 0xff000000));
         colors.set(0, 0xffffffff); colors.set(1, 0xffff0000);
         var cell = new DebugSnapshot.Cell(-1, -1, 0xff00ff00, colors);
-        assertEquals(0xffffffff, cell.colorAt(-16, -16, 1));
-        assertEquals(0xffff0000, cell.colorAt(-15, -16, 1));
-        assertEquals(0xff1f0f0f, cell.colorAt(-16, -16, 4));
+        assertEquals(0xffffffff, cell.colorAt(-16, -16));
+        assertEquals(0xffff0000, cell.colorAt(-15, -16));
         int[] pixels = new DebugMapRaster(64, 64).render(world(Map.of(), List.of(cell)),
                 new DebugMapRaster.View(64, 64, -8, -8, 2, false, 0, 0, false, false));
         assertEquals(0xffffffff, pixels[16 * 64 + 16]);
         assertEquals(0xffff0000, pixels[16 * 64 + 18]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[10 * 64 + 10]);
+        assertEquals(AtlasUnknownTerrain.color(-37.5, -37.5, 0), pixels[10 * 64 + 10]);
     }
     private DebugSnapshot world(Map<Integer, Integer> colors, List<DebugSnapshot.Cell> chunks) {
         return AtlasFixtures.world(colors, chunks, Set.of());

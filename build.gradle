@@ -58,3 +58,24 @@ jar {
 
 apply from: "engine.gradle"
 apply from: "tools/distribution.gradle"
+
+if (debugBuild) {
+    // The regular suite also verifies the optional importer with no DH classes installed.
+    def dhTestJar = configurations.compileClasspath.filter {
+        it.name.startsWith('distanthorizons-') && it.name.endsWith('.jar')
+    }
+    dependencies { testCompileOnly files(dhTestJar) }
+    test { exclude '**/AtlasDistantTerrainTest.class' }
+    tasks.register('testDistantTerrain', Test) {
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath + (providers.gradleProperty('orbisDhTestJar').isPresent()
+                ? files(providers.gradleProperty('orbisDhTestJar').get()) : dhTestJar)
+        useJUnitPlatform()
+        systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+        include '**/AtlasDistantTerrainTest.class'
+        workingDir = layout.buildDirectory.dir('dh-test-run').get().asFile
+        doFirst { workingDir.mkdirs() }
+        shouldRunAfter test
+    }
+    tasks.named('check') { dependsOn tasks.named('testDistantTerrain') }
+}

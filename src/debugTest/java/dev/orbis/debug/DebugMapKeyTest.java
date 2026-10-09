@@ -26,10 +26,12 @@ class DebugMapKeyTest {
         assertEquals(DebugMapKey.of(before, view(false, true)), DebugMapKey.of(loadedChanged, view(false, true)));
     }
 
-    @Test void terrainAndPreviewChangesAlwaysInvalidateTexture() {
+    @Test void terrainChangesInvalidateTextureButHiddenBiomeSamplesDoNot() {
         var before = snapshot(new DebugSnapshot.MapLayers(1, 2, 3, 4));
-        for (var layers : List.of(new DebugSnapshot.MapLayers(5, 2, 3, 4), new DebugSnapshot.MapLayers(1, 6, 3, 4)))
-            assertNotEquals(DebugMapKey.of(before, view(false, false)), DebugMapKey.of(snapshot(layers), view(false, false)));
+        assertNotEquals(DebugMapKey.of(before, view(false, false)),
+                DebugMapKey.of(snapshot(new DebugSnapshot.MapLayers(5, 2, 3, 4)), view(false, false)));
+        assertEquals(DebugMapKey.of(before, view(false, false)),
+                DebugMapKey.of(snapshot(new DebugSnapshot.MapLayers(1, 6, 3, 4)), view(false, false)));
     }
 
     @Test void onlyCameraCoordinatesUsedByProjectionInvalidateItsTexture() {
