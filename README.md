@@ -36,7 +36,7 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha. These features are implemented; in-game validation is still pending. The animations above are illustrations.
+Orbis is an early development alpha. These features are implemented. A [local dedicated-server test](docs/verification/alpha7/RESULTS.md) covers the player minimap, vanilla/modded joins and world seams; broader gameplay and mod compatibility testing remains open. The animations above are illustrations.
 
 - **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges.
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
