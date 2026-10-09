@@ -34,6 +34,9 @@ final class OrbisMinimap implements AutoCloseable {
                 true, yaw, pitch, false, false), left, top);
         else flatTexture.draw(g, data, x, z, size / scale, left, top, size);
         g.enableScissor(left, top, left + size, top + size);
+        var shown = globe ? texture.displayedView() : new AtlasMapRaster.View(size, size, x, z, scale,
+                false, 0, 0, false, false);
+        if (shown != null) AtlasPlayersClient.draw(g, data, shown, left, top, 0, 0, false);
         // The globe and its player position are one displayed frame. Between texture updates,
         // keep the following marker at its exact center instead of projecting newer coordinates.
         double[] player = globe ? new double[]{size * .5, size * .5}

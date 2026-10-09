@@ -1,12 +1,12 @@
-# Orbis auf einem Server — Alpha.9
+# Orbis auf einem Server — Alpha.10
 
-Der normale Build `orbis-0.1.0-alpha.9.jar` enthält die Welt-Engine, Minimap und einen einfachen Atlas/Globus für Multiplayer. Die Entwickleroberfläche und ihre automatischen Einzelspieler-Surveys bleiben im separaten Debug-Build. Server und Spieler verwenden dieselbe normale JAR; Kartenrendering startet ausschließlich auf dem Client.
+Der normale Build `orbis-0.1.0-alpha.10.jar` enthält die Welt-Engine, Minimap und einen einfachen Atlas/Globus für Multiplayer. Die Entwickleroberfläche und ihre automatischen Einzelspieler-Surveys bleiben im separaten Debug-Build. Server und Spieler verwenden dieselbe normale JAR; Kartenrendering startet ausschließlich auf dem Client.
 
 ## Versionen und Installation
 
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
-- `orbis-0.1.0-alpha.9.jar` in `mods/` auf dem Fabric-Server.
+- `orbis-0.1.0-alpha.10.jar` in `mods/` auf dem Fabric-Server.
 - Für die Minimap: dieselben Versionen von Fabric Loader, Fabric API und Orbis auch im lokalen Minecraft-Profil jedes Spielers installieren.
 - Keine separate Toroidal-World-JAR installieren. Alte Orbis-JARs vorher aus `mods/` in einen Backup-Ordner verschieben. Nie normalen und Debug-Build gleichzeitig installieren; `-sources.jar` gehört nicht in `mods/`.
 
@@ -15,6 +15,10 @@ Ein Vanilla-Client kann dem Orbis-Server auch ohne Fabric/Orbis beitreten: Das w
 **M** öffnet/schließt den Atlas (umlegbar unter Steuerung). Oben: Karte, Globus, auf Spieler zentrieren, Schließen. Karte/Globus stehen mittig; Ziehen verschiebt/dreht, das Mausrad zoomt. Es gibt keine Zoom-Buttons auf der Karte. Die Tastaturkürzel +/− bleiben verfügbar. Unten: Minimap an/aus, Ecke, Größe, eigener Minimap-Zoom. **F1** blendet das HUD aus. Im unbeschränkten End bleibt die Ansicht flach. Im Nether zeigt Gelände den festen Schnitt bei Y=32.
 
 Die Einstellungen werden in `config/orbis-atlas.properties` atomar gespeichert und überstehen Client-Neustarts. Flacher Kartenzoom (sichtbare Breite in Blöcken), Globuszoom und Modus gelten je Dimension; Minimap-Ecke, Größe, Sichtbarkeit und Zoom global. Beim erneuten Öffnen folgt die Karte wieder dem Spieler; eine alte Position wird nicht gespeichert. Die Einstellungen gelten auch auf anderen Servern, ohne dort Gelände zu übertragen.
+
+Der eigene Zeiger verwendet direkt Minecrafts originale weiße Karten-Textur, einschließlich ihrer 16 Blickrichtungen. Mitspieler erscheinen als grüne Vanilla-Kartenmarker; im großen Atlas zeigt Darüberfahren den Spielernamen. Atlas und Minimap zeigen Spieler der aktuellen Dimension innerhalb des sichtbaren Kartenausschnitts; für entfernte Mitspieler im Atlas herauszoomen. Auf dem Globus bleiben Marker der Rückseite verdeckt. Resourcepacks wirken wie bei Minecraft-Karten auch auf diese Originaltexturen.
+
+Mit Alpha.10 auf Server und Karten-Client werden die Positionen zweimal pro Sekunde auch außerhalb der normalen Entity-Sichtweite übertragen. Die anderen Spieler selbst benötigen dafür keinen Orbis-Client. Unsichtbare Spieler und Zuschauer werden ausgeblendet; es werden keine Chunks dafür angefordert. Der Server sendet nur an Clients, die den neuen Kanal unterstützen, maximal 4.096 Spieler pro Dimension. Ohne passenden Server-Build sind lediglich bereits clientseitig geladene Mitspieler sichtbar. Abmeldungen und Dimensionswechsel ersetzen die Liste; beim Trennen wird sie gelöscht. Veraltete Fernpositionen verschwinden nach drei Sekunden ohne Aktualisierung.
 
 Auf entfernten Servern zeichnet der Spieler-Atlas ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund verwendet genau zwei Grautöne: dunkleres Wasser und helleres Land. Er ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Im Einzelspieler verwendet auch der normale Build wieder den persistenten Gelände-Cache und den asynchronen Import bereits gespeicherter Welt-/Distant-Horizons-Daten aus dem bisherigen Entwickler-Atlas. Dabei werden keine zusätzlichen Live-Chunks geladen oder erzeugt. Der Cache liegt unter `orbis-atlas-cache/` im Minecraft-Profil und ist nach Welt und Generator-Konfiguration getrennt; ein Versions-/Modpackwechsel kann ihn sicherheitshalber invalidieren. Biome-/Struktur-Surveys laufen dafür nicht automatisch an. Bereits geladene Chunks werden wie im gestrigen Debug-Build nach Spielernähe priorisiert, mit bis zu 32 Captures pro Tick innerhalb eines weichen 2-ms-Budgets; nach zehn Sekunden werden bekannte Chunks erneut erfasst.
 
@@ -60,7 +64,7 @@ simulation-distance=6
 | `orbis:large` | 10.000.128 | 1.250.016 |
 | `orbis:earth` | 23.170.560 | 2.896.320 |
 
-Diese Größen entsprechen den aktuellen Alpha.6–9-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
+Diese Größen entsprechen den aktuellen Alpha.6–10-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
 
 `level-type` wird nur beim Erstellen einer **neuen** Welt angewendet. Eine schon vorhandene Welt wird dadurch weder konvertiert noch verkleinert. Für eine eigene Größe: eine neue Orbis-Welt im Einzelspieler erstellen, sauber beenden und den kompletten Save in den Server-Weltordner kopieren. Vor Änderungen vorhandene Welten sichern.
 
@@ -68,9 +72,9 @@ Diese Größen entsprechen den aktuellen Alpha.6–9-Presets, nicht den kleinere
 
 ```sh
 bash gradlew build
-python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.9.jar
+python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.10.jar
 ```
 
 Der Build prüft beide Archive, fehlende/verbotene Debug-Inhalte, die Server-Preset-Codecs und die gespeicherte Dimensionspolitik. Für Entwickler separat: `bash gradlew build -PorbisDebug=true`; Ausgabe unter `build/debug/libs/`.
 
-Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha9/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.
+Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha10/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.
