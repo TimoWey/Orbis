@@ -55,6 +55,7 @@ public final class Orbis implements ModInitializer {
                 context.getSource().sendSuccess(Orbis::biomeWarning, false);
                 return 1;
             })));
+        dev.orbis.atlas.OrbisChecks.register();
         LOGGER.info("Orbis standalone alpha initialized. Complete biome and structure coverage is not guaranteed; existing-world conversion is unavailable.");
     }
 }

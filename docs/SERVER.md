@@ -1,18 +1,37 @@
-# Orbis auf einem Server — Alpha.7
+# Orbis auf einem Server — Alpha.8
 
-Der normale Build `orbis-0.1.0-alpha.7.jar` enthält die Welt-Engine und eine einfache Client-Minimap. Er enthält **keinen Debug-Atlas, keine Biome-/Struktursuche und keine Debug-Klassen**. Server und Spieler verwenden dieselbe JAR; die Minimap wird ausschließlich auf dem Client initialisiert.
+Der normale Build `orbis-0.1.0-alpha.8.jar` enthält die Welt-Engine, Minimap und einen einfachen Atlas/Globus für Multiplayer. Die Entwickleroberfläche und ihre automatischen Einzelspieler-Surveys bleiben im separaten Debug-Build. Server und Spieler verwenden dieselbe normale JAR; Kartenrendering startet ausschließlich auf dem Client.
 
 ## Versionen und Installation
 
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
-- `orbis-0.1.0-alpha.7.jar` in `mods/` auf dem Fabric-Server.
+- `orbis-0.1.0-alpha.8.jar` in `mods/` auf dem Fabric-Server.
 - Für die Minimap: dieselben Versionen von Fabric Loader, Fabric API und Orbis auch im lokalen Minecraft-Profil jedes Spielers installieren.
 - Keine separate Toroidal-World-JAR installieren. Alte Orbis-JARs vorher aus `mods/` in einen Backup-Ordner verschieben. Nie normalen und Debug-Build gleichzeitig installieren; `-sources.jar` gehört nicht in `mods/`.
 
 Ein Vanilla-Client kann dem Orbis-Server auch ohne Fabric/Orbis beitreten: Das wurde mit einem zweiten echten Minecraft-26.3-Client lokal geprüft. Für Welt-Wrapping arbeitet die Engine auf dem Server. Ohne Client-Mod fehlen die Minimap und deutsche Orbis-Texte; englische Ersatztexte bleiben lesbar. Andere zusätzlich installierte Mods können eigene Client-Pflichten haben.
 
-Die Minimap wird nicht vom Server an Spieler verteilt. Sie zeigt bereits empfangenes Gelände in einem Ausschnitt von 128 × 128 Blöcken, einen Spieler-/Richtungsmarker und Koordinaten. **M** blendet sie ein/aus (unter Steuerung umbelegbar), **F1** blendet das gesamte HUD aus. Im Nether zeigt sie einen festen Schnitt bei Y=32. Sie verrät weder den Welt-Seed noch Strukturen oder nicht geladene Regionen. Der große Flat-/Globe-Debug-Atlas bleibt separat und einzelspielergebunden.
+**M** öffnet/schließt den Atlas (umlegbar unter Steuerung). Oben: Karte, Globus, auf Spieler zentrieren, Schließen. Karte/Globus stehen mittig; Ziehen verschiebt/dreht, Mausrad und +/− zoomen. Unten: Minimap an/aus, Ecke, Größe, eigener Minimap-Zoom. **F1** blendet das HUD aus. Im unbeschränkten End bleibt die Ansicht flach. Im Nether zeigt Gelände den festen Schnitt bei Y=32.
+
+Die Einstellungen werden in `config/orbis-atlas.properties` atomar gespeichert und überstehen Client-Neustarts. Flacher Kartenzoom (sichtbare Breite in Blöcken), Globuszoom und Modus gelten je Dimension; Minimap-Ecke, Größe, Sichtbarkeit und Zoom global. Beim erneuten Öffnen folgt die Karte wieder dem Spieler; eine alte Position wird nicht gespeichert. Die Einstellungen gelten auch auf anderen Servern, ohne dort Gelände zu übertragen.
+
+Der Spieler-Atlas zeichnet ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Der persistente vollständige Gelände-Import aus lokalen Saves/Distant Horizons des Entwickler-Atlas bleibt im Debug-Build.
+
+## Admin-Check auf dem Server
+
+Operator-Rechtestufe **3** oder Serverkonsole:
+
+- `/orbis check`: Biome und Strukturen in Oberwelt **und** Nether.
+- `/orbis check biomes` / `/orbis check structures`: nur die gewählte Kategorie, jeweils beide Dimensionen.
+- `/orbis check status`: Fortschritt oder letztes Ergebnis seit Serverstart.
+- `/orbis check cancel`: laufenden Check abbrechen.
+
+Es läuft maximal ein Check pro Server. Das Ergebnis erscheint als einfacher Text beim auslösenden Admin und im Serverlog, auch mit Vanilla-Client. Erwartet werden die vom aktuellen Generator möglichen Biome und Strukturen der jeweiligen Dimension, einschließlich eines separaten Stronghold-Portalraum-Nachweises.
+
+Der Check lädt/generiert keine Welt-Chunks. Er fragt den Biome-Generator ab und prüft mögliche Strukturstarts in nicht gespeicherten Scratch-Chunks. Er arbeitet auf dem Serverthread mit einem weichen Budget von 3 ms pro Tick, maximal einer Strukturplatzierung pro Tick, bis zu 33.792 Biome-Abfragen und 2.048 Struktur-Kandidaten je Dimension. Einzelne native Generatoraufrufe können länger dauern. Nach 2.400 Ticks je Dimension endet er spätestens mit einem Hinweis auf das erreichte Zeitbudget (bei 20 TPS etwa zwei Minuten je Dimension).
+
+**„Nicht gefunden“ bedeutet unbestätigt, nicht bewiesen fehlend.** Ein vollständiger negativer Nachweis würde eine wesentlich größere Suche erfordern. Strukturen sind Generator-Vorhersagen; entfernte Bauwerke oder vor einem Generatorwechsel gespeicherte Chunks werden damit nicht überprüft. Biome/Strukturen außerhalb der Generator-Konfiguration dieser Dimension zählen nicht als fehlend. Kein Preset garantiert vollständige Abdeckung.
 
 ## Eine neue Server-Welt anlegen
 
@@ -41,7 +60,7 @@ simulation-distance=6
 | `orbis:large` | 10.000.128 | 1.250.016 |
 | `orbis:earth` | 23.170.560 | 2.896.320 |
 
-Diese Größen entsprechen den aktuellen Alpha.6/7-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
+Diese Größen entsprechen den aktuellen Alpha.6–8-Presets, nicht den kleineren historischen Alpha-Vorgaben. Für den ersten gemeinsamen Test ist Tiny überschaubarer. Es wird keine ganze Welt vorgeneriert. Kein Preset garantiert alle Biome und Strukturen.
 
 `level-type` wird nur beim Erstellen einer **neuen** Welt angewendet. Eine schon vorhandene Welt wird dadurch weder konvertiert noch verkleinert. Für eine eigene Größe: eine neue Orbis-Welt im Einzelspieler erstellen, sauber beenden und den kompletten Save in den Server-Weltordner kopieren. Vor Änderungen vorhandene Welten sichern.
 
@@ -49,9 +68,9 @@ Diese Größen entsprechen den aktuellen Alpha.6/7-Presets, nicht den kleineren 
 
 ```sh
 bash gradlew build
-python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.7.jar
+python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.8.jar
 ```
 
 Der Build prüft beide Archive, fehlende/verbotene Debug-Inhalte, die Server-Preset-Codecs und die gespeicherte Dimensionspolitik. Für Entwickler separat: `bash gradlew build -PorbisDebug=true`; Ausgabe unter `build/debug/libs/`.
 
-Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha7/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.
+Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha8/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.

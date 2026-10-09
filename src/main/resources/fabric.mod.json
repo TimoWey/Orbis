@@ -19,7 +19,7 @@
     ],
     "client": [
       "dev.orbis.OrbisClient",
-      "dev.orbis.client.PlayerMinimap"
+      "dev.orbis.atlas.PlayerAtlasClient"
     ],
     "modmenu": [
       "dev.orbis.OrbisModMenu"
