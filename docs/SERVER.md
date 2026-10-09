@@ -16,7 +16,7 @@ Ein Vanilla-Client kann dem Orbis-Server auch ohne Fabric/Orbis beitreten: Das w
 
 Die Einstellungen werden in `config/orbis-atlas.properties` atomar gespeichert und überstehen Client-Neustarts. Flacher Kartenzoom (sichtbare Breite in Blöcken), Globuszoom und Modus gelten je Dimension; Minimap-Ecke, Größe, Sichtbarkeit und Zoom global. Beim erneuten Öffnen folgt die Karte wieder dem Spieler; eine alte Position wird nicht gespeichert. Die Einstellungen gelten auch auf anderen Servern, ohne dort Gelände zu übertragen.
 
-Der Spieler-Atlas zeichnet ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Der persistente vollständige Gelände-Import aus lokalen Saves/Distant Horizons des Entwickler-Atlas bleibt im Debug-Build.
+Der Spieler-Atlas zeichnet ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund verwendet genau zwei Grautöne: dunkleres Wasser und helleres Land. Er ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Der persistente vollständige Gelände-Import aus lokalen Saves/Distant Horizons des Entwickler-Atlas bleibt im Debug-Build.
 
 ## Admin-Check auf dem Server
 
