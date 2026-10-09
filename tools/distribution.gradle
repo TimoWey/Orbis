@@ -89,17 +89,17 @@ tasks.register('verifyDistribution') {
                 def name = entrypoint instanceof Map ? entrypoint.value : entrypoint
                 requireEntry(jar, name.replace('.', '/') + '.class')
             }
-            assert meta.entrypoints.client.contains('dev.orbis.debug.OrbisDebugClient') == debugVariant
-            assert meta.entrypoints.client.contains('dev.orbis.client.PlayerMinimap') == !debugVariant
-            assert names.any { it.startsWith('dev/orbis/debug/') } == debugVariant
+            assert meta.entrypoints.client.contains('dev.orbis.atlas.DeveloperClient') == debugVariant
+            assert meta.entrypoints.client.contains('dev.orbis.atlas.PlayerAtlasClient') == !debugVariant
+            assert names.any { it.startsWith('dev/orbis/atlas/Developer') } == debugVariant
             assert names.any { it.startsWith('assets/orbis_debug/') } == debugVariant
             assert !meta.depends.containsKey('toroidal_world') && !(meta.provides ?: []).contains('toroidal_world')
             assert meta.breaks.toroidal_world == '*'
             assert !names.any { it.startsWith('data/toroidal_world/advancement/') || it.startsWith('data/toroidal_world/worldgen/world_preset/') }
-            ['dev/orbis/Orbis.class', 'dev/orbis/client/PlayerMinimap.class', 'com/toroidalworld/ToroidalWorldFabric.class',
+            ['dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'com/toroidalworld/ToroidalWorldFabric.class',
              'com/toroidalworld/engine/gen/LoopedChunkGenerator.class', 'LICENSE-orbis',
              'META-INF/licenses/Toroidal-World-MIT.txt', meta.accessWidener, meta.icon].each { requireEntry(jar, it) }
-            if (debugVariant) ['OrbisDebugScreen', 'DebugSurvey', 'AtlasCache'].each { requireEntry(jar, "dev/orbis/debug/${it}.class") }
+            if (debugVariant) ['DeveloperScreen', 'DeveloperSurvey', 'AtlasCache'].each { requireEntry(jar, "dev/orbis/atlas/${it}.class") }
             ['tiny', 'small', 'normal', 'large', 'earth'].each {
                 requireEntry(jar, "data/orbis/worldgen/world_preset/${it}.json")
             }

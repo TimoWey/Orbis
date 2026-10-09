@@ -38,8 +38,8 @@ processResources {
         if (debugBuild) {
             def manifest = new File(destinationDir, 'fabric.mod.json')
             def metadata = new groovy.json.JsonSlurper().parse(manifest)
-            metadata.entrypoints.client.remove('dev.orbis.client.PlayerMinimap')
-            metadata.entrypoints.client += 'dev.orbis.debug.OrbisDebugClient'
+            metadata.entrypoints.client.remove('dev.orbis.atlas.PlayerAtlasClient')
+            metadata.entrypoints.client += 'dev.orbis.atlas.DeveloperClient'
             manifest.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)), 'UTF-8')
         }
     }
