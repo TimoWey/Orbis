@@ -36,9 +36,11 @@ public final class PlayerAtlasClient implements ClientModInitializer {
             var data = dimensions.get(world.dimension().identifier().toString());
             if (data != null) data.unload(chunk.getPos().pack(), key -> AtlasTerrain.sample(chunk, 0xff283039), tile -> {});
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+        // Disconnect may arrive on Netty's local transport thread. Texture lifetime and
+        // the collector maps belong to the client thread, just like chunk callbacks.
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             dimensions.clear(); snapshot = null; minimap.close(); level = null; PlayerLocalTerrain.clearView();
-        });
+        }));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             tick(client);
             while (mapKey.consumeClick()) if (client.level != null && client.player != null)
