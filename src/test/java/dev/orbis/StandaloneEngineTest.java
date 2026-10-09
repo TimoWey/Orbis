@@ -31,4 +31,21 @@ class StandaloneEngineTest {
         assertTrue(WorldShapes.shapes().stream().anyMatch(shape -> shape.id().equals(OrbisShape.MODULE.id())));
         assertEquals("orbis-engine.json", SettingsService.FILE_NAME);
     }
+
+    @Test void dedicatedServerPresetsDecodeAndPreserveOrbisOnSaveReload() throws Exception {
+        var registries = net.minecraft.data.registries.VanillaRegistries.createWorldLookup();
+        var ops = registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+        var codec = net.minecraft.world.level.levelgen.presets.WorldPreset.DIRECT_CODEC;
+        for (var preset : WorldSize.Preset.values()) {
+            String path = "/data/orbis/worldgen/world_preset/" + preset.name().toLowerCase(java.util.Locale.ROOT) + ".json";
+            try (var stream = getClass().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                var json = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+                var decoded = codec.parse(ops, json).getOrThrow();
+                assertEquals(preset.size, OrbisShape.read(decoded.createWorldDimensions()), path);
+                var saved = codec.encodeStart(ops, decoded).getOrThrow();
+                assertEquals(preset.size, OrbisShape.read(codec.parse(ops, saved).getOrThrow().createWorldDimensions()));
+            }
+        }
+    }
 }

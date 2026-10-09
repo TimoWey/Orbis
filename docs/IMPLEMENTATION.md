@@ -1,6 +1,8 @@
-# Implementation status - 0.1.0-alpha.6
+# Implementation status - 0.1.0-alpha.7
 
 Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned MIT source snapshot and ships inside the Orbis JAR. **Install Fabric Loader, Fabric API and Orbis. No Toroidal World mod is required.**
+
+See [dedicated-server installation and the player minimap](SERVER.md) for Alpha.7.
 
 ## Implemented
 
@@ -10,6 +12,7 @@ Orbis is a **standalone Fabric mod**. Its world engine is compiled from a pinned
 - Explicit unwrapped End. The generator is configured to prevent automatic dimension wrapping; after baking its shape may be null. It does not impose finite End bounds.
 - World identity and bounds stored in the generator codec, with restoration on recreate.
 - English/German customization screen with responsive size controls, a live world overview, selected preset marks and inline validation; biome disclaimer on join, and `/orbis` information command. Optional Mod Menu integration opens the integrated engine configuration with Orbis wording.
+- Normal-build multiplayer minimap using only received client chunks; M toggles the HUD. Five dedicated-server presets (`orbis:tiny` through `orbis:earth`) with exact 1:8 Nether scaling and an unwrapped End.
 - Optional debug-only corner minimap and non-pausing M atlas window, per-dimension flat/globe preferences and saved per-world waypoints: loaded server chunks, navigable flat map and globe projection, biome evidence checklist, small bounded biome checks, explicit Search+ and independent Map+ refinement, Y 32 Nether terrain, bounded structure existence checks and opt-in persistent full counts, observed structures and world statistics. See [Debug atlas](DEBUG_ATLAS.md).
 - Regression tests for bounds, seam math, serialization and shape ownership. Alpha.6 additionally checks baked/restored dimension policy, preservation of unrelated custom dimensions, rejection of altered Nether coordinate scale, and periodic vanilla-generator terrain columns/density/biomes across X/Z and diagonal offsets. These generator tests do not exercise live entities, portals, structures or rendering.
 
@@ -43,9 +46,9 @@ The mod is an early development alpha, not completion of the requirements. Start
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). The build runs regression tests, compares compiled presets against `spec/world-presets.json`, and verifies its exact binary and sources JARs. Verification uses Gradle's standard libraries and does not require a local Python installation. GitHub Actions builds both normal and debug variants and publishes separate JARs and test reports. Use the ordinary JAR, not the `-sources.jar`.
 
-For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.6-debug.jar` instead of the normal JAR. The normal build excludes the debug classes and entrypoint entirely. CI artifact names end in `-normal` or `-debug`; inspect their recorded revision before installing.
+For the optional debug atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.7-debug.jar` instead of the normal JAR. The normal build excludes the debug classes and entrypoint entirely. CI artifact names end in `-normal` or `-debug`; inspect their recorded revision before installing.
 
-The normal build target is `build/libs/orbis-0.1.0-alpha.6.jar`. Place the verified output in the test instance's `mods` folder. `verifyDistribution` verifies exact Gradle archive paths, so older JARs left in the directory cannot be mistaken for the current artifact. `META-INF/orbis-build.json` records the version, variant, source SHA-256 and optional `-PorbisCommit=<commit>` (`GITHUB_SHA` in CI). The source fingerprint also changes for uncommitted input changes; a commit alone is not a claim that the working tree was clean. GitHub sign-in is required for this private repository.
+The normal build target is `build/libs/orbis-0.1.0-alpha.7.jar`. Place the verified output in the test instance's `mods` folder. `verifyDistribution` verifies exact Gradle archive paths, so older JARs left in the directory cannot be mistaken for the current artifact. `META-INF/orbis-build.json` records the version, variant, source SHA-256 and optional `-PorbisCommit=<commit>` (`GITHUB_SHA` in CI). The source fingerprint also changes for uncommitted input changes; a commit alone is not a claim that the working tree was clean. GitHub sign-in is required for this private repository.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3 and Orbis. Create a new world, choose **World Shape: Orbis**, then **Customize**. Only Normal and Orbis are offered. If upgrading from alpha 1, remove the old Orbis and Toroidal World JARs first; simultaneous installation is explicitly rejected to prevent duplicate classes.
 

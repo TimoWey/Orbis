@@ -5,10 +5,12 @@
       "id": "minecraft:spyglass"
     },
     "title": {
-      "translate": "advancements.orbis.field_kit.title"
+      "translate": "advancements.orbis.field_kit.title",
+      "fallback": "Ready for the Horizon"
     },
     "description": {
-      "translate": "advancements.orbis.field_kit.description"
+      "translate": "advancements.orbis.field_kit.description",
+      "fallback": "Carry a compass, a filled map and a spyglass together."
     },
     "frame": "goal",
     "show_toast": true,

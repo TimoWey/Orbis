@@ -1,0 +1,63 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "toroidal_world:toroidal",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:overworld"
+        },
+        "settings": "minecraft:overworld",
+        "wrapping": {
+          "x": {
+            "min_chunk": -512,
+            "max_chunk": 512
+          },
+          "z": {
+            "min_chunk": -512,
+            "max_chunk": 512
+          }
+        },
+        "orbis_enabled": true
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "toroidal_world:toroidal",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:nether"
+        },
+        "settings": "minecraft:nether",
+        "wrapping": {
+          "x": {
+            "min_chunk": -64,
+            "max_chunk": 64
+          },
+          "z": {
+            "min_chunk": -64,
+            "max_chunk": 64
+          }
+        },
+        "orbis_enabled": true
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "toroidal_world:toroidal",
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "settings": "minecraft:end",
+        "wrapping": {
+          "x": {},
+          "z": {}
+        },
+        "orbis_enabled": true
+      }
+    }
+  }
+}

@@ -5,10 +5,12 @@
       "id": "minecraft:compass"
     },
     "title": {
-      "translate": "advancements.orbis.bearings.title"
+      "translate": "advancements.orbis.bearings.title",
+      "fallback": "Orbis: Find Your Bearings"
     },
     "description": {
-      "translate": "advancements.orbis.bearings.description"
+      "translate": "advancements.orbis.bearings.description",
+      "fallback": "Carry a compass to prepare for your next expedition."
     },
     "frame": "task",
     "show_toast": true,

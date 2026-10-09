@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "Orbis",
   "icon": "assets/orbis/icon.png",
-  "description": "Standalone finite singleplayer worlds with X/Z wrapping, exact 1:8 Nether scaling and an unwrapped End.",
+  "description": "Finite singleplayer and server worlds with X/Z wrapping, exact 1:8 Nether scaling, an unwrapped End and a client minimap.",
   "authors": [
     "Timo Wey"
   ],
@@ -18,7 +18,8 @@
       "dev.orbis.Orbis"
     ],
     "client": [
-      "dev.orbis.OrbisClient"
+      "dev.orbis.OrbisClient",
+      "dev.orbis.client.PlayerMinimap"
     ],
     "modmenu": [
       "dev.orbis.OrbisModMenu"
