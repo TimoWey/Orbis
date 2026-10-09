@@ -31,8 +31,6 @@ final class PlayerAtlasScreen extends Screen {
         button(start + w + 4, top + size + 8, w, cornerLabel(), b -> { AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel())); });
         button(start + (w + 4) * 2, top + size + 8, w, sizeLabel(), b -> { AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel())); });
         button(start + (w + 4) * 3, top + size + 8, w, miniZoomLabel(), b -> { AtlasPreferences.cycleMinimapZoom(); b.setMessage(Component.literal(miniZoomLabel())); });
-        button(left, top + size - 22, 20, "−", b -> zoom(1 / 1.25));
-        button(left + 24, top + size - 22, 20, "+", b -> zoom(1.25));
     }
     private String visibleLabel() { return tr(AtlasPreferences.visible() ? "minimap_on" : "minimap_off"); }
     private String cornerLabel() { return tr("corner_" + AtlasPreferences.corner()); }
