@@ -64,9 +64,9 @@ final class PlayerLocalTerrain {
             }, s.importer::capture);
             var data = new AtlasSnapshot(r.dimension.identifier().toString(), 0, "", s.terrain.revision(),
                     s.minX, s.minZ, s.span, s.wrapped, player.getBlockX(), player.getBlockY(), player.getBlockZ(), 0,
-                    s.terrain.cells(), Set.of(), List.of(), List.of(), Map.of(), false, s.importer.error,
+                    s.terrain.cells(), s.terrain.loadedSnapshot(), List.of(), List.of(), Map.of(), false, s.importer.error,
                     List.of(), false, 0, "", new AtlasSearch.View(new AtlasSearch.Saved(0,1,false,0,256,false), false),
-                    false, new AtlasSnapshot.MapLayers(s.terrain.revision(),0,0,0), s.archive);
+                    false, new AtlasSnapshot.MapLayers(s.terrain.revision(),0,s.terrain.loadedRevision(),0), s.archive);
             if (request == r) published = new Published(r, data);
         });
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {

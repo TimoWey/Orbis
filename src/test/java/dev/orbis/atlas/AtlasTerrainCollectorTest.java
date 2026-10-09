@@ -7,6 +7,48 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AtlasTerrainCollectorTest {
+    @Test void slowInitialCaptureFinishesDespitePeriodicRefresh() {
+        var clock = new AtomicLong();
+        var collector = new AtlasTerrainCollector(clock::get);
+        for (int z = -16; z <= 16; z++) for (int x = -16; x <= 16; x++) collector.load(ChunkPos.pack(x,z));
+        var seen = new HashSet<Long>();
+        for (int tick = 0; tick < 1400; tick++) collector.tick(0, 0, key -> {
+            seen.add(key); clock.addAndGet(2_000_001); return tile(key);
+        }, t -> {});
+        System.out.printf("SLOW_INITIAL_CAPTURE unique=%d/1089 after=1400 ticks; simulated cost=2.000001ms%n", seen.size());
+        assertEquals(1089, seen.size(), "Refresh work must not starve uncaptured chunks");
+    }
+    @Test void temporarilyUnavailableChunkRetriesOnTheNextTick() {
+        var collector = new AtlasTerrainCollector(() -> 0);
+        collector.load(ChunkPos.pack(0,0));
+        assertEquals(1, collector.tick(0,0,k -> null, t -> fail()));
+        assertEquals(1, collector.tick(0,0,AtlasTerrainCollectorTest::tile,t -> {}));
+        assertEquals(1, collector.cells().size());
+    }
+    @Test void editsStillRefreshDuringLongInitialCaptureAndLoadedSnapshotsStayImmutable() {
+        var clock = new AtomicLong(); var collector = new AtlasTerrainCollector(clock::get);
+        for (int x=0; x<1500; x++) collector.load(ChunkPos.pack(x,0));
+        long center = ChunkPos.pack(0,0);
+        var loaded = collector.loadedSnapshot(); long revision = collector.loadedRevision();
+        assertSame(loaded,collector.loadedSnapshot());
+        int[] centerCaptures = {0};
+        for (int i=0; i<400; i++) collector.tick(0,0,key -> {
+            if (key == center) centerCaptures[0]++;
+            clock.addAndGet(2_000_001); return tile(key);
+        }, t -> {});
+        assertTrue(centerCaptures[0] >= 2, "Edits need a refresh budget during initial capture");
+        collector.unload(center,AtlasTerrainCollectorTest::tile,t -> {});
+        assertTrue(loaded.contains(center)); assertFalse(collector.loadedSnapshot().contains(center));
+        assertTrue(collector.loadedRevision() > revision);
+    }
+    @Test void unchangedRefreshDoesNotQueueMoreDiskWritesButEditsDo() {
+        var collector = new AtlasTerrainCollector(() -> 0); long key = ChunkPos.pack(0,0);
+        collector.load(key); var writes = new ArrayList<AtlasSnapshot.Cell>();
+        for (int tick=0; tick<400; tick++) collector.tick(0,0,AtlasTerrainCollectorTest::tile,writes::add);
+        assertEquals(1,writes.size());
+        for (int tick=0; tick<200; tick++) collector.tick(0,0,k -> new AtlasSnapshot.Cell(0,0,0xffff0000),writes::add);
+        assertEquals(2,writes.size()); assertEquals(0xffff0000,writes.getLast().color());
+    }
     private static AtlasSnapshot.Cell tile(long key) {
         return new AtlasSnapshot.Cell(ChunkPos.getX(key), ChunkPos.getZ(key), 0xff336699);
     }

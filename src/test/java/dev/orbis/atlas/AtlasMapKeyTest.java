@@ -14,16 +14,16 @@ class AtlasMapKeyTest {
         return new AtlasMapRaster.View(128, 128, 0, 0, .5, false, 0, 0, chunks, places);
     }
 
-    @Test void hiddenOverlayChangesDoNotInvalidateTerrainButVisibleChangesDo() {
+    @Test void liveMembershipInvalidatesTerrainEvenWithChunkOutlinesHidden() {
         var before = snapshot(new AtlasSnapshot.MapLayers(1, 2, 3, 4));
         var loadedChanged = snapshot(new AtlasSnapshot.MapLayers(1, 2, 5, 4));
         var placesChanged = snapshot(new AtlasSnapshot.MapLayers(1, 2, 3, 6));
-        for (var after : List.of(loadedChanged, placesChanged))
-            assertEquals(AtlasMapKey.of(before, view(false, false)), AtlasMapKey.of(after, view(false, false)));
+        assertNotEquals(AtlasMapKey.of(before, view(false, false)), AtlasMapKey.of(loadedChanged, view(false, false)));
+        assertEquals(AtlasMapKey.of(before, view(false, false)), AtlasMapKey.of(placesChanged, view(false, false)));
         assertNotEquals(AtlasMapKey.of(before, view(true, false)), AtlasMapKey.of(loadedChanged, view(true, false)));
         assertNotEquals(AtlasMapKey.of(before, view(false, true)), AtlasMapKey.of(placesChanged, view(false, true)));
         assertEquals(AtlasMapKey.of(before, view(true, false)), AtlasMapKey.of(placesChanged, view(true, false)));
-        assertEquals(AtlasMapKey.of(before, view(false, true)), AtlasMapKey.of(loadedChanged, view(false, true)));
+        assertNotEquals(AtlasMapKey.of(before, view(false, true)), AtlasMapKey.of(loadedChanged, view(false, true)));
     }
 
     @Test void terrainChangesInvalidateTextureButHiddenBiomeSamplesDoNot() {
