@@ -42,7 +42,7 @@ Orbis is an early development alpha. These features are implemented. A [local de
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
 - **A connected Nether.** Its width stays eight times smaller than the Overworld, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
-- **A player minimap and server presets.** The normal build includes a multiplayer terrain minimap (M to toggle). [Server and player installation](docs/SERVER.md).
+- **A multiplayer atlas and server checks.** The normal build includes a centred map/globe (M to open), a configurable minimap with saved settings, and operator-only `/orbis check` for Overworld/Nether biomes and structures. [Server and player installation](docs/SERVER.md).
 - **An alpha atlas preview.** The optional debug build adds a corner minimap, Flat/Globe views, an M-key window, saved waypoints and biome/structure checklists. See [atlas installation and controls](docs/DEBUG_ATLAS.md).
 - **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
@@ -100,7 +100,7 @@ These are provisional sizes. Smaller worlds may miss biomes or structures; no pr
 
 Ideas for future versions; scope and implementation are still open.
 
-- **Atlas refinements.** Build on the debug minimap with waypoint names, a larger exploration archive and multiplayer support.
+- **Atlas refinements.** Extend the player atlas with a persistent multiplayer exploration archive.
 - **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
 - **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
 

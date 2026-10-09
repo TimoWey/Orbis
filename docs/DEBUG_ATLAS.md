@@ -10,7 +10,7 @@ With Java 25:
 .\gradlew.bat build -PorbisDebug=true
 ```
 
-Install `build/debug/libs/orbis-0.1.0-alpha.6-debug.jar`, replacing the normal Orbis JAR. Do not install both. The normal build produces `build/libs/orbis-0.1.0-alpha.6.jar` without these debug classes, resources or entrypoint. The minimap currently requires the debug build and an integrated singleplayer server; it does not query remote multiplayer servers.
+Install `build/debug/libs/orbis-0.1.0-alpha.8-debug.jar`, replacing the normal Orbis JAR. Do not install both. The normal build produces `build/libs/orbis-0.1.0-alpha.8.jar` without these debug classes, resources or entrypoint. This developer interface requires an integrated singleplayer server. The normal Alpha.8 build now has its own simple multiplayer atlas/minimap and admin server checks; see [Server and player guide](SERVER.md). Shared rendering/search helpers live in `dev.orbis.atlas`; `DeveloperClient`, `DeveloperScreen` and `DeveloperSurvey` remain debug-only.
 
 Normal and debug outputs are separate; normal `clean` also removes the nested debug output. Development launch: `gradlew.bat runClient -PorbisDebug=true`. Do not switch build variants while a development client is running. `build` includes `verifyDistribution`, which checks the exact JAR and matching sources without Python. The independent check is `python tools/verify_standalone.py --debug <debug.jar>` (omit `--debug` for normal); it expects the matching sources JAR beside the binary, or accepts `--sources <sources.jar>`. CI builds and verifies both variants separately.
 
@@ -97,7 +97,7 @@ The full atlas and globe retain screen-sized dynamic textures, capped at 1,536 p
 
 The flat HUD architecture was checked against FTB Chunks' public [MapRegion source](https://github.com/FTBTeam/FTB-Chunks/blob/main/common/src/main/java/dev/ftb/mods/ftbchunks/client/map/MapRegion.java), which separates asynchronous region loading, reusable region textures and dirty updates. JourneyMap's [advanced options](https://teamjm.github.io/journeymap-docs/6.0.x/client/settings/advanced/) also distinguish chunk caching, map-task timing and LOD tiles. No third-party code was copied.
 
-Reproduce the CPU-only camera benchmark with `ORBIS_MINIMAP_BENCHMARK=1` and `gradlew.bat test -PorbisDebug=true --tests dev.orbis.debug.AtlasMinimapBenchmark`. It compares the previous quantized screen-reprojection path against the padded-image path over the same 1,024-frame trace, using original archived block colors. Client update, worker preparation and prepared image counts are reported separately; GPU upload time and whole-game FPS are excluded.
+Reproduce the CPU-only camera benchmark with `ORBIS_MINIMAP_BENCHMARK=1` and `gradlew.bat test -PorbisDebug=true --tests dev.orbis.atlas.AtlasMinimapBenchmark`. It compares the previous quantized screen-reprojection path against the padded-image path over the same 1,024-frame trace, using original archived block colors. Client update, worker preparation and prepared image counts are reported separately; GPU upload time and whole-game FPS are excluded.
 
 ## Disposable persistent cache
 
@@ -159,7 +159,7 @@ Reproduce separately from the default suite:
 
 ```powershell
 $env:ORBIS_ATLAS_BENCHMARK='1'
-.\gradlew.bat -PorbisDebug=true test --tests dev.orbis.debug.AtlasBiomeSamplerBenchmark --rerun-tasks
+.\gradlew.bat -PorbisDebug=true test --tests dev.orbis.atlas.AtlasBiomeSamplerBenchmark --rerun-tasks
 Remove-Item Env:ORBIS_ATLAS_BENCHMARK
 ```
 
