@@ -21,7 +21,11 @@ public final class Orbis implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("orbis");
     private static final Set<RandomState> WORLDS = Collections.synchronizedSet(
             Collections.newSetFromMap(new WeakHashMap<>()));
-    private static Component biomeWarning() { return Component.translatable("message.orbis.biome_warning"); }
+    private static Component biomeWarning() {
+        return Component.translatableWithFallback("message.orbis.biome_warning",
+                "Orbis: Complete biome and structure coverage is not guaranteed for any size. "
+                + "Existing-world conversion is not available in this alpha.");
+    }
 
     @Override public void onInitialize() {
         new com.toroidalworld.ToroidalWorldFabric().onInitialize();
@@ -40,12 +44,14 @@ public final class Orbis implements ModInitializer {
             dispatcher.register(Commands.literal("orbis").executes(context -> {
                 var server = context.getSource().getServer();
                 if (!WORLDS.contains(server.overworld().getChunkSource().randomState())) {
-                    context.getSource().sendSuccess(() -> Component.translatable("message.orbis.not_orbis"), false);
+                    context.getSource().sendSuccess(() -> Component.translatableWithFallback("message.orbis.not_orbis",
+                            "This is not an Orbis world. Create a new world with World Shape: Orbis."), false);
                     return 0;
                 }
                 var shape = ToroidalWorldApi.shapeOf(server.overworld()).orElseThrow();
                 int width = shape.widthChunks(Direction.Axis.X);
-                context.getSource().sendSuccess(() -> Component.translatable("message.orbis.dimensions", width, width / 8), false);
+                context.getSource().sendSuccess(() -> Component.translatableWithFallback("message.orbis.dimensions",
+                        "Orbis | Overworld: %1$s × %1$s chunks | Nether: %2$s × %2$s | End: unwrapped", width, width / 8), false);
                 context.getSource().sendSuccess(Orbis::biomeWarning, false);
                 return 1;
             })));

@@ -90,15 +90,19 @@ tasks.register('verifyDistribution') {
                 requireEntry(jar, name.replace('.', '/') + '.class')
             }
             assert meta.entrypoints.client.contains('dev.orbis.debug.OrbisDebugClient') == debugVariant
+            assert meta.entrypoints.client.contains('dev.orbis.client.PlayerMinimap') == !debugVariant
             assert names.any { it.startsWith('dev/orbis/debug/') } == debugVariant
             assert names.any { it.startsWith('assets/orbis_debug/') } == debugVariant
             assert !meta.depends.containsKey('toroidal_world') && !(meta.provides ?: []).contains('toroidal_world')
             assert meta.breaks.toroidal_world == '*'
             assert !names.any { it.startsWith('data/toroidal_world/advancement/') || it.startsWith('data/toroidal_world/worldgen/world_preset/') }
-            ['dev/orbis/Orbis.class', 'com/toroidalworld/ToroidalWorldFabric.class',
+            ['dev/orbis/Orbis.class', 'dev/orbis/client/PlayerMinimap.class', 'com/toroidalworld/ToroidalWorldFabric.class',
              'com/toroidalworld/engine/gen/LoopedChunkGenerator.class', 'LICENSE-orbis',
              'META-INF/licenses/Toroidal-World-MIT.txt', meta.accessWidener, meta.icon].each { requireEntry(jar, it) }
             if (debugVariant) ['OrbisDebugScreen', 'DebugSurvey', 'AtlasCache'].each { requireEntry(jar, "dev/orbis/debug/${it}.class") }
+            ['tiny', 'small', 'normal', 'large', 'earth'].each {
+                requireEntry(jar, "data/orbis/worldgen/world_preset/${it}.json")
+            }
             assert (names.findAll { it.startsWith('assets/toroidal_world/lang/') && it.endsWith('.json') } as Set) ==
                     (['assets/toroidal_world/lang/en_us.json', 'assets/toroidal_world/lang/de_de.json'] as Set)
             ['en_us', 'de_de'].each { locale ->

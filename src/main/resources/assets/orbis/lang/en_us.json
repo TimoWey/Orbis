@@ -35,5 +35,7 @@
   "gui.orbis.size.custom": "Custom",
   "message.orbis.biome_warning": "Orbis: Complete biome and structure coverage is not guaranteed for any size. Existing-world conversion is not available in this alpha.",
   "message.orbis.not_orbis": "This is not an Orbis world. Create a new world with World Shape: Orbis.",
-  "message.orbis.dimensions": "Orbis | Overworld: %1$s × %1$s chunks | Nether: %2$s × %2$s | End: unwrapped"
+  "message.orbis.dimensions": "Orbis | Overworld: %1$s × %1$s chunks | Nether: %2$s × %2$s | End: unwrapped",
+  "key.orbis.minimap": "Toggle minimap",
+  "key.category.orbis.minimap": "Orbis"
 }
