@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.structures.StrongholdPieces;
 
-/** All mutable world data belongs exclusively to the server thread. No chunk loading or generation. */
+/** Mutable survey state belongs to the server thread; workers import detached saved terrain only. */
 final class DebugSurvey {
     static final int GRID = 256;
     static final int LAYERS = 4;
@@ -59,24 +59,35 @@ final class DebugSurvey {
             long key = chunk.getPos().pack();
             s.loaded.add(key);
             s.pending.add(key);
+            s.terrainPending.add(key);
             s.loadedChanged();
         });
         ServerChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> {
             State s = worlds.get(level);
             if (s != null) {
+                // Pregenerators can unload before the bounded tick queue reaches this chunk.
+                // Capture while the event still owns it; never retain the live chunk for a worker.
+                if (s.terrainPending.contains(chunk.getPos().pack())) {
+                    try { s.acceptLive(sampleTerrain(level, chunk)); }
+                    catch (RuntimeException failure) { Orbis.LOGGER.warn("Atlas terrain capture on unload failed", failure); }
+                }
                 s.loaded.remove(chunk.getPos().pack());
                 s.pending.remove(chunk.getPos().pack());
+                s.terrainPending.remove(chunk.getPos().pack());
                 s.loadedChanged();
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> worlds.values().forEach(s -> s.save(true)));
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> worlds.values().forEach(s -> {
+            s.importer.close(); s.save(true);
+        }));
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, manager, success) -> {
             if (!success) return;
             AtlasCache.invalidateResources(server);
             for (var entry : new ArrayList<>(worlds.entrySet())) {
-                State old = entry.getValue(); old.save(true);
+                State old = entry.getValue(); old.importer.close(); old.save(true);
                 State replacement = new State(entry.getKey());
                 replacement.loaded.addAll(old.loaded); replacement.pending.addAll(old.loaded);
+                replacement.terrainPending.addAll(old.loaded);
                 // A reload must not replay an already-consumed explicit resample command.
                 replacement.lastCommand = old.lastCommand;
                 worlds.put(entry.getKey(), replacement);
@@ -85,6 +96,11 @@ final class DebugSurvey {
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             // Only shutdown waits for disk. Gameplay never waits for this worker.
+            try {
+                java.util.concurrent.CompletableFuture.allOf(worlds.values().stream()
+                        .map(s -> s.importer.completion()).toArray(java.util.concurrent.CompletableFuture[]::new))
+                        .get(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) { Orbis.LOGGER.warn("Atlas final terrain write still pending", e); }
             try { AtlasCache.IO.submit(() -> {}).get(10, java.util.concurrent.TimeUnit.SECONDS); }
             catch (Exception e) { Orbis.LOGGER.warn("Atlas final cache write still pending", e); }
             worlds.clear();
@@ -95,6 +111,14 @@ final class DebugSurvey {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (State state : worlds.values()) {
                 state.restore();
+                if (state.ready) {
+                    state.importer.tick(state.level, state.cacheTicks);
+                    for (int i = 0; i < 32; i++) {
+                        var tile = state.importer.poll();
+                        if (tile == null) break;
+                        state.acceptImported(tile);
+                    }
+                }
                 if (++state.cacheTicks % 600 == 0) state.save(false);
             }
             Request r = request;
@@ -104,7 +128,7 @@ final class DebugSurvey {
             if (level == null || player == null || player.level() != level) return;
             State s = worlds.computeIfAbsent(level, State::new);
             if (!s.ready) return; // Do not race a restore with a new survey.
-            if (s.cacheTicks % 200 == 0) s.pending.addAll(s.loaded);
+            if (s.cacheTicks % 200 == 0) { s.pending.addAll(s.loaded); s.terrainPending.addAll(s.loaded); }
             if (s.lastCommand != r.command) {
                 s.lastCommand = r.command;
                 if (s.wrapped) switch (r.action) {
@@ -112,6 +136,7 @@ final class DebugSurvey {
                     case RESAMPLE -> {
                         s.error = "";
                         s.pending.addAll(s.loaded);
+                        s.terrainPending.addAll(s.loaded);
                         s.hits.clear();
                         s.locations.keySet().removeIf(id -> !s.observed.contains(id));
                         s.search.resample(); s.changed();
@@ -127,6 +152,14 @@ final class DebugSurvey {
             }
             try {
                 long deadline = System.nanoTime() + 3_000_000;
+                s.terrainPending.focus(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+                long terrainDeadline = Math.min(deadline, System.nanoTime() + 2_000_000);
+                for (int count = 0; count < 32 && request == r && System.nanoTime() < terrainDeadline; count++) {
+                    Long key = s.terrainPending.poll();
+                    if (key == null) break;
+                    var chunk = level.getChunkSource().getChunkNow(ChunkPos.getX(key), ChunkPos.getZ(key));
+                    if (chunk != null) s.acceptLive(sampleTerrain(level, chunk));
+                }
                 for (int count = 0; count < 2 && !s.pending.isEmpty() && request == r && System.nanoTime() < deadline; count++) {
                     long key = s.pending.iterator().next();
                     s.pending.remove(key);
@@ -161,7 +194,8 @@ final class DebugSurvey {
                 if (s.error.isEmpty()) Orbis.LOGGER.warn("Orbis debug survey stopped", failure);
                 s.error = "Survey stopped: " + failure.getClass().getSimpleName();
             }
-            if (++s.ticks % 10 == 0 || snapshot == null) {
+            if (++s.ticks % 10 == 0 || snapshot == null
+                    || s.ticks % 2 == 0 && s.cachedTerrainRevision != s.terrainRevision) {
                 Set<String> ids = new TreeSet<>(s.possible);
                 // The checklist is the dimension generator's possible set, not a union of dimensions.
 
@@ -197,9 +231,9 @@ final class DebugSurvey {
                         s.span, s.wrapped, player.getBlockX(), player.getBlockY(), player.getBlockZ(),
                         server.getAverageTickTimeNanos() / 1_000_000.0, s.cachedChunks,
                         s.cachedLoaded, biomes, s.cachedPlaces, s.cachedColors,
-                        s.limited, s.error, structureEntries,
+                        s.limited, s.error.isEmpty() ? s.importer.error : s.error, structureEntries,
                         s.audit.running(), s.audit.checks(), s.audit.state(), new AtlasSearch.View(s.search.save(), s.allBiomesFound()), s.audit.counting(),
-                        new DebugSnapshot.MapLayers(s.terrainRevision, s.biomesRevision, s.loadedRevision, s.placesRevision));
+                        new DebugSnapshot.MapLayers(s.terrainRevision, s.biomesRevision, s.loadedRevision, s.placesRevision), s.archive);
                 if (request == r) { snapshot = next; cacheStatus = s.cacheStatus; }
             }
         });
@@ -209,16 +243,6 @@ final class DebugSurvey {
         int cx = ChunkPos.getX(key), cz = ChunkPos.getZ(key);
         var chunk = level.getChunkSource().getChunkNow(cx, cz);
         if (chunk == null) return;
-        int x = cx * 16 + 8, z = cz * 16 + 8;
-        int y = level.dimensionType().hasCeiling() ? DebugTerrain.sliceY(level.getMinY(), level.getMaxY())
-                : chunk.getHeight(Heightmap.Types.WORLD_SURFACE, 8, 8);
-        String surface = id(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2));
-        var tile = DebugTerrain.sample(chunk, DebugMapMath.biomeColor(surface));
-        var previous = s.history.get(key);
-        if (previous == null || previous.color() != tile.color() || !previous.sameTerrain(tile)) {
-            putBounded(s.history, key, tile, HISTORY_LIMIT, s);
-            s.terrainChanged();
-        }
         // Locate cells only for newly observed palette entries, not all cells in every chunk.
         for (int section = 0; section < chunk.getSections().length; section++) {
             var palette = chunk.getSection(section);
@@ -290,9 +314,21 @@ final class DebugSurvey {
     private static String id(Holder<Biome> biome) {
         return biome.unwrapKey().map(key -> key.identifier().toString()).orElse("unregistered");
     }
+    private static DebugSnapshot.Cell sampleTerrain(ServerLevel level, net.minecraft.world.level.chunk.LevelChunk chunk) {
+        int x = chunk.getPos().getMinBlockX() + 8, z = chunk.getPos().getMinBlockZ() + 8;
+        int y = level.dimensionType().hasCeiling() ? DebugTerrain.sliceY(level.getMinY(), level.getMaxY())
+                : chunk.getHeight(Heightmap.Types.WORLD_SURFACE, 8, 8);
+        String surface = id(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2));
+        return DebugTerrain.sample(chunk, DebugMapMath.biomeColor(surface));
+    }
     private static final class State {
+        final ServerLevel level;
+        final AtlasTerrainImport importer;
+        AtlasTileArchive archive;
+        final Set<Long> liveTerrain = new HashSet<>(), distantTerrain = new HashSet<>();
         final Set<Long> loaded = new HashSet<>();
         final Set<Long> pending = new LinkedHashSet<>();
+        final AtlasTerrainQueue terrainPending = new AtlasTerrainQueue();
         final LinkedHashMap<Long, DebugSnapshot.Cell> history = new LinkedHashMap<>();
         final LinkedHashMap<String, DebugSnapshot.Place> places = new LinkedHashMap<>();
         final Map<String, DebugSnapshot.Place> locations = new HashMap<>();
@@ -318,15 +354,20 @@ final class DebugSurvey {
         void restore() {
             if (ready || !loading.isDone()) return;
             cache = loading.join(); loading = null; ready = true; cacheStatus = cache.status();
+            if (cache.file() != null) {
+                archive = new AtlasTileArchive(cache.file().resolveSibling(cache.file().getFileName() + ".tiles").resolve(cache.fingerprint()));
+                importer.archive(archive);
+            }
             var d = cache.data();
             cache = new AtlasCache.Loaded(cache.file(), cache.fingerprint(), null, cache.status());
             if (d == null) {
                 return;
             }
-            search.restore(d.search()); limited = d.limited();
+            search.restore(d.search()); limited |= d.limited();
             colors.putAll(d.colors()); hits.putAll(d.hits()); observed.addAll(d.observed()); locations.putAll(d.locations());
             for (var p : d.places()) places.put(p.label() + ":" + p.x() + ":" + p.y() + ":" + p.z(), p);
-            for (var c : d.chunks()) history.put(ChunkPos.pack(c.x(), c.z()), c);
+            // Fresh unload captures can arrive while the asynchronous cache restore is pending.
+            for (var c : d.chunks()) if (history.size() < HISTORY_LIMIT) history.putIfAbsent(ChunkPos.pack(c.x(), c.z()), c);
             audit.restore(d.audit());
             invalidateLayers();
         }
@@ -370,12 +411,42 @@ final class DebugSurvey {
         }
         boolean limited;
         String error = "";
+        void acceptLive(DebugSnapshot.Cell tile) {
+            importer.capture(tile);
+            long key = ChunkPos.pack(tile.x(), tile.z());
+            var previous = history.get(key);
+            if (previous == null || !previous.sameTerrain(tile)) {
+                putBounded(history, key, tile, HISTORY_LIMIT, this);
+                liveTerrain.retainAll(history.keySet()); distantTerrain.retainAll(history.keySet());
+                terrainChanged();
+            }
+            liveTerrain.add(key); distantTerrain.remove(key);
+        }
+        void acceptImported(AtlasTerrainImport.Tile imported) {
+            // Archived imports render separately and cannot evict recently visited terrain.
+            if (archive != null) return;
+            var tile = imported.cell();
+            long key = ChunkPos.pack(tile.x(), tile.z());
+            if (wrapped && (tile.x() * 16L < minX || tile.z() * 16L < minZ
+                    || tile.x() * 16L >= (long) minX + span || tile.z() * 16L >= (long) minZ + span)) return;
+            if (loaded.contains(key) || liveTerrain.contains(key)) return;
+            var previous = history.get(key);
+            // A DH leaf never replaces terrain read directly from Minecraft's saved or live chunks.
+            if (imported.distant() && previous != null && !distantTerrain.contains(key)) return;
+            if (previous == null && history.size() >= HISTORY_LIMIT) { limited = true; return; }
+            if (previous == null || !previous.sameTerrain(tile)) {
+                history.put(key, tile); terrainChanged();
+            }
+            if (imported.distant()) distantTerrain.add(key); else distantTerrain.remove(key);
+        }
         boolean allBiomesFound() { return !possible.isEmpty() && locations.keySet().containsAll(possible); }
         void evidence(int x, int y, int z, String biome) {
             if (!locations.containsKey(biome)) { locations.put(biome, new DebugSnapshot.Place(biome, x, y, z)); changed(); }
             hits.merge(biome, 1, Integer::sum);
         }
         State(ServerLevel level) {
+            this.level = level;
+            importer = new AtlasTerrainImport(level);
             invalidateLayers();
             var overworld = ToroidalWorldApi.shapeOf(level.getServer().overworld()).orElse(null);
             preset = BiomeOverview.preset(overworld != null && overworld.loops(Direction.Axis.X)

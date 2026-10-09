@@ -158,34 +158,35 @@ class DebugAtlasTest {
         var view = new DebugMapRaster.View(128, 128, 0, 0, 128.0 / 2048, false, 0, 0, true, true);
         int[] pixels = raster.render(data, view);
         assertEquals(0xffabcdef, pixels[63 * 128 + 63]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[50 * 128 + 50]);
+        assertEquals(AtlasUnknownTerrain.color(-432, -432, AtlasUnknownTerrain.level(32)), pixels[50 * 128 + 50]);
         var farAway = new DebugMapRaster.View(128, 128, 1e12, -1e12, 100, false, 0, 0, true, true);
         assertTrue(Arrays.stream(raster.render(data, farAway)).allMatch(p -> p == DebugMapRaster.BACKGROUND));
     }
 
-    @Test void completedGlobeUsesSampleColorsAndLeavesOutsidePixelsEmpty() {
+    @Test void completedGlobeHidesSampleColorsAndLeavesOutsidePixelsEmpty() {
         Map<Integer, Integer> colors = new HashMap<>();
         for (int i = 0; i < DebugSurvey.GRID * DebugSurvey.GRID; i++) colors.put(i, 0xff4182a6);
         var raster = new DebugMapRaster(128, 128);
         var view = new DebugMapRaster.View(128, 128, 0, 0, 1, true, 1.2, -.6, false, false);
         int[] pixels = raster.render(fixture(colors, List.of(), Set.of()), view);
-        assertEquals(0xff4182a6, pixels[64 * 128 + 64]);
+        assertNotEquals(0, pixels[64 * 128 + 64]);
+        assertArrayEquals(pixels, new DebugMapRaster(128, 128).render(fixture(Map.of(), List.of(), Set.of()), view));
         assertEquals(0, pixels[0]);
         assertEquals(128 * 128, pixels.length);
     }
 
     @Test void displayResolutionKeepsDetailsSmallerThanAGuiPixel() {
-        // Two adjacent sample cells occupy less than one GUI pixel, but remain distinct
+        // Two adjacent saved chunks occupy less than one GUI pixel, but remain distinct
         // when the atlas raster is sized for an actual high-DPI display.
-        int first = 10 * DebugSurvey.GRID + 10;
-        var data = fixture(Map.of(first, 0xff123456, first + 1, 0xffabcdef), List.of(), Set.of());
+        var data = fixture(Map.of(), List.of(new DebugSnapshot.Cell(-54, -54, 0xff123456),
+                new DebugSnapshot.Cell(-53, -54, 0xffabcdef)), Set.of());
         var view = new DebugMapRaster.View(64, 64, 0, 0, 64.0 / 2048, false, 0, 0, false, false);
         int[] pixels = new DebugMapRaster(512, 512).render(data, view);
-        int cellPixels = 512 / DebugSurvey.GRID;
+        int cellPixels = 512 / 128;
         int offset = (10 * cellPixels) * 512 + 10 * cellPixels;
         assertEquals(0xff123456, pixels[offset]);
         assertEquals(0xffabcdef, pixels[offset + cellPixels]);
-        assertEquals(DebugMapRaster.BACKGROUND, pixels[offset + 2 * cellPixels]);
+        assertEquals(AtlasUnknownTerrain.color(-1660, -1724, 0), pixels[offset + 2 * cellPixels]);
     }
 
     private static DebugSnapshot fixture(Map<Integer, Integer> colors, List<DebugSnapshot.Cell> chunks, Set<Long> loaded) {

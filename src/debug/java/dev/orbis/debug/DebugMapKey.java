@@ -11,7 +11,7 @@ record DebugMapKey(String dimension, long seed, int minX, int minZ, int span, bo
                 view.globe(), view.globe() ? view.yaw() : 0, view.globe() ? view.pitch() : 0,
                 view.chunks(), view.places());
         return new DebugMapKey(data.dimension(), data.seed(), data.minX(), data.minZ(), data.span(), data.wrapped(),
-                layers.terrain(), layers.biomes(), view.chunks() ? layers.loaded() : 0,
+                layers.terrain(), 0, view.chunks() ? layers.loaded() : 0,
                 view.places() ? layers.places() : 0, effective);
     }
 }

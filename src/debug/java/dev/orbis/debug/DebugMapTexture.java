@@ -13,9 +13,12 @@ final class DebugMapTexture implements AutoCloseable {
     private DynamicTexture texture;
     private DebugMapRaster raster;
     private DebugMapKey previousKey;
+    private DebugMapRaster.View displayedView;
     private int width, height, uploads;
     private double updateMillis;
     private long lastUpload;
+    private final AtlasTerrainBackdrop backdrop = new AtlasTerrainBackdrop();
+    private long previousBackdropVersion = -1;
 
     void draw(GuiGraphicsExtractor g, DebugSnapshot data, DebugMapRaster.View view, int x, int y) {
         int limit = view.globe() ? 768 : 1536;
@@ -31,25 +34,32 @@ final class DebugMapTexture implements AutoCloseable {
         }
         // Coalesce input events; expensive globe reprojection is capped at 30 updates/s.
         var key = DebugMapKey.of(data, view);
-        if (!key.equals(previousKey) && (previousKey == null || System.nanoTime() - lastUpload >= 33_333_333L)) {
-            long start = System.nanoTime();
-            int[] pixels = raster.render(data, view);
-            NativeImage target = texture.getPixels();
-            for (int py = 0; py < height; py++) for (int px = 0; px < width; px++) target.setPixel(px, py, pixels[py * width + px]);
-            texture.upload();
-            previousKey = key;
-            uploads++;
-            lastUpload = System.nanoTime();
-            updateMillis = (System.nanoTime() - start) / 1_000_000.0;
+        if (previousKey == null || System.nanoTime() - lastUpload >= 33_333_333L) {
+            int[] archived = backdrop.update(data, key.view(), w, h);
+            if (!key.equals(previousKey) || previousBackdropVersion != backdrop.version()) {
+                long start = System.nanoTime();
+                int[] pixels = raster.render(data, view, archived);
+                NativeImage target = texture.getPixels();
+                for (int py = 0; py < height; py++) for (int px = 0; px < width; px++) target.setPixel(px, py, pixels[py * width + px]);
+                texture.upload();
+                displayedView = view;
+                previousKey = key;
+                previousBackdropVersion = backdrop.version();
+                uploads++;
+                lastUpload = System.nanoTime();
+                updateMillis = (System.nanoTime() - start) / 1_000_000.0;
+            }
         }
         // This overload takes opposite corners, not a width and height.
         g.blit(id, x, y, x + view.width(), y + view.height(), 0, 1, 0, 1);
     }
     int uploads() { return uploads; }
+    DebugMapRaster.View displayedView() { return displayedView; }
     double updateMillis() { return updateMillis; }
     String resolution() { return width + " x " + height; }
     @Override public void close() {
+        backdrop.close(); previousBackdropVersion = -1;
         if (texture != null) Minecraft.getInstance().getTextureManager().release(id);
-        texture = null; raster = null; previousKey = null;
+        texture = null; raster = null; previousKey = null; displayedView = null;
     }
 }
