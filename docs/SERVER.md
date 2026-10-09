@@ -12,7 +12,7 @@ Der normale Build `orbis-0.1.0-alpha.8.jar` enthält die Welt-Engine, Minimap un
 
 Ein Vanilla-Client kann dem Orbis-Server auch ohne Fabric/Orbis beitreten: Das wurde mit einem zweiten echten Minecraft-26.3-Client lokal geprüft. Für Welt-Wrapping arbeitet die Engine auf dem Server. Ohne Client-Mod fehlen die Minimap und deutsche Orbis-Texte; englische Ersatztexte bleiben lesbar. Andere zusätzlich installierte Mods können eigene Client-Pflichten haben.
 
-**M** öffnet/schließt den Atlas (umlegbar unter Steuerung). Oben: Karte, Globus, auf Spieler zentrieren, Schließen. Karte/Globus stehen mittig; Ziehen verschiebt/dreht, Mausrad und +/− zoomen. Unten: Minimap an/aus, Ecke, Größe, eigener Minimap-Zoom. **F1** blendet das HUD aus. Im unbeschränkten End bleibt die Ansicht flach. Im Nether zeigt Gelände den festen Schnitt bei Y=32.
+**M** öffnet/schließt den Atlas (umlegbar unter Steuerung). Oben: Karte, Globus, auf Spieler zentrieren, Schließen. Karte/Globus stehen mittig; Ziehen verschiebt/dreht, das Mausrad zoomt. Es gibt keine Zoom-Buttons auf der Karte. Die Tastaturkürzel +/− bleiben verfügbar. Unten: Minimap an/aus, Ecke, Größe, eigener Minimap-Zoom. **F1** blendet das HUD aus. Im unbeschränkten End bleibt die Ansicht flach. Im Nether zeigt Gelände den festen Schnitt bei Y=32.
 
 Die Einstellungen werden in `config/orbis-atlas.properties` atomar gespeichert und überstehen Client-Neustarts. Flacher Kartenzoom (sichtbare Breite in Blöcken), Globuszoom und Modus gelten je Dimension; Minimap-Ecke, Größe, Sichtbarkeit und Zoom global. Beim erneuten Öffnen folgt die Karte wieder dem Spieler; eine alte Position wird nicht gespeichert. Die Einstellungen gelten auch auf anderen Servern, ohne dort Gelände zu übertragen.
 
