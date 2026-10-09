@@ -118,7 +118,7 @@ class AtlasCacheTest {
         Path file = directory.resolve("counts.gz");
         try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(file)))) {
             out.writeInt(0x4f524241); out.writeInt(AtlasCache.VERSION); out.writeUTF("v1");
-            out.writeInt(DeveloperSurvey.TOTAL + 1);
+            out.writeInt(256 * 256 * 4 + 1);
         }
         assertNull(AtlasCache.read(file, "v1"));
         Path valid = directory.resolve("valid.gz");

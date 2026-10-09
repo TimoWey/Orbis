@@ -16,7 +16,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 
-/** Disposable, bounded debug data. No Java deserialization and no writes to the world save. */
+/** Disposable, bounded atlas metadata. No Java deserialization and no writes to the world save. */
 final class AtlasCache {
     // v4: progressive search order changed; old cursor checkpoints must never resume in it.
     static final int VERSION = 4, CHUNK_LIMIT = 8192, ENTRY_LIMIT = 16384;
@@ -143,8 +143,8 @@ final class AtlasCache {
                     in.readInt(), in.readInt(), in.readBoolean());
             boolean limited = in.readBoolean();
             Map<Integer, Integer> colors = new HashMap<>();
-            for (int n = count(in, DeveloperSurvey.GRID * DeveloperSurvey.GRID); n > 0; n--)
-                colors.put(bounded(in.readInt(), DeveloperSurvey.GRID * DeveloperSurvey.GRID - 1), in.readInt());
+            for (int n = count(in, 256 * 256); n > 0; n--)
+                colors.put(bounded(in.readInt(), 256 * 256 - 1), in.readInt());
             Map<String, Integer> hits = new HashMap<>();
             for (int n = count(in, ENTRY_LIMIT); n > 0; n--) hits.put(in.readUTF(), bounded(in.readInt(), AtlasSearch.MAX + AtlasSearch.MAP_MAX));
             Set<String> observed = strings(in);

@@ -1,12 +1,12 @@
-# Orbis auf einem Server — Alpha.8
+# Orbis auf einem Server — Alpha.9
 
-Der normale Build `orbis-0.1.0-alpha.8.jar` enthält die Welt-Engine, Minimap und einen einfachen Atlas/Globus für Multiplayer. Die Entwickleroberfläche und ihre automatischen Einzelspieler-Surveys bleiben im separaten Debug-Build. Server und Spieler verwenden dieselbe normale JAR; Kartenrendering startet ausschließlich auf dem Client.
+Der normale Build `orbis-0.1.0-alpha.9.jar` enthält die Welt-Engine, Minimap und einen einfachen Atlas/Globus für Multiplayer. Die Entwickleroberfläche und ihre automatischen Einzelspieler-Surveys bleiben im separaten Debug-Build. Server und Spieler verwenden dieselbe normale JAR; Kartenrendering startet ausschließlich auf dem Client.
 
 ## Versionen und Installation
 
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
-- `orbis-0.1.0-alpha.8.jar` in `mods/` auf dem Fabric-Server.
+- `orbis-0.1.0-alpha.9.jar` in `mods/` auf dem Fabric-Server.
 - Für die Minimap: dieselben Versionen von Fabric Loader, Fabric API und Orbis auch im lokalen Minecraft-Profil jedes Spielers installieren.
 - Keine separate Toroidal-World-JAR installieren. Alte Orbis-JARs vorher aus `mods/` in einen Backup-Ordner verschieben. Nie normalen und Debug-Build gleichzeitig installieren; `-sources.jar` gehört nicht in `mods/`.
 
@@ -16,7 +16,7 @@ Ein Vanilla-Client kann dem Orbis-Server auch ohne Fabric/Orbis beitreten: Das w
 
 Die Einstellungen werden in `config/orbis-atlas.properties` atomar gespeichert und überstehen Client-Neustarts. Flacher Kartenzoom (sichtbare Breite in Blöcken), Globuszoom und Modus gelten je Dimension; Minimap-Ecke, Größe, Sichtbarkeit und Zoom global. Beim erneuten Öffnen folgt die Karte wieder dem Spieler; eine alte Position wird nicht gespeichert. Die Einstellungen gelten auch auf anderen Servern, ohne dort Gelände zu übertragen.
 
-Der Spieler-Atlas zeichnet ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund verwendet genau zwei Grautöne: dunkleres Wasser und helleres Land. Er ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Der persistente vollständige Gelände-Import aus lokalen Saves/Distant Horizons des Entwickler-Atlas bleibt im Debug-Build.
+Auf entfernten Servern zeichnet der Spieler-Atlas ausschließlich bereits empfangene Chunks auf, ohne Welt-Seed, Struktur-Suche oder zusätzliche Chunk-Anfragen. Der unentdeckte Hintergrund verwendet genau zwei Grautöne: dunkleres Wasser und helleres Land. Er ist symbolisch und keine Vorhersage echten Geländes. Pro Dimension bleiben bis zu 8.192 Gelände-Chunks während der Verbindung im Speicher; beim Verlassen des Servers wird dieser Verlauf gelöscht, damit etwa nach einem Server-Weltreset kein veraltetes Gelände erscheint. Im Einzelspieler verwendet auch der normale Build wieder den persistenten Gelände-Cache und den asynchronen Import bereits gespeicherter Welt-/Distant-Horizons-Daten aus dem bisherigen Entwickler-Atlas. Dabei werden keine zusätzlichen Live-Chunks geladen oder erzeugt. Der Cache liegt unter `orbis-atlas-cache/` im Minecraft-Profil und ist nach Welt und Generator-Konfiguration getrennt; ein Versions-/Modpackwechsel kann ihn sicherheitshalber invalidieren. Biome-/Struktur-Surveys laufen dafür nicht automatisch an. Bereits geladene Chunks werden wie im gestrigen Debug-Build nach Spielernähe priorisiert, mit bis zu 32 Captures pro Tick innerhalb eines weichen 2-ms-Budgets; nach zehn Sekunden werden bekannte Chunks erneut erfasst.
 
 ## Admin-Check auf dem Server
 
@@ -68,9 +68,9 @@ Diese Größen entsprechen den aktuellen Alpha.6–8-Presets, nicht den kleinere
 
 ```sh
 bash gradlew build
-python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.8.jar
+python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.9.jar
 ```
 
 Der Build prüft beide Archive, fehlende/verbotene Debug-Inhalte, die Server-Preset-Codecs und die gespeicherte Dimensionspolitik. Für Entwickler separat: `bash gradlew build -PorbisDebug=true`; Ausgabe unter `build/debug/libs/`.
 
-Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha8/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.
+Siehe [Testprotokoll und echte Minecraft-Screenshots](verification/alpha9/RESULTS.md) für die tatsächlich geprüften Funktionen und Grenzen dieses Alpha-Builds.
