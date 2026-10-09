@@ -3,7 +3,7 @@ package dev.orbis.atlas;
 import java.util.*;
 import net.minecraft.world.level.ChunkPos;
 
-/** Server-owned queue: capture nearby surfaces independently of biome/structure inspection. */
+/** Owner-thread queue: capture nearby surfaces independently of biome/structure inspection. */
 final class AtlasTerrainQueue {
     private final Set<Long> present = new HashSet<>();
     private int x, z;
