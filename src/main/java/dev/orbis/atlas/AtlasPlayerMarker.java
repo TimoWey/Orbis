@@ -3,13 +3,13 @@ package dev.orbis.atlas;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.model.sprite.SpriteId;
-import net.minecraft.data.AtlasIds;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.resources.Identifier;
 
 /** A north-up heading projected through the same chart as the terrain. */
 final class AtlasPlayerMarker {
-    static final SpriteId PLAYER = new SpriteId(AtlasIds.MAP_DECORATIONS, Identifier.withDefaultNamespace("player"));
-    static final SpriteId OTHER = new SpriteId(AtlasIds.MAP_DECORATIONS, Identifier.withDefaultNamespace("frame"));
+    static final SpriteId PLAYER = new SpriteId(Sheets.MAP_DECORATIONS_SHEET, Identifier.withDefaultNamespace("player"));
+    static final SpriteId OTHER = new SpriteId(Sheets.MAP_DECORATIONS_SHEET, Identifier.withDefaultNamespace("frame"));
     private static final int HEADINGS = 16;
     static double[] direction(boolean globe, double u, double v, double yaw, double pitch, double degrees) {
         double angle = Math.toRadians(degrees);

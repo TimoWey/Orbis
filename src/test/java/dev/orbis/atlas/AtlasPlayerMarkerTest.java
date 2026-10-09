@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AtlasPlayerMarkerTest {
     @Test void usesOriginalMinecraftMapSpritesAndSixteenHeadings() {
-        assertEquals(net.minecraft.data.AtlasIds.MAP_DECORATIONS, AtlasPlayerMarker.PLAYER.atlasLocation());
+        assertEquals("minecraft:textures/atlas/map_decorations.png", AtlasPlayerMarker.PLAYER.atlasLocation().toString());
         assertEquals("minecraft:player", AtlasPlayerMarker.PLAYER.texture().toString());
         assertEquals("minecraft:frame", AtlasPlayerMarker.OTHER.texture().toString());
         for (int h = 0; h < 16; h++) {
