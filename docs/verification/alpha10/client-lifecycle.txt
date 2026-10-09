@@ -1,0 +1,4 @@
+[15:09:46] [main/INFO]: Loading Minecraft 26.3 with Fabric Loader 0.19.5
+	- orbis 0.1.0-alpha.10
+[15:11:14] [Render thread/INFO]: Connecting to 127.0.0.1, 25565
+[15:17:32] [Render thread/INFO]: Stopping!
