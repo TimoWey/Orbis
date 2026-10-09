@@ -90,13 +90,19 @@ final class PlayerAtlasScreen extends Screen {
     }
     private boolean inside(double mx, double my) { return mx >= left && mx < left + size && my >= top && my < top + size; }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean twice) {
-        if (super.mouseClicked(event, twice)) return true;
-        if (event.button() == 0 && inside(event.x(), event.y())) { dragging = true; setDragging(true); return true; }
-        return false;
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && inside(event.x(), event.y())) {
+            dragging = true; setDragging(true); return true;
+        }
+        return super.mouseClicked(event, twice);
     }
-    @Override public boolean mouseReleased(MouseButtonEvent event) { dragging = false; setDragging(false); return super.mouseReleased(event); }
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+            dragging = false; setDragging(false); return true;
+        }
+        return super.mouseReleased(event);
+    }
     @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-        if (dragging && event.button() == 0) { follow = false;
+        if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) { follow = false;
             if (globe) { yaw += dx * .015; pitch = Math.clamp(pitch + dy * .0075, -Math.PI / 2, Math.PI / 2); }
             else { x -= dx * blocks / size; z -= dy * blocks / size; }
             return true;
