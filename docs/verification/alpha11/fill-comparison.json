@@ -1,0 +1,16 @@
+{
+  "metric": "first observed number of valid persisted terrain slots, seconds after detected login",
+  "sampling_note": "nominal 250ms; screenshot capture blocks sampling; values are observed upper bounds, not frame timings",
+  "counts": {
+    "alpha10-cold": {
+      "512": 17.951,
+      "1000": 28.354,
+      "1246": 31.255
+    },
+    "alpha11-cold": {
+      "512": 8.436,
+      "1000": 18.33,
+      "1246": 23.328
+    }
+  }
+}
