@@ -1,14 +1,19 @@
 {
-  "schema_version": 3,
-  "status": "draft_not_runtime_configuration",
+  "schema_version": 6,
+  "status": "provisional_alpha_presets_not_biome_validated",
   "nether_scale": 8,
   "end_wrapping": false,
   "minimum_overworld_width_chunks_from_upstream": 128,
+  "minimum_selectable_overworld_width_chunks": 1024,
+  "maximum_selectable_overworld_width_chunks": 1448160,
+  "width_step_chunks": 16,
+  "slider_scale": "logarithmic_width",
+  "default_preset": "normal",
   "normal_measurement_candidates_chunks": [
-    512,
     1024,
-    2048,
-    4096
+    8832,
+    76544,
+    625008
   ],
   "biome_check": {
     "status": "planned",
@@ -21,39 +26,41 @@
   },
   "presets": [
     {
-      "id": "very_small",
-      "overworld_width_chunks": null,
+      "id": "tiny",
+      "overworld_width_chunks": 1024,
       "biome_policy": "missing_biomes_accepted",
-      "label_en": "Very small"
+      "label_en": "Tiny",
+      "nether_width_chunks": 128
     },
     {
       "id": "small",
-      "overworld_width_chunks": null,
+      "overworld_width_chunks": 8832,
+      "target_area_km2": 20000,
       "biome_policy": "missing_biomes_accepted",
-      "label_en": "Small"
+      "label_en": "Small",
+      "nether_width_chunks": 1104
     },
     {
-      "id": "medium",
-      "overworld_width_chunks": null,
+      "id": "normal",
+      "overworld_width_chunks": 76544,
+      "target_area_km2": 1500000,
       "biome_policy": "all_biomes_goal_with_check",
-      "label_en": "Medium / Normal"
+      "label_en": "Normal",
+      "nether_width_chunks": 9568
     },
     {
       "id": "large",
-      "overworld_width_chunks": null,
+      "overworld_width_chunks": 625008,
+      "target_area_km2": 100000000,
       "biome_policy": "pending",
-      "label_en": "Large"
-    },
-    {
-      "id": "very_large",
-      "overworld_width_chunks": null,
-      "biome_policy": "pending",
-      "label_en": "Very large"
+      "label_en": "Large",
+      "nether_width_chunks": 78126
     },
     {
       "id": "earth",
-      "overworld_width_chunks": 1411456,
-      "nether_width_chunks": 176432,
+      "overworld_width_chunks": 1448160,
+      "nether_width_chunks": 181020,
+      "target_area_km2": 536870912,
       "large_coordinate_validation_required": true,
       "label_en": "Earth"
     }

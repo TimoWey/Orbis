@@ -1,0 +1,42 @@
+{
+  "parent": "orbis:exploration/world_on_paper",
+  "display": {
+    "icon": {
+      "id": "minecraft:spyglass"
+    },
+    "title": {
+      "translate": "advancements.orbis.field_kit.title",
+      "fallback": "Ready for the Horizon"
+    },
+    "description": {
+      "translate": "advancements.orbis.field_kit.description",
+      "fallback": "Carry a compass, a filled map and a spyglass together."
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "prepared": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:compass"
+          },
+          {
+            "items": "minecraft:filled_map"
+          },
+          {
+            "items": "minecraft:spyglass"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "prepared"
+    ]
+  ]
+}

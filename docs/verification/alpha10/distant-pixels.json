@@ -1,0 +1,15 @@
+{
+  "screenshot": "distant-player.png",
+  "vanilla_sprite": "frame",
+  "source_size": [
+    8,
+    8
+  ],
+  "gui_scale": 2,
+  "center": [
+    824,
+    400
+  ],
+  "opaque_screen_pixels_checked": 108,
+  "mismatches": 0
+}

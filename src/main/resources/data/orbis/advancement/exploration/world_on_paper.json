@@ -1,0 +1,36 @@
+{
+  "parent": "orbis:exploration/bearings",
+  "display": {
+    "icon": {
+      "id": "minecraft:filled_map"
+    },
+    "title": {
+      "translate": "advancements.orbis.world_on_paper.title",
+      "fallback": "A World on Paper"
+    },
+    "description": {
+      "translate": "advancements.orbis.world_on_paper.description",
+      "fallback": "Carry a filled map to record a piece of your world."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "prepared": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:filled_map"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "prepared"
+    ]
+  ]
+}

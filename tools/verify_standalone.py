@@ -1,0 +1,86 @@
+"""Fail CI if the distributable needs or embeds the separate Toroidal World mod."""
+import io
+import argparse
+import json
+import zipfile
+from pathlib import Path
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--debug', action='store_true')
+parser.add_argument('--sources', type=Path, help='Matching sources JAR; inferred beside the binary when omitted')
+parser.add_argument('jars', nargs='+', type=Path)
+args = parser.parse_args()
+debug_expected = args.debug
+jars = [p for p in args.jars if not p.name.endswith('-sources.jar')]
+assert len(jars) == 1, f'Expected one distributable, found {jars}'
+with zipfile.ZipFile(jars[0]) as jar:
+    names = set(jar.namelist())
+    meta = json.loads(jar.read('fabric.mod.json'))
+    assert meta['id'] == 'orbis'
+    assert meta['icon'] in names, 'Declared mod icon is missing'
+    provenance = json.loads(jar.read('META-INF/orbis-build.json'))
+    assert provenance['version'] == meta['version']
+    assert provenance['variant'] == ('debug' if debug_expected else 'normal')
+    assert len(provenance['source_sha256']) == 64
+    sources = args.sources or jars[0].with_name(jars[0].stem + '-sources.jar')
+    with zipfile.ZipFile(sources) as source_jar:
+        assert source_jar.read('META-INF/orbis-build.json') == jar.read('META-INF/orbis-build.json'), 'Binary/source provenance mismatch'
+        assert source_jar.read(meta['icon']) == jar.read(meta['icon']), 'Binary/source icon mismatch'
+    assert meta['entrypoints']['main'] == ['dev.orbis.Orbis']
+    for entrypoints in meta['entrypoints'].values():
+        for entrypoint in entrypoints:
+            name = entrypoint['value'] if isinstance(entrypoint, dict) else entrypoint
+            assert name.replace('.', '/') + '.class' in names, f'Missing entrypoint {name}'
+    debug_entrypoint = 'dev.orbis.atlas.DeveloperClient'
+    debug_classes = [name for name in names if name.startswith('dev/orbis/atlas/Developer')]
+    assert (debug_entrypoint in meta['entrypoints']['client']) == debug_expected
+    assert ('dev.orbis.atlas.PlayerAtlasClient' in meta['entrypoints']['client']) != debug_expected
+    assert bool(debug_classes) == debug_expected, 'Debug classes leaked or are missing'
+    assert meta['version'].endswith('-debug') == debug_expected
+    if debug_expected:
+        assert 'dev/orbis/atlas/DeveloperScreen.class' in names
+        assert 'dev/orbis/atlas/DeveloperSurvey.class' in names
+        assert 'dev/orbis/atlas/AtlasCache.class' in names
+        assert 'assets/orbis_debug/lang/en_us.json' in names
+        assert 'assets/orbis_debug/lang/de_de.json' in names
+    else:
+        assert not any(name.startswith('assets/orbis_debug/') for name in names), 'Debug resources leaked'
+    assert not any(name.startswith('data/toroidal_world/advancement/') and name.endswith('.json')
+                   for name in names), 'Inherited player progression was bundled'
+    assert not any(name.startswith('data/toroidal_world/worldgen/world_preset/') and name.endswith('.json')
+                   for name in names), 'Inherited world presets were bundled'
+    for locale in ('en_us', 'de_de'):
+        wording = json.loads(jar.read(f'assets/toroidal_world/lang/{locale}.json'))
+        assert not any(key.startswith('advancements.toroidal_world.') for key in wording)
+        assert 'Orbis' in wording['gui.toroidal_world.settings.title']
+        own_wording = json.loads(jar.read(f'assets/orbis/lang/{locale}.json'))
+        for advancement in ('bearings', 'world_on_paper', 'field_kit'):
+            data = json.loads(jar.read(f'data/orbis/advancement/exploration/{advancement}.json'))
+            assert data['criteria']['prepared']['trigger'] == 'minecraft:inventory_changed'
+            assert data['display']['title']['translate'] in own_wording
+            assert data['display']['description']['translate'] in own_wording
+    engine_locales = {name for name in names if name.startswith('assets/toroidal_world/lang/')
+                      and name.endswith('.json')}
+    assert engine_locales == {'assets/toroidal_world/lang/en_us.json',
+                              'assets/toroidal_world/lang/de_de.json'}, 'Inherited translations leaked'
+    assert 'toroidal_world' not in meta['depends']
+    assert 'toroidal_world' not in meta.get('provides', [])
+    assert meta['breaks']['toroidal_world'] == '*'
+    for preset in ('tiny', 'small', 'normal', 'large', 'earth'):
+        assert f'data/orbis/worldgen/world_preset/{preset}.json' in names
+    for name in ('dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'com/toroidalworld/ToroidalWorldFabric.class',
+                 'com/toroidalworld/engine/gen/LoopedChunkGenerator.class',
+                 'LICENSE-orbis', 'META-INF/licenses/Toroidal-World-MIT.txt', meta['accessWidener']):
+        assert name in names, f'Missing {name}'
+    for config_name in meta['mixins']:
+        config = json.loads(jar.read(config_name))
+        for side in ('mixins', 'client', 'server'):
+            for name in config.get(side, []):
+                assert (config['package'] + '.' + name).replace('.', '/') + '.class' in names
+        if config.get('plugin'):
+            assert config['plugin'].replace('.', '/') + '.class' in names
+    for nested in meta.get('jars', []):
+        with zipfile.ZipFile(io.BytesIO(jar.read(nested['file']))) as lib:
+            nested_meta = json.loads(lib.read('fabric.mod.json'))
+            assert nested_meta['id'] != 'toroidal_world', 'Separate engine mod was nested'
+print(f'{jars[0].name}: standalone packaging and matching provenance verified; debug={debug_expected}.')

@@ -1,0 +1,46 @@
+{
+  "normal": {
+    "jar": "orbis-0.1.0-alpha.11.jar",
+    "sha256": "d19e9025c54ccb83bb45f733f67aff4ecbc1d60119735ff92ba4b6923acba208",
+    "provenance": {
+      "version": "0.1.0-alpha.11",
+      "variant": "normal",
+      "commit": "102af17afb95e55435865d7dff08ae27b41b3537",
+      "source_sha256": "5f123dd137ce4ea40a7a796add8c8a969534ece3d620be5026d246fe3e15867c"
+    },
+    "test": {
+      "tests": 147,
+      "skipped": 3,
+      "failures": 0,
+      "errors": 0
+    },
+    "testDistantTerrain": {
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    }
+  },
+  "debug": {
+    "jar": "orbis-0.1.0-alpha.11-debug.jar",
+    "sha256": "33f9e644bff709873642413edadf1b5a982523c81c7e333c9e34e61011afa6f9",
+    "provenance": {
+      "version": "0.1.0-alpha.11-debug",
+      "variant": "debug",
+      "commit": "102af17afb95e55435865d7dff08ae27b41b3537",
+      "source_sha256": "5f123dd137ce4ea40a7a796add8c8a969534ece3d620be5026d246fe3e15867c"
+    },
+    "test": {
+      "tests": 163,
+      "skipped": 6,
+      "failures": 0,
+      "errors": 0
+    },
+    "testDistantTerrain": {
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0
+    }
+  }
+}

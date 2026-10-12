@@ -1,0 +1,33 @@
+{
+  "normal": {
+    "tests": 135,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "normal_dh": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "debug": {
+    "tests": 151,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 5
+  },
+  "debug_dh": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "provenance": {
+    "version": "0.1.0-alpha.9",
+    "variant": "normal",
+    "commit": "56572bdde5ad0cfc73dc95f3bbe25b4be7a1b72b",
+    "source_sha256": "8287545e51e25db7ba96183f0b4cb821ecfdb931b405e20643428be372831f79"
+  },
+  "jar_sha256": "f8814e6ab95e3a23c469bd783885748bad4b2f379c9546e56d66797d4bddf926"
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.orbis.atlas.AtlasTerrainCollectorTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-09T15:52:51.049Z" hostname="db2b0501505d" time="0.039">
+  <properties/>
+  <testcase name="temporarilyUnavailableChunkRetriesOnTheNextTick()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.003"/>
+  <testcase name="softBudgetStopsFurtherQueriesAndTeleportReordersPendingChunks()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.002"/>
+  <testcase name="unchangedRefreshDoesNotQueueMoreDiskWritesButEditsDo()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.001"/>
+  <testcase name="editsStillRefreshDuringLongInitialCaptureAndLoadedSnapshotsStayImmutable()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.008"/>
+  <testcase name="playerAndHudLoadFirstInsteadOfWaitingForTheCornerScan()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.007"/>
+  <testcase name="unloadCapturesPendingChunkAndUnchangedSnapshotsReuseTheSameList()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.002"/>
+  <testcase name="slowInitialCaptureFinishesDespitePeriodicRefresh()" classname="dev.orbis.atlas.AtlasTerrainCollectorTest" time="0.015"/>
+  <system-out><![CDATA[TERRAIN_QUEUE alpha8Player=137 alpha8Hud=171 alpha9Player=1 alpha9Hud=4 ticks; budget=2ms maxBatch=32
+SLOW_INITIAL_CAPTURE unique=1089/1089 after=1400 ticks; simulated cost=2.000001ms
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "orbis",
+  "version": "${version}",
+  "name": "Orbis",
+  "icon": "assets/orbis/icon.png",
+  "description": "Finite singleplayer and server worlds with X/Z wrapping, exact 1:8 Nether scaling, an unwrapped End and a client minimap.",
+  "authors": [
+    "Timo Wey"
+  ],
+  "contact": {
+    "sources": "https://github.com/TimoWey/Orbis"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.orbis.Orbis"
+    ],
+    "client": [
+      "dev.orbis.OrbisClient",
+      "dev.orbis.atlas.PlayerAtlasClient"
+    ],
+    "modmenu": [
+      "dev.orbis.OrbisModMenu"
+    ]
+  },
+  "mixins": [
+    "toroidal_world.mixins.json",
+    "toroidal_world.shape.mixins.json",
+    "toroidal_world.fabric.mixins.json",
+    "toroidal_world.compat.journeymap.mixins.json",
+    "toroidal_world.compat.xaero.mixins.json",
+    "toroidal_world.compat.c2me.mixins.json",
+    "toroidal_world.compat.distanthorizons.mixins.json",
+    "toroidal_world.compat.scalablelux.mixins.json",
+    "toroidal_world.compat.terrablender.mixins.json",
+    "toroidal_world.compat.biolith.mixins.json",
+    "toroidal_world.compat.sodium.mixins.json",
+    "toroidal_world.compat.lithium.mixins.json",
+    "orbis.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": ">=0.161.0",
+    "minecraft": "26.3",
+    "java": ">=25"
+  },
+  "suggests": {
+    "sodium": "*",
+    "lithium": "*",
+    "distanthorizons": "*"
+  },
+  "accessWidener": "toroidal_world.accesswidener",
+  "breaks": {
+    "toroidal_world": "*",
+    "journeymap": "<26.3-6.0.8",
+    "c2me": "<0.4.2-alpha.0.85"
+  }
+}

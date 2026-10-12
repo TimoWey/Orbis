@@ -1,0 +1,31 @@
+[12:58:05] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.8 mc=26.3 loader=fabric 0.19.5
+[12:58:05] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.8 mc=26.3 loader=fabric 0.19.5
+[12:58:05] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.8 mc=26.3 loader=fabric 0.19.5
+[12:58:06] [Server thread/INFO]: Done (7.241s)! For help, type "help"
+[12:58:28] [Server thread/INFO]: OrbisTester[/127.0.0.1:56440] logged in with entity id 33 at (100.5, 81.0, 100.5)
+[12:58:28] [Server thread/INFO]: System chat: OrbisTester joined the game
+[12:58:31] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2017ms or 40 ticks behind
+[12:59:18] [Server thread/INFO]: System chat: Made OrbisTester a server operator
+[12:59:18] [Server thread/INFO]: System chat: Teleported OrbisTester to 110.500000, 85.000000, 110.500000
+[12:59:21] [Server thread/INFO]: Check: Check gestartet: Oberwelt + Nether. Läuft im Hintergrund; Status mit /orbis check status.
+[12:59:47] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2099ms or 41 ticks behind
+[12:59:52] [Server thread/INFO]: Check: Oberwelt: 7196 Biome-Abfragen, 512 Struktur-Kandidaten.
+[12:59:52] [Server thread/INFO]: Check: Ein Check läuft bereits. /orbis check status oder cancel
+[13:00:42] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2579ms or 51 ticks behind
+[13:01:00] [Server thread/INFO]: OrbisTester lost connection: Disconnected
+[13:01:00] [Server thread/INFO]: System chat: OrbisTester left the game
+[13:01:12] [Server thread/INFO]: Check: Oberwelt – Biome: 56/56 gefunden.
+[13:01:12] [Server thread/INFO]: Check: Oberwelt – Strukturen: 43/48 gefunden.
+[13:01:12] [Server thread/INFO]: Check: Oberwelt – Strukturen nicht gefunden: minecraft:abandoned_camp_cherry_grove, minecraft:abandoned_camp_pale_garden, minecraft:abandoned_camp_windswept_forest, minecraft:buried_treasure, minecraft:mineshaft_mesa
+[13:01:13] [Server thread/INFO]: Check: Nether – Biome: 5/5 gefunden.
+[13:01:13] [Server thread/INFO]: Check: Nether – Strukturen: 4/4 gefunden.
+[13:01:13] [Server thread/INFO]: Check: Fertig. Nicht gefunden bedeutet unbestätigt, nicht nachweislich fehlend. Strukturen: Generator-Vorhersage, keine Prüfung aller gespeicherten Blöcke.
+[13:01:17] [Server thread/INFO]: Check: Oberwelt – Biome: 56/56 gefunden.
+[13:01:17] [Server thread/INFO]: Check: Oberwelt – Strukturen: 43/48 gefunden.
+[13:01:17] [Server thread/INFO]: Check: Oberwelt – Strukturen nicht gefunden: minecraft:abandoned_camp_cherry_grove, minecraft:abandoned_camp_pale_garden, minecraft:abandoned_camp_windswept_forest, minecraft:buried_treasure, minecraft:mineshaft_mesa
+[13:01:17] [Server thread/INFO]: Check: Nether – Biome: 5/5 gefunden.
+[13:01:17] [Server thread/INFO]: Check: Nether – Strukturen: 4/4 gefunden.
+[13:01:17] [Server thread/INFO]: Check: Fertig. Nicht gefunden bedeutet unbestätigt, nicht nachweislich fehlend. Strukturen: Generator-Vorhersage, keine Prüfung aller gespeicherten Blöcke.
+[13:01:59] [Server thread/INFO]: Check: Check gestartet: Oberwelt + Nether. Läuft im Hintergrund; Status mit /orbis check status.
+[13:01:59] [Server thread/INFO]: Check: Check abgebrochen.
+[13:01:59] [Server thread/INFO]: Check: Kein Check läuft. Start: /orbis check

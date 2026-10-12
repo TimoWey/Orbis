@@ -1,6 +1,6 @@
 # Existing-world conversion
 
-**Planned; this feature is not supported upstream yet.**
+**Parked since 2026-10-12; not part of the current alpha.** These notes are kept for a possible later version.
 
 | Step | Behaviour |
 | --- | --- |
