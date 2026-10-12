@@ -1,12 +1,12 @@
-# Server and player guide — 0.1.0-alpha.11
+# Server and player guide — 0.1.0-alpha.12
 
-The normal build `orbis-0.1.0-alpha.11.jar` contains the world engine, the minimap and the map/globe atlas. Server and players use the same JAR; map rendering only runs on clients. The developer interface and its automatic singleplayer surveys stay in the separate [debug build](DEBUG_ATLAS.md).
+The normal build `orbis-0.1.0-alpha.12.jar` contains the world engine, the minimap and the map/globe atlas. Server and players use the same JAR; map rendering only runs on clients. The developer interface and its automatic singleplayer surveys stay in the separate [debug build](DEBUG_ATLAS.md).
 
 ## Versions and installation
 
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
-- Server: put Fabric API and `orbis-0.1.0-alpha.11.jar` into the Fabric server's `mods/` folder.
+- Server: put Fabric API and `orbis-0.1.0-alpha.12.jar` into the Fabric server's `mods/` folder.
 - Players who want the map: install the same Fabric Loader, Fabric API and Orbis versions in their own Minecraft profile.
 - Do not install Toroidal World or Exotic Worlds as well. Move older Orbis JARs out of `mods/` first. Never install the normal and debug builds together; `-sources.jar` does not belong in `mods/`.
 
@@ -24,7 +24,7 @@ With Orbis on both server and client, player positions are sent twice per second
 
 ## How the map gets its terrain
 
-- **On servers** the atlas only draws chunks the client has already received. It uses no world seed, no structure search and no extra chunk requests. Up to 8,192 terrain chunks per dimension are kept in memory during the connection and cleared when you leave, so a reset server world never shows stale terrain.
+- **On servers** the atlas only draws chunks the client has already received. It uses no world seed, no structure search and no extra chunk requests. With Orbis alpha.12 or newer on the server, everything you explored is kept on your computer under `orbis-atlas-cache/servers/` and shown again after reconnecting. The server sends an opaque world id (a SHA-256 hash, no seed or path), so each server world gets its own map and a reset world starts empty. Older servers only keep up to 8,192 chunks per dimension in memory until you leave.
 - **In singleplayer** the map also imports already saved world terrain and optional Distant Horizons data in the background into a persistent cache under `orbis-atlas-cache/` in the Minecraft profile, separated by world and generator settings. A version or modpack change may invalidate it once. No extra live chunks are loaded or generated.
 - Loaded chunks are captured nearest-first, with up to 32 captures per tick inside a soft 2 ms budget; known chunks are refreshed after ten seconds. A share of the budget stays reserved for block changes, so edits show up without reconnecting.
 - Unexplored terrain is drawn in two shades of gray (darker water, lighter land). It is symbolic, not a prediction of the real terrain.
@@ -79,7 +79,7 @@ Tiny is the easiest size for a first shared test. Nothing is pregenerated. No pr
 
 ```sh
 bash gradlew build
-python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.11.jar
+python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.12.jar
 ```
 
 The build checks both archives, missing or forbidden debug content, the server preset codecs and the stored dimension policy. For developers only: `bash gradlew build -PorbisDebug=true`, output in `build/debug/libs/`.

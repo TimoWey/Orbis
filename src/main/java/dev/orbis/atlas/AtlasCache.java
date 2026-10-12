@@ -128,7 +128,7 @@ final class AtlasCache {
     static Path fileFor(Path base, String world, String dimension) {
         return base.resolve(hash(world)).resolve(hash(dimension) + ".atlas.gz");
     }
-    private static String hash(String text) {
+    static String hash(String text) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8))); }
         catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
