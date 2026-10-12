@@ -1,0 +1,26 @@
+[15:09:43] [main/INFO]: Loading Minecraft 26.3 with Fabric Loader 0.19.5
+	- orbis 0.1.0-alpha.10
+[15:10:48] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.10 mc=26.3 loader=fabric 0.19.5
+[15:10:48] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.10 mc=26.3 loader=fabric 0.19.5
+[15:10:48] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.10 mc=26.3 loader=fabric 0.19.5
+[15:10:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[15:10:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[15:10:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[15:11:26] [Server thread/INFO]: VanillaTester[/127.0.0.1:42696] logged in with entity id 91 at (150.5, 52.0, 110.5)
+[15:11:26] [Server thread/INFO]: System chat: VanillaTester joined the game
+[15:11:27] [Server thread/INFO]: OrbisTester[/127.0.0.1:42704] logged in with entity id 92 at (110.5, 85.0, 110.5)
+[15:11:27] [Server thread/INFO]: System chat: OrbisTester joined the game
+[15:11:53] [Server thread/INFO]: System chat: Teleported OrbisTester to 110.500000, 85.000000, 110.500000
+[15:11:53] [Server thread/INFO]: System chat: Teleported VanillaTester to 150.500000, 85.000000, 110.500000
+[15:14:40] [Server thread/INFO]: System chat: Teleported VanillaTester to 610.500000, 85.000000, 110.500000
+[15:15:13] [Server thread/INFO]: System chat: Teleported VanillaTester to 0.500000, 80.000000, 0.500000
+[15:15:40] [Server thread/INFO]: System chat: Teleported VanillaTester to 150.500000, 85.000000, 110.500000
+[15:16:11] [Server thread/INFO]: VanillaTester lost connection: Disconnected
+[15:16:11] [Server thread/INFO]: System chat: VanillaTester left the game
+[15:17:12] [Server thread/INFO]: OrbisTester lost connection: Disconnected
+[15:17:12] [Server thread/INFO]: System chat: OrbisTester left the game
+[15:17:34] [Server thread/INFO]: Stopping server
+[15:17:34] [Server thread/INFO]: Saving worlds
+[15:17:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[15:17:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[15:17:34] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end

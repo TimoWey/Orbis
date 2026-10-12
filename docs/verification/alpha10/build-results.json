@@ -1,0 +1,33 @@
+{
+  "normal": {
+    "tests": 140,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "normal_dh": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "provenance": {
+    "version": "0.1.0-alpha.10",
+    "variant": "normal",
+    "commit": "cc9490fe76cc37d87d6da6ae331f5d1fbce683f2",
+    "source_sha256": "5d6e4fb254ab34082ac99f3a866f1404235918378565b1a6f6648dd9fa8f3f10"
+  },
+  "jar_sha256": "a27bd39d48b67583789947478853329fb10bfbfe335bea364daf4a613656483d",
+  "debug": {
+    "tests": 156,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 5
+  },
+  "debug_dh": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

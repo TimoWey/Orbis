@@ -1,0 +1,20 @@
+{
+  "flat_drag_screen_delta": [
+    120,
+    40
+  ],
+  "flat_marker_after_drag": [
+    760,
+    440
+  ],
+  "flat_marker_after_center": [
+    640,
+    400
+  ],
+  "globe_changed_pixels_after_drag": 104330,
+  "globe_differing_pixels_after_recenter": 541,
+  "remote_player_distance_blocks": 500,
+  "server_view_distance_chunks": 6,
+  "remote_marker_removed_on_dimension_change": true,
+  "marker_removed_on_disconnect": true
+}

@@ -10,7 +10,10 @@ logs/
 Thumbs.db
 worlds/
 backups/
-*.zip
-*.bundle
 docs/media/.preview/
 __pycache__/
+*.zip
+*.bundle
+
+!gradle/wrapper/gradle-wrapper.jar
+!vendor/toroidal-engine-0600806.zip

@@ -1,0 +1,36 @@
+{
+  "parent": "minecraft:adventure/root",
+  "display": {
+    "icon": {
+      "id": "minecraft:compass"
+    },
+    "title": {
+      "translate": "advancements.orbis.bearings.title",
+      "fallback": "Orbis: Find Your Bearings"
+    },
+    "description": {
+      "translate": "advancements.orbis.bearings.description",
+      "fallback": "Carry a compass to prepare for your next expedition."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "prepared": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:compass"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "prepared"
+    ]
+  ]
+}

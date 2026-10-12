@@ -1,0 +1,196 @@
+Ausgewählte unveränderte Logzeilen (Server-Start, Spieler, Kanten, Portal, Warnungen und Speichern). Vollständige lokale Logs bleiben unter /workspace/minecraft-test und in den ignorierten .log-Dateien erhalten.
+
+=== docs/verification/alpha7/server-first-start.log ===
+	- fabricloader 0.19.5
+	- minecraft 26.3
+	- orbis 0.1.0-alpha.7
+[12:18:38] [Server thread/INFO]: Starting minecraft server version 26.3
+[12:18:38] [Server thread/INFO]: Loading properties
+[12:18:38] [Server thread/INFO]: Default game type: CREATIVE
+[12:18:38] [Server thread/INFO]: Generating keypair
+[12:18:38] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25565
+[12:18:39] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[12:18:39] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[12:18:39] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[12:18:39] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[12:18:39] [Server thread/INFO]: Preparing level "orbis-test"
+[12:18:39] [Server thread/INFO]: Selecting global world spawn...
+[12:18:40] [Worker-Main-3/INFO]: [world-loop] periodicity_ok level=minecraft:overworld axis=X width_blocks=16384 samples=9
+[12:18:44] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:18:44] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:18:44] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:18:44] [Server thread/INFO]: Loading 0 persistent chunks...
+[12:18:44] [Server thread/INFO]: Preparing spawn area: 100%
+[12:18:44] [Server thread/INFO]: Time elapsed: 4937 ms
+[12:18:44] [Server thread/INFO]: Done (5.834s)! For help, type "help"
+[12:18:44] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[12:18:45] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[12:18:45] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[12:19:27] [Server thread/INFO]: System chat: Orbis | Overworld: 1024 × 1024 chunks | Nether: 128 × 128 | End: unwrapped
+[12:19:27] [Server thread/INFO]: System chat: Orbis: Complete biome and structure coverage is not guaranteed for any size. Existing-world conversion is not available in this alpha.
+[12:19:45] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[12:21:41] [Server thread/INFO]: System chat: Saving the game (this may take a moment!)
+[12:21:41] [Server thread/INFO]: System chat: Saved the game
+[12:21:41] [Server thread/INFO]: System chat: Stopping the server
+[12:21:41] [Server thread/INFO]: Stopping server
+[12:21:41] [Server thread/INFO]: Saving players
+[12:21:41] [Server thread/INFO]: Saving worlds
+[12:21:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[12:21:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[12:21:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+
+=== docs/verification/alpha7/server-gameplay.log ===
+	- fabricloader 0.19.5
+	- minecraft 26.3
+	- orbis 0.1.0-alpha.7
+[12:22:19] [Server thread/INFO]: Starting minecraft server version 26.3
+[12:22:19] [Server thread/INFO]: Loading properties
+[12:22:19] [Server thread/INFO]: Default game type: CREATIVE
+[12:22:19] [Server thread/INFO]: Generating keypair
+[12:22:19] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25565
+[12:22:19] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[12:22:19] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[12:22:19] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[12:22:19] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[12:22:19] [Server thread/INFO]: Preparing level "orbis-test"
+[12:22:20] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:22:20] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:22:20] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:22:20] [Server thread/INFO]: Loading 0 persistent chunks...
+[12:22:20] [Server thread/INFO]: Preparing spawn area: 100%
+[12:22:20] [Server thread/INFO]: Time elapsed: 160 ms
+[12:22:20] [Server thread/INFO]: Done (0.955s)! For help, type "help"
+[12:22:20] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[12:22:20] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[12:22:21] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[12:22:31] [Server thread/INFO]: Disconnecting OrbisTester (/127.0.0.1:33520): You are not white-listed on this server!
+[12:22:31] [Server thread/INFO]: OrbisTester (/127.0.0.1:33520) lost connection: You are not white-listed on this server!
+[12:22:31] [Server thread/WARN]: handleDisconnection() called twice
+[12:22:58] [Server thread/INFO]: System chat: Whitelist is now turned off
+[12:23:19] [Worker-Main-1/INFO]: [world-loop] periodicity_ok level=minecraft:overworld axis=X width_blocks=16384 samples=9
+[12:23:21] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[12:23:35] [Server thread/INFO]: VanillaTester[/127.0.0.1:45024] logged in with entity id 24 at (-9.5, 94.0, 25.5)
+[12:23:35] [Server thread/INFO]: System chat: VanillaTester joined the game
+[12:24:13] [Server thread/INFO]: OrbisTester[/127.0.0.1:34370] logged in with entity id 219 at (-24.5, 83.0, 6.5)
+[12:24:13] [Server thread/INFO]: System chat: OrbisTester joined the game
+[12:24:14] [Server thread/INFO]: System chat: There are 2 of a max of 4 players online: VanillaTester, OrbisTester
+[12:24:46] [Server thread/INFO]: System chat: Set OrbisTester's game mode to Spectator Mode
+[12:24:46] [Server thread/INFO]: System chat: Teleported OrbisTester to -9.500000, 125.000000, 25.500000
+[12:24:46] [Server thread/INFO]: System chat: Set minecraft:overworld to time marker minecraft:day
+[12:24:46] [Server thread/INFO]: System chat: Set the weather to clear
+[12:26:10] [Server thread/INFO]: System chat: OrbisTester has made the advancement [We Need to Go Deeper]
+[12:26:10] [Server thread/INFO]: System chat: Teleported OrbisTester to 0.500000, 64.000000, 0.500000
+[12:26:10] [Worker-Main-2/INFO]: [world-loop] periodicity_ok level=minecraft:the_nether axis=X width_blocks=2048 samples=9
+[12:26:13] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 3078ms or 61 ticks behind
+[12:26:39] [Server thread/INFO]: System chat: Teleported OrbisTester to 1020.500000, 80.000000, 0.500000
+[12:26:39] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [1020.5d, 80.0d, 0.5d]
+[12:26:45] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 5551ms or 111 ticks behind
+[12:26:55] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [1037.6898068585165d, 80.0d, 0.5d]
+[12:26:55] [Server thread/INFO]: System chat: Teleported OrbisTester to 0.500000, 80.000000, 1020.500000
+[12:27:00] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [0.5d, 80.0d, 1020.5d]
+[12:27:00] [Server thread/INFO]: System chat: Teleported OrbisTester to 1020.500000, 80.000000, 1020.500000
+[12:27:02] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2390ms or 47 ticks behind
+[12:27:27] [Server thread/INFO]: System chat: Teleported OrbisTester to 8190.500000, 120.000000, 0.500000
+[12:27:32] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 4195ms or 83 ticks behind
+[12:27:47] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [-8166.05310739432d, 120.0d, 0.5d]
+[12:27:47] [Server thread/INFO]: System chat: Teleported OrbisTester to 0.500000, 120.000000, 8190.500000
+[12:27:54] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 6198ms or 123 ticks behind
+[12:28:06] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [0.5d, 120.0d, -8168.935897397196d]
+[12:28:06] [Server thread/INFO]: System chat: Teleported OrbisTester to 8190.500000, 120.000000, 8190.500000
+[12:28:13] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 3702ms or 74 ticks behind
+[12:28:15] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [-8173.708247717292d, 120.0d, -8173.710144597137d]
+[12:28:15] [Server thread/INFO]: System chat: Teleported OrbisTester to 1022.500000, 80.000000, 0.500000
+[12:28:32] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [-995.7466517688097d, 80.0d, 0.5d]
+[12:28:32] [Server thread/INFO]: System chat: Teleported OrbisTester to 0.500000, 80.000000, 1022.500000
+[12:28:35] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2689ms or 53 ticks behind
+[12:28:53] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [0.5d, 80.0d, -995.8808186770441d]
+[12:28:53] [Server thread/INFO]: System chat: Teleported OrbisTester to 1022.500000, 80.000000, 1022.500000
+[12:29:01] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 8316ms or 166 ticks behind
+[12:29:01] [Server thread/WARN]: OrbisTester moved too quickly! 7.263383516538397,0.0,7.262687379806948
+[12:29:02] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [-1014.371473875542d, 80.0d, -1014.3725404550191d]
+[12:29:02] [Server thread/INFO]: System chat: OrbisTester has made the advancement [The End?]
+[12:29:02] [Server thread/INFO]: System chat: Teleported OrbisTester to 100.500000, 85.000000, 0.500000
+[12:29:06] [Server thread/INFO]: Scanning for legacy world dragon fight...
+[12:29:06] [Server thread/INFO]: Found that the dragon has not yet been killed in this world.
+[12:29:57] [Server thread/INFO]: System chat: Teleported OrbisTester to 8200.500000, 100.000000, 8200.500000
+[12:29:57] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [8200.5d, 100.0d, 8200.5d]
+[12:29:59] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2062ms or 41 ticks behind
+[12:30:13] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [8200.5d, 100.0d, 8200.5d]
+[12:30:13] [Server thread/INFO]: System chat: Teleported OrbisTester to -9.500000, 125.000000, 25.500000
+[12:30:39] [Server thread/INFO]: VanillaTester lost connection: Disconnected
+[12:30:39] [Server thread/INFO]: System chat: VanillaTester left the game
+[12:30:40] [Server thread/INFO]: OrbisTester lost connection: Disconnected
+[12:30:40] [Server thread/INFO]: System chat: OrbisTester left the game
+[12:30:40] [Server thread/INFO]: System chat: Saving the game (this may take a moment!)
+[12:30:40] [Server thread/INFO]: System chat: Saved the game
+[12:30:40] [Server thread/INFO]: System chat: Stopping the server
+[12:30:40] [Server thread/INFO]: Stopping server
+[12:30:40] [Server thread/INFO]: Saving players
+[12:30:40] [Server thread/INFO]: Saving worlds
+[12:30:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+
+=== /workspace/minecraft-test/server/logs/latest.log ===
+	- fabricloader 0.19.5
+	- minecraft 26.3
+	- orbis 0.1.0-alpha.7
+[12:31:42] [Server thread/INFO]: Starting minecraft server version 26.3
+[12:31:42] [Server thread/INFO]: Loading properties
+[12:31:42] [Server thread/INFO]: Default game type: CREATIVE
+[12:31:42] [Server thread/INFO]: Generating keypair
+[12:31:42] [Server thread/INFO]: Starting Minecraft server on 127.0.0.1:25565
+[12:31:42] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[12:31:42] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[12:31:42] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[12:31:42] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[12:31:42] [Server thread/INFO]: Preparing level "orbis-test"
+[12:31:44] [Server thread/INFO]: World shape: minecraft:overworld generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-512..512) z=[-512..512) chunks, width 1024 chunks (16384 blocks) | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:31:44] [Server thread/INFO]: World shape: minecraft:the_nether generator=toroidal_world:toroidal shape=codec identification=TORUS x=[-64..64) z=[-64..64) chunks, width 128 chunks (2048 blocks), scale 1:8 | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:31:44] [Server thread/INFO]: World shape: minecraft:the_end not wrapped generator=toroidal_world:toroidal, a derivable width 1024 chunks (16384 blocks) never reached the generator | mod=0.1.0-alpha.7 mc=26.3 loader=fabric 0.19.5
+[12:31:44] [Server thread/INFO]: Loading 0 persistent chunks...
+[12:31:44] [Server thread/INFO]: Preparing spawn area: 100%
+[12:31:44] [Server thread/INFO]: Time elapsed: 227 ms
+[12:31:44] [Server thread/INFO]: Done (1.910s)! For help, type "help"
+[12:31:44] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[12:31:44] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[12:31:44] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+[12:32:03] [Worker-Main-3/INFO]: [world-loop] periodicity_ok level=minecraft:overworld axis=X width_blocks=16384 samples=9
+[12:32:05] [Server thread/INFO]: VanillaTester[/127.0.0.1:33822] logged in with entity id 21 at (-9.5, 94.0, 25.5)
+[12:32:05] [Server thread/INFO]: System chat: VanillaTester joined the game
+[12:32:10] [Server thread/INFO]: OrbisTester[/127.0.0.1:34920] logged in with entity id 165 at (-9.5, 125.0, 25.5)
+[12:32:10] [Server thread/INFO]: System chat: OrbisTester joined the game
+[12:32:16] [Server thread/INFO]: System chat: There are 2 of a max of 4 players online: VanillaTester, OrbisTester
+[12:32:16] [Server thread/INFO]: System chat: Orbis | Overworld: 1024 × 1024 chunks | Nether: 128 × 128 | End: unwrapped
+[12:32:16] [Server thread/INFO]: System chat: Orbis: Complete biome and structure coverage is not guaranteed for any size. Existing-world conversion is not available in this alpha.
+[12:32:37] [Server thread/INFO]: System chat: Applied effect Night Vision to OrbisTester
+[12:32:37] [Server thread/INFO]: System chat: Teleported OrbisTester to 0.500000, 64.000000, 0.500000
+[12:32:37] [Worker-Main-2/INFO]: [world-loop] periodicity_ok level=minecraft:the_nether axis=X width_blocks=2048 samples=9
+[12:34:51] [Server thread/INFO]: System chat: Successfully filled 20 block(s)
+[12:34:51] [Server thread/INFO]: System chat: Successfully filled 6 block(s)
+[12:34:51] [Server thread/INFO]: System chat: Set OrbisTester's game mode to Creative Mode
+[12:34:51] [Server thread/INFO]: System chat: Teleported OrbisTester to 100.500000, 81.000000, 100.500000
+[12:35:13] [Server thread/INFO]: System chat: OrbisTester has the following entity data: "minecraft:the_nether"
+[12:35:13] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [12.5d, 97.0d, 12.5d]
+[12:35:40] [Server thread/INFO]: System chat: Teleported OrbisTester to 12.500000, 97.000000, 15.500000
+[12:35:59] [Server thread/INFO]: System chat: Teleported OrbisTester to 12.500000, 97.000000, 12.500000
+[12:36:13] [Server thread/INFO]: System chat: OrbisTester has the following entity data: "minecraft:overworld"
+[12:36:13] [Server thread/INFO]: System chat: OrbisTester has the following entity data: [100.5d, 81.0d, 100.5d]
+[12:36:43] [Server thread/INFO]: OrbisTester lost connection: Disconnected
+[12:36:43] [Server thread/INFO]: System chat: OrbisTester left the game
+[12:36:46] [Server thread/INFO]: VanillaTester lost connection: Disconnected
+[12:36:46] [Server thread/INFO]: System chat: VanillaTester left the game
+[12:36:49] [Server thread/INFO]: System chat: Saving the game (this may take a moment!)
+[12:36:49] [Server thread/INFO]: System chat: Saved the game
+[12:36:49] [Server thread/INFO]: System chat: Stopping the server
+[12:36:49] [Server thread/INFO]: Stopping server
+[12:36:49] [Server thread/INFO]: Saving players
+[12:36:49] [Server thread/INFO]: Saving worlds
+[12:36:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:overworld
+[12:36:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_nether
+[12:36:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[orbis-test]'/minecraft:the_end
+
+=== Finaler Vanilla-Client: lesbare Ersatztexte ===
+[12:32:07] [Render thread/INFO]: [System] [CHAT] Orbis: Complete biome and structure coverage is not guaranteed for any size. Existing-world conversion is not available in this alpha.
+[12:32:11] [Render thread/INFO]: [System] [CHAT] OrbisTester hat das Spiel betreten
+[12:32:36] [Render thread/INFO]: [System] [CHAT] Orbis | Overworld: 1024 × 1024 chunks | Nether: 128 × 128 | End: unwrapped
+[12:32:36] [Render thread/INFO]: [System] [CHAT] Orbis: Complete biome and structure coverage is not guaranteed for any size. Existing-world conversion is not available in this alpha.
+[12:36:43] [Render thread/INFO]: [System] [CHAT] OrbisTester hat das Spiel verlassen

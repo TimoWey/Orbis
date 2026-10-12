@@ -1,0 +1,35 @@
+{
+  "normal": {
+    "tests": {
+      "tests": 38,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "file": "orbis-0.1.0-alpha.7.jar",
+    "sha256": "01e58b56731622d381506e90e7d850fba51b4f7ea2307701024ebb0c4d361229",
+    "provenance": {
+      "version": "0.1.0-alpha.7",
+      "variant": "normal",
+      "commit": "914d492bf52cf9938a129f7116f5e8dd8f61e1ed",
+      "source_sha256": "0886e1ea02b8c6cefce8e0999672ad81a58eedc0341c74111831bd2bdbfbaf7d"
+    }
+  },
+  "debug": {
+    "tests": {
+      "tests": 119,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    "file": "orbis-0.1.0-alpha.7-debug.jar",
+    "sha256": "225fe2063a0430d69669db93d2f5ccf2de221e97fb8224bb7b3bc929102c5f30",
+    "provenance": {
+      "version": "0.1.0-alpha.7-debug",
+      "variant": "debug",
+      "commit": "914d492bf52cf9938a129f7116f5e8dd8f61e1ed",
+      "source_sha256": "0886e1ea02b8c6cefce8e0999672ad81a58eedc0341c74111831bd2bdbfbaf7d"
+    }
+  },
+  "ci": "https://github.com/TimoWey/Orbis/actions/runs/37930417665"
+}

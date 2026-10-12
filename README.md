@@ -36,18 +36,21 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha. These features are implemented; in-game validation is still pending. The animations above are illustrations.
+Orbis is an early development alpha (current version **0.1.0-alpha.12**). The features below are implemented. Real Minecraft sessions on a local dedicated server covered all X/Z/corner seam crossings, save and restart, the unwrapped End, the player map and joins from both Orbis and vanilla clients ([test records](docs/IMPLEMENTATION.md#validation)). Broader gameplay and mod compatibility testing remains open. The animations above are illustrations.
 
 - **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges.
-- **A size that suits your world.** Choose one of five presets, try experimental Earth size, or set a custom width.
-- **A connected Nether.** Its width stays eight times smaller than the Overworld, matching Minecraft's usual coordinate scale.
+- **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
+- **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
+- **A small player map.** A corner minimap and a map/globe view (press **M**) show the terrain you have seen and the other players in your dimension. Settings are saved. It works in singleplayer and on servers.
+- **Server ready.** One JAR for server and players; vanilla clients can join too. Operators can run `/orbis check` to look for the expected biomes and structures. See the [server and player guide](docs/SERVER.md).
+- **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
-<!-- Replace each placeholder with an in-game capture when available. -->
-
-| Exploring across an edge | Choosing a world size | Travelling through the Nether |
+| Map | Globe | Minimap |
 | --- | --- | --- |
-| ![Placeholder for an in-game view across a world edge.](docs/media/screenshot-placeholder.svg) | ![Placeholder for the Orbis world-size selection screen.](docs/media/screenshot-placeholder.svg) | ![Placeholder for an in-game Nether journey.](docs/media/screenshot-placeholder.svg) |
+| ![The Orbis atlas in map view, showing explored terrain, a river and two player markers.](docs/verification/alpha10/nearby-atlas.png) | ![The Orbis atlas in globe view, with unexplored terrain shown in two shades of gray.](docs/verification/alpha9/server-globe.png) | ![The round Orbis minimap in the top-left corner of a Minecraft landscape.](docs/verification/alpha9/server-minimap.png) |
+
+Screenshots from the in-game verification runs (German client language).
 
 ## Compatibility
 
@@ -81,38 +84,38 @@ Fabric API is a required dependency. The other mods are separate installations. 
 
 ## World sizes
 
-A few examples from the current alpha presets. Each measurement is the full width of one side of the square world, in blocks.
+Choose a preset or use the size slider and exact chunk input. New selections range from Tiny to Earth, in steps of 16 chunks. Each width is the full side length of the square world. Normal is the default. One chunk is 16 × 16 blocks; areas assume one block equals one metre.
 
-| Size | Overworld | Nether |
-| --- | ---: | ---: |
-| Very small | 2,048 × 2,048 | 256 × 256 |
-| Small | 4,096 × 4,096 | 512 × 512 |
-| Medium / Normal | 16,384 × 16,384 | 2,048 × 2,048 |
-| Large | 32,768 × 32,768 | 4,096 × 4,096 |
-| Very large | 65,536 × 65,536 | 8,192 × 8,192 |
+| Size | Overworld chunks per side | Overworld blocks per side | Area (km², rounded) |
+| --- | ---: | ---: | ---: |
+| Tiny | 1,024 | 16,384 | 268 |
+| Small | 8,832 | 141,312 | 19,969 |
+| Normal | 76,544 | 1,224,704 | 1,499,900 |
+| Large | 625,008 | 10,000,128 | 100,002,560 |
+| Earth | 1,448,160 | 23,170,560 | 536,874,851 |
 
-These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is an additional experimental option with roughly the surface area of our planet, rather than a map of Earth.
+These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Existing smaller alpha saves remain readable.
 
-## Future ideas
+## Not in this alpha
 
-Ideas for future versions; scope and implementation are still open.
+Orbis deliberately stays focused on the wrapping world, its sizes, the fixed 1:8 Nether and the small map. The following ideas are parked, not scheduled:
 
-- **Globe minimap.** A detailed, high-resolution view of your world that you can rotate and zoom into. Add waypoints, name your favourite places, and plan your next journey.
-- **Gentle world curvature.** An optional visual effect that lets you see a slightly curved horizon and atmospheric edge from high mountains or while flying. Building and gravity would keep their familiar Minecraft behaviour.
-- **Exploration journal.** Keep a record of the biomes and landmarks you have visited. Gradually reveal your map and see how much of your finite world you have explored.
-
-## World conversion
-
-Existing-world conversion is planned. The idea is to choose an area of a world you already play, keep your builds, and connect its opposite edges by regenerating and blending selected strips of terrain.
-
-The conversion would work on a copy, with a preview of the affected areas before making changes. It is not available in the current alpha. A biome check for new worlds is also planned.
+- **Converting existing worlds.** Start Orbis in a new world; it does not convert or resize existing saves.
+- **A biome guarantee.** No preset guarantees every biome or structure. `/orbis check` reports what it could confirm.
+- **Visual extras** such as a curved horizon or an exploration journal.
 
 ## Try the alpha
 
-Use a new test world. Build and installation instructions, known limitations and development documentation are in the [project guide](https://github.com/TimoWey/Orbis/blob/orbis-alpha/docs/IMPLEMENTATION.md).
+1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft **26.3** (Java 25).
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.12.jar` in your `mods` folder. Do not install Toroidal World or Exotic Worlds alongside it.
+3. Create a **new** world, set **World Shape: Orbis**, then **Customize** to choose the size.
+
+Back up anything you care about; this is an alpha. Building from source, known limitations and the test records are in the [project guide](docs/IMPLEMENTATION.md). Server setup is in the [server and player guide](docs/SERVER.md); changes per version are in the [changelog](CHANGELOG.md).
 
 ## Inspiration and license
 
-Orbis takes inspiration from [Toroidal World](https://modrinth.com/mod/toroidal-world) and [Circumnavigate](https://modrinth.com/mod/circumnavigate). Its world engine comes from Toroidal World under the MIT License. It ships as a standalone mod; no separate Toroidal World installation is needed.
+Orbis takes inspiration from [Toroidal World](https://modrinth.com/mod/toroidal-world) and [Circumnavigate](https://modrinth.com/mod/circumnavigate). Its world engine is compiled from a pinned Toroidal World source snapshot (commit `0600806`, MIT License). It ships as a standalone mod; no separate engine mod is needed.
 
-Orbis is released under the [MIT License](LICENSE). Upstream credits and source details are recorded in [Sources and licensing](docs/SOURCES_AND_LICENSE.md).
+Toroidal World has since been renamed Exotic Worlds and, from 9 October 2026, is published under the PolyForm Shield license. Orbis keeps using the MIT snapshot and does not copy code from the relicensed versions. Details are in [Sources and licensing](docs/SOURCES_AND_LICENSE.md).
+
+Orbis is released under the [MIT License](LICENSE).
