@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "orbis-gametest",
+  "version": "1.0.0",
+  "name": "Orbis engine game tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.orbis.gametest.TorusClientGameTest"]
+  },
+  "depends": {"orbis": "*"}
+}

@@ -29,6 +29,7 @@ public final class Orbis implements ModInitializer {
 
     @Override public void onInitialize() {
         new com.toroidalworld.ToroidalWorldFabric().onInitialize();
+        dev.orbis.engine.Tori.register();
         WorldOptions.register(OrbisShape.ENABLED);
         OrbisShape.MODULE.register();
         GenerationHooks.atRandomState("orbis:identify", (state, shape, options, seaLevel) -> {
