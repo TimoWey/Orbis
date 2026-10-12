@@ -1,0 +1,39 @@
+{
+  "required": true,
+  "package": "dev.orbis.engine.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "BlendedNoiseMixin",
+    "BlockEntityAccessor",
+    "ChunkAccessMixin",
+    "ChunkMapAccessor",
+    "ChunkMapMixin",
+    "ChunkTrackerMixin",
+    "ChunkTrackingViewMixin",
+    "ChunkTrackingViewPositionedMixin",
+    "DensityFunctionCompilerAccessor",
+    "DistanceManagerAccessor",
+    "LevelChunkMixin",
+    "LevelMixin",
+    "LevelTicksMixin",
+    "MaterialRuleContextMixin",
+    "MaterialSystemAccessor",
+    "NoiseBasedAquiferMixin",
+    "NoiseChunkMixin",
+    "NoiseFunctionMixin",
+    "PlayerChunkSenderMixin",
+    "PlayerListMixin",
+    "ProtoChunkMixin",
+    "RandomStateMixin",
+    "ServerChunkCacheMixin",
+    "ServerLevelMixin",
+    "ShiftANoiseFunctionMixin",
+    "ShiftBNoiseFunctionMixin",
+    "ShiftNoiseFunctionMixin",
+    "StaticCache2DAccessor"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
