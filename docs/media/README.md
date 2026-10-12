@@ -9,7 +9,6 @@ Four quiet diagrams for the README: one folding overview and three independent w
 | `orbis-walk-x.gif` | One east–west lap, followed by a short pause | 12 seconds |
 | `orbis-walk-z.gif` | One north–south lap, followed by a short pause | 12 seconds |
 | `orbis-walk-diagonal.gif` | One offset diagonal lap, followed by a short pause | 14 seconds |
-| `screenshot-placeholder.svg` | Replaceable placeholder for future in-game captures | — |
 
 ## Reproduce
 

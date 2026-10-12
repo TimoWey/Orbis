@@ -1,6 +1,6 @@
 # Debug minimap and atlas
 
-The optional **alpha.6-debug** build adds a corner minimap and an atlas window for local singleplayer worlds. Press **M** to open the larger map; the inset, translucent window leaves Minecraft visible and the world keeps running. Close with M, Escape or Close. The binding can be changed in Minecraft's Controls menu.
+The optional **debug** build (`-PorbisDebug=true`) is a developer tool, not the player map. It adds a survey atlas for local singleplayer worlds on top of everything in the normal build. Press **M** to open the larger map; the inset, translucent window leaves Minecraft visible and the world keeps running. Close with M, Escape or Close. The binding can be changed in Minecraft's Controls menu.
 
 ## Build and install
 
@@ -10,7 +10,7 @@ With Java 25:
 .\gradlew.bat build -PorbisDebug=true
 ```
 
-Install `build/debug/libs/orbis-0.1.0-alpha.10-debug.jar`, replacing the normal Orbis JAR. Do not install both. The normal build produces `build/libs/orbis-0.1.0-alpha.10.jar` without these debug classes, resources or entrypoint. This developer interface requires an integrated singleplayer server. The normal Alpha.10 build now has its own simple multiplayer atlas/minimap and admin server checks; see [Server and player guide](SERVER.md). The normal singleplayer atlas also shares the persistent terrain importer and prioritized capture path. Shared rendering/search helpers live in `dev.orbis.atlas`; `DeveloperClient`, `DeveloperScreen` and `DeveloperSurvey` remain debug-only.
+Install `build/debug/libs/orbis-0.1.0-alpha.11-debug.jar`, replacing the normal Orbis JAR. Do not install both. The normal build produces `build/libs/orbis-0.1.0-alpha.11.jar` without these debug classes, resources or entrypoint. This developer interface requires an integrated singleplayer server. The normal build has its own simple player atlas/minimap and admin server checks; see [Server and player guide](SERVER.md). The normal singleplayer atlas also shares the persistent terrain importer and prioritized capture path. Shared rendering/search helpers live in `dev.orbis.atlas`; `DeveloperClient`, `DeveloperScreen` and `DeveloperSurvey` remain debug-only.
 
 Normal and debug outputs are separate; normal `clean` also removes the nested debug output. Development launch: `gradlew.bat runClient -PorbisDebug=true`. Do not switch build variants while a development client is running. `build` includes `verifyDistribution`, which checks the exact JAR and matching sources without Python. The independent check is `python tools/verify_standalone.py --debug <debug.jar>` (omit `--debug` for normal); it expects the matching sources JAR beside the binary, or accepts `--sources <sources.jar>`. CI builds and verifies both variants separately.
 
@@ -188,7 +188,7 @@ These are in-process elapsed raster timings, not game FPS or server TPS. They ex
 
 **Historical, 2026-10-05 (alpha.2 atlas):** normal/debug packaging and regression tests passed. A Tiny singleplayer world was loaded, both map projections and dragging were exercised, and its four-height sample completed with **51/56 found, 5 unconfirmed**. Compact and maximized layouts were inspected. This was one seed, not a biome-coverage guarantee or performance benchmark. Portal correctness, narration and the full mod compatibility matrix remained unverified.
 
-For the current build, use a new Tiny world and check:
+Historical developer checklist (written for alpha.5/6; waypoints were removed in alpha.8). For a debug build, use a new Tiny world and check:
 
 1. Finish a quick Tiny check and its coarse preview, leave/re-enter and verify neither restarts. Repeat with incomplete Search+, Map+ and Count all; verify each mode/cursor/limit and pause state survives. Resample must return to quick mode without erasing terrain.
 2. HUD positioning and sizes in all corners, facing, different Flat/Globe choices per dimension across restarts, and M/remapped-key/Escape behavior. The unwrapped End remains Flat.
