@@ -36,7 +36,7 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha (current version **0.1.0-alpha.11**). The features below are implemented. Real Minecraft sessions on a local dedicated server covered all X/Z/corner seam crossings, save and restart, the unwrapped End, the player map and joins from both Orbis and vanilla clients ([test records](docs/IMPLEMENTATION.md#validation)). Broader gameplay and mod compatibility testing remains open. The animations above are illustrations.
+Orbis is an early development alpha (current version **0.1.0-alpha.12**). The features below are implemented. Real Minecraft sessions on a local dedicated server covered all X/Z/corner seam crossings, save and restart, the unwrapped End, the player map and joins from both Orbis and vanilla clients ([test records](docs/IMPLEMENTATION.md#validation)). Broader gameplay and mod compatibility testing remains open. The animations above are illustrations.
 
 - **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges.
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
@@ -107,7 +107,7 @@ Orbis deliberately stays focused on the wrapping world, its sizes, the fixed 1:8
 ## Try the alpha
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft **26.3** (Java 25).
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.11.jar` in your `mods` folder. Do not install Toroidal World or Exotic Worlds alongside it.
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.12.jar` in your `mods` folder. Do not install Toroidal World or Exotic Worlds alongside it.
 3. Create a **new** world, set **World Shape: Orbis**, then **Customize** to choose the size.
 
 Back up anything you care about; this is an alpha. Building from source, known limitations and the test records are in the [project guide](docs/IMPLEMENTATION.md). Server setup is in the [server and player guide](docs/SERVER.md); changes per version are in the [changelog](CHANGELOG.md).

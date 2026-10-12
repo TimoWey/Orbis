@@ -2,6 +2,11 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.12 — 2026-10-12
+
+- Server maps remember what you explored: terrain is saved on your computer per server world and shown again after reconnecting. Before, the map only showed the area around you after a new login. Server and players need alpha.12.
+- Documentation brought up to date for the first alpha release.
+
 ## 0.1.0-alpha.11 — 2026-10-09
 
 - Faster first map build: initial capture no longer competes with periodic refreshes, so every loaded chunk gets mapped. In the test world the full map archive was ready about 25% sooner.
