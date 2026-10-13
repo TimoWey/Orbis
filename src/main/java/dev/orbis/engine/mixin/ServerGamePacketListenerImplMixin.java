@@ -69,6 +69,11 @@ public abstract class ServerGamePacketListenerImplMixin implements ClientFrame.H
         return torus == null ? clamped : torus.nearest(clamped, player.getRootVehicle().getZ());
     }
 
+    @Inject(method = "teleport(Lnet/minecraft/world/entity/PositionMoveRotation;Ljava/util/Set;)V", at = @At("HEAD"))
+    private void orbis$teleportFrom(CallbackInfo callback) {
+        if (Tori.of(player.level()) != null) orbis$frame.teleporting(player);
+    }
+
     /** Crossing the seam: the server moves the player by one width, the client keeps walking. */
     @Inject(method = MOVE, at = @At("RETURN"))
     private void orbis$foldPlayer(CallbackInfo callback) {

@@ -20,6 +20,7 @@
     "EntityMixin",
     "EntitySectionCallbackMixin",
     "EntitySectionStorageMixin",
+    "GenerationChunkHolderMixin",
     "LayerLightSectionStorageMixin",
     "LevelChunkMixin",
     "LevelMixin",

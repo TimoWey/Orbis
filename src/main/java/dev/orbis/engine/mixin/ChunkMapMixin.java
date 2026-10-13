@@ -8,6 +8,10 @@ import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
 import dev.orbis.engine.TorusChunkGenerator;
 import dev.orbis.engine.TorusHolder;
+import dev.orbis.engine.net.ClientFrame;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import java.util.function.Consumer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ChunkTrackingView;
@@ -91,9 +95,30 @@ public abstract class ChunkMapMixin {
     @WrapOperation(method = "*", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ChunkTrackingView;"
             + "of(Lnet/minecraft/world/level/ChunkPos;I)Lnet/minecraft/server/level/ChunkTrackingView;"))
     private ChunkTrackingView orbis$torusView(ChunkPos centre, int radius, Operation<ChunkTrackingView> original) {
+        Torus torus = Tori.of(level);
+        // The client holds each chunk once, at its image nearest to the player. A view reaches radius + 1 chunks
+        // (its outer ring included), so it stays narrower than the world where it can; only debug sizes are not.
+        if (torus != null) radius = Math.min(radius, Math.max(1, (torus.widthChunks() - 3) / 2));
         ChunkTrackingView view = original.call(centre, radius);
-        if (view instanceof TorusHolder holder) holder.orbis$setTorus(Tori.of(level));
+        if (view instanceof TorusHolder holder) holder.orbis$setTorus(torus);
         return view;
+    }
+
+    /** After a teleport the long way round in the client frame, the client gets every chunk again at its new place. */
+    @WrapOperation(method = "applyChunkTrackingView", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ChunkTrackingView;"
+            + "difference(Lnet/minecraft/server/level/ChunkTrackingView;Lnet/minecraft/server/level/ChunkTrackingView;"
+            + "Ljava/util/function/Consumer;Ljava/util/function/Consumer;)V"))
+    private void orbis$resendAfterJump(ChunkTrackingView from, ChunkTrackingView to, Consumer<ChunkPos> onEnter,
+                                       Consumer<ChunkPos> onLeave, Operation<Void> original,
+                                       @Local(argsOnly = true) ServerPlayer player) {
+        if (Tori.of(level) == null || !((ClientFrame.Holder) player.connection).orbis$frame().takeJump()) {
+            original.call(from, to, onEnter, onLeave);
+            return;
+        }
+        var left = new LongOpenHashSet();
+        from.forEach(pos -> { if (left.add(pos.pack())) onLeave.accept(pos); });
+        var entered = new LongOpenHashSet();
+        to.forEach(pos -> { if (entered.add(pos.pack())) onEnter.accept(pos); });
     }
 
     /** Spawning and random ticks follow the nearest image of each player. */
