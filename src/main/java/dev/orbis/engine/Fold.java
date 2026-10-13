@@ -3,6 +3,7 @@ package dev.orbis.engine;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import java.util.function.Consumer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -48,6 +49,18 @@ public final class Fold {
         int x = SectionPos.x(packed), z = SectionPos.z(packed);
         if (torus.containsChunk(x) && torus.containsChunk(z)) return packed;
         return SectionPos.asLong(torus.foldChunk(x), SectionPos.y(packed), torus.foldChunk(z));
+    }
+
+    /** The x of the image of a spot nearest to {@code viewer}. */
+    public static double nearX(Entity viewer, double x) {
+        Torus torus = Tori.of(viewer.level());
+        return torus == null ? x : torus.nearest(x, viewer.getX());
+    }
+
+    /** The z of the image of a spot nearest to {@code viewer}. */
+    public static double nearZ(Entity viewer, double z) {
+        Torus torus = Tori.of(viewer.level());
+        return torus == null ? z : torus.nearest(z, viewer.getZ());
     }
 
     /** The image of {@code pos} nearest to {@code reference}. */
