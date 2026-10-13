@@ -40,6 +40,9 @@ jobs:
           java-version: '25'
       - name: Build, regression tests and exact artifact verification
         run: bash gradlew build -PorbisDebug=${{ matrix.debug }} --no-daemon --stacktrace
+      - name: Print requested Minecraft API facts
+        if: always() && matrix.variant == 'normal'
+        run: python3 tools/api_probe.py
       - name: Play the seam in Minecraft (client game test under Xvfb)
         if: matrix.variant == 'normal'
         run: |
