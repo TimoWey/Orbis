@@ -14,6 +14,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -21,6 +23,7 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 
 /**
  * Plays a Tiny world on the new engine: looks over the east seam, checks light and blocks on the far side, walks
@@ -117,6 +120,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             context.runOnClient(mc -> mc.gui.setScreen(null));
 
             checkPortalAcrossNetherSeam(server);
+            checkMobAcrossSeam(context, server, y);
 
             // The corner, where both axes wrap at once.
             int cornerY = surface(context, world, HALF - 4, HALF - 4);
@@ -154,6 +158,42 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             return found.filter(portal::equals).isPresent() ? null : "Found " + found + " instead of " + portal;
         });
         check(problem == null, "Portal across the Nether seam: " + problem);
+    }
+
+    /**
+     * A husk three blocks before the seam notices a villager three blocks past it, walks over and hits it: the
+     * entity search, the distance and the path all take the short way across.
+     */
+    private static void checkMobAcrossSeam(ClientGameTestContext context, TestServerContext server, int y) {
+        server.runCommand("difficulty normal");
+        server.runCommand("summon minecraft:villager " + (HALF + 3) + " " + y + " 0.5 {NoAI:1b,PersistenceRequired:1b}");
+        server.runCommand("summon minecraft:husk " + (HALF - 3) + " " + y + " 0.5 {PersistenceRequired:1b}");
+        String found = server.computeOnServer(s -> {
+            var box = new AABB(HALF - 8, y - 1, -4, HALF + 8, y + 3, 4);
+            var near = s.overworld().getEntities((Entity) null, box, e -> typeName(e).equals("villager"));
+            return near.size() == 1 ? null : near.size() + " villagers in a box over the seam";
+        });
+        check(found == null, found);
+        boolean targeted = false, hurt = false;
+        for (int tick = 0; tick < 400 && !hurt; tick += 10) {
+            context.waitTicks(10);
+            boolean[] state = server.computeOnServer(s -> {
+                Mob husk = null;
+                LivingEntity villager = null;
+                for (Entity e : s.overworld().getEntities(EntityTypeTest.forClass(LivingEntity.class), e -> true)) {
+                    if (typeName(e).equals("husk")) husk = (Mob) e;
+                    if (typeName(e).equals("villager")) villager = (LivingEntity) e;
+                }
+                if (husk == null || villager == null) return new boolean[] {false, false};
+                return new boolean[] {husk.getTarget() == villager, villager.getHealth() < villager.getMaxHealth()};
+            });
+            targeted |= state[0];
+            hurt = state[1];
+        }
+        check(targeted, "The husk never targeted the villager across the seam");
+        check(hurt, "The husk never reached the villager across the seam");
+        server.runCommand("kill @e[type=minecraft:husk]");
+        server.runCommand("kill @e[type=minecraft:villager]");
     }
 
     /** Where the client sees the first entity of a type, or NaN. */

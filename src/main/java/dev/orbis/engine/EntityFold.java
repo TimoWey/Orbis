@@ -1,5 +1,6 @@
 package dev.orbis.engine;
 
+import dev.orbis.engine.mixin.LookControlAccess;
 import dev.orbis.engine.mixin.MoveControlAccess;
 import dev.orbis.engine.mixin.PathNavigationAccess;
 import dev.orbis.engine.net.ClientFrame;
@@ -54,6 +55,9 @@ public final class EntityFold {
         var move = (MoveControlAccess) mob.getMoveControl();
         move.orbis$setWantedX(move.orbis$wantedX() + dx);
         move.orbis$setWantedZ(move.orbis$wantedZ() + dz);
+        var look = (LookControlAccess) mob.getLookControl();
+        look.orbis$setWantedX(look.orbis$wantedX() + dx);
+        look.orbis$setWantedZ(look.orbis$wantedZ() + dz);
         var navigation = mob.getNavigation();
         var access = (PathNavigationAccess) navigation;
         BlockPos target = access.orbis$targetPos();
