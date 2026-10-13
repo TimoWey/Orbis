@@ -44,8 +44,11 @@ jobs:
         if: matrix.variant == 'normal'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
-          xvfb-run -a -s "-screen 0 1280x720x24" bash gradlew runClientGameTest --no-daemon --stacktrace
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 mesa-utils > /dev/null
+          export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+          xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" glxinfo -B | head -20
+          timeout 20m xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
+            bash gradlew runClientGameTest --no-daemon --stacktrace
       - name: Upload game test screenshots and log
         if: always() && matrix.variant == 'normal'
         uses: actions/upload-artifact@v4
