@@ -30,6 +30,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Plays a Tiny world on the new engine: looks over the east seam, checks light and blocks on the far side, walks
@@ -73,6 +74,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                     var preset = settings.getSettings().worldgenLoadContext().lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(TINY);
                     settings.setWorldType(new WorldCreationUiState.WorldTypeEntry(preset));
                     settings.setSeed("8675309");
+                    settings.setGenerateStructures(true);
                 })
                 .create()) {
             var server = world.getServer();
@@ -165,6 +167,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             checkPortalAcrossNetherSeam(server);
             checkMobAcrossSeam(context, server, y);
             checkCombatAcrossSeam(context, world, server, y);
+            checkLocateAcrossSeam(server);
 
             // The corner, where both axes wrap at once.
             int cornerY = surface(context, world, HALF - 4, HALF - 4);
@@ -311,6 +314,28 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         server.runCommand("kill @e[type=minecraft:arrow]");
         heal(server);
         server.runCommand("gamemode creative @a");
+    }
+
+    /**
+     * {@code /locate} searches and measures the short way round: from just before the seam and just past it, twenty
+     * blocks apart, the nearest village is the same distance away give or take those twenty blocks.
+     */
+    private static void checkLocateAcrossSeam(TestServerContext server) {
+        int[] distances = server.computeOnServer(s -> {
+            int[] found = new int[2];
+            int[] xs = {HALF - 10, -HALF + 10};
+            for (int i = 0; i < 2; i++) {
+                var source = s.createCommandSourceStack().withSuppressedOutput().withLevel(s.overworld()).withPosition(new Vec3(xs[i], 80, 0));
+                try {
+                    found[i] = s.getCommands().getDispatcher().execute("locate structure #minecraft:village", source);
+                } catch (CommandSyntaxException e) {
+                    throw new AssertionError("No village found from x=" + xs[i], e);
+                }
+            }
+            return found;
+        });
+        check(Math.abs(distances[0] - distances[1]) <= 30 && distances[0] < HALF,
+                "Nearest village from either side of the seam: " + distances[0] + " and " + distances[1] + " blocks");
     }
 
     private static String mobs(net.minecraft.server.MinecraftServer s, String type) {
