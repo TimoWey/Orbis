@@ -27,6 +27,7 @@
     "LightEngineMixin",
     "LightPacketAccess",
     "LightPropagationMixin",
+    "LivingEntityMixin",
     "LookControlAccess",
     "LookControlMixin",
     "MaterialRuleContextMixin",
