@@ -34,7 +34,7 @@ public final class Fold {
         return ChunkPos.pack(torus.foldChunk(x), torus.foldChunk(z));
     }
 
-    public static int chunkX(@Nullable Torus torus, int chunk) { return torus == null ? chunk : torus.foldChunk(chunk); }
+    public static int chunkCoord(@Nullable Torus torus, int chunk) { return torus == null ? chunk : torus.foldChunk(chunk); }
 
     public static SectionPos section(@Nullable Torus torus, SectionPos pos) {
         if (torus == null || torus.containsChunk(pos.x()) && torus.containsChunk(pos.z())) return pos;

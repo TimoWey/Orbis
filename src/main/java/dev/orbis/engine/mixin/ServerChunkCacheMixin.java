@@ -24,11 +24,11 @@ public abstract class ServerChunkCacheMixin {
 
     @ModifyVariable(method = {"getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
             "getChunkNow", "getChunkFuture", "hasChunk", "getChunkForLighting"}, at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int orbis$foldX(int x) { return Fold.chunkX(orbis$torus(), x); }
+    private int orbis$foldX(int x) { return Fold.chunkCoord(orbis$torus(), x); }
 
     @ModifyVariable(method = {"getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
             "getChunkNow", "getChunkFuture", "hasChunk", "getChunkForLighting"}, at = @At("HEAD"), argsOnly = true, ordinal = 1)
-    private int orbis$foldZ(int z) { return Fold.chunkX(orbis$torus(), z); }
+    private int orbis$foldZ(int z) { return Fold.chunkCoord(orbis$torus(), z); }
 
     @ModifyVariable(method = "blockChanged", at = @At("HEAD"), argsOnly = true)
     private BlockPos orbis$foldBlock(BlockPos pos) { return Fold.block(orbis$torus(), pos); }
