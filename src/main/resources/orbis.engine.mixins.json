@@ -17,6 +17,8 @@
     "DensityFunctionCompilerAccessor",
     "DistanceManagerAccessor",
     "DistanceManagerMixin",
+    "EntitySectionCallbackMixin",
+    "EntitySectionStorageMixin",
     "LayerLightSectionStorageMixin",
     "LevelChunkMixin",
     "LevelMixin",
@@ -26,9 +28,12 @@
     "LightPropagationMixin",
     "MaterialRuleContextMixin",
     "MaterialSystemAccessor",
+    "MoveControlAccess",
     "NoiseBasedAquiferMixin",
     "NoiseChunkMixin",
     "NoiseFunctionMixin",
+    "PathNavigationAccess",
+    "PersistentEntitySectionManagerMixin",
     "PlayerChunkSenderMixin",
     "PlayerListMixin",
     "ProtoChunkMixin",
@@ -41,7 +46,8 @@
     "ShiftBNoiseFunctionMixin",
     "ShiftNoiseFunctionMixin",
     "StaticCache2DAccessor",
-    "TicketStorageMixin"
+    "TicketStorageMixin",
+    "TrackedEntityMixin"
   ],
   "client": [],
   "injectors": {
