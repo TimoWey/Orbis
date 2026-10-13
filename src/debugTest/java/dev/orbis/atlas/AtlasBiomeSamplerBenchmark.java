@@ -24,7 +24,7 @@ class AtlasBiomeSamplerBenchmark {
     @Test void compareIdenticalTinySurveysWithNativeWrappedResolvers() {
         AtlasBiomeSamplerTest.setup();
         var registries = AtlasBiomeSamplerTest.registries;
-        var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
+        var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
         for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
             var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
             var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),

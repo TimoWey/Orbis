@@ -48,7 +48,7 @@ public final class OrbisShape {
     }
 
     /** The vendored engine, for worlds it still owns until stage 5 removes it. */
-    static WorldDimensions applyLegacy(WorldDimensions dimensions, WorldSize size) {
+    public static WorldDimensions applyLegacy(WorldDimensions dimensions, WorldSize size) {
         LoopSpans overworld = LoopSpans.ofWidth(size.overworldChunks());
         // An explicit NONE is intentional: it prevents the engine deriving a
         // toroidal End from the Overworld during dimension setup.
