@@ -8,6 +8,7 @@ import dev.orbis.engine.TorusHolder;
 import net.minecraft.core.BlockPos;
 import java.util.function.Consumer;
 import net.minecraft.util.AbortableIterationConsumer;
+import net.minecraft.util.Continuation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
@@ -48,7 +49,7 @@ public abstract class LevelMixin implements TorusHolder {
                                              AbortableIterationConsumer output, Operation<Void> original) {
         boolean[] aborted = {false};
         AbortableIterationConsumer tracked = entity -> {
-            AbortableIterationConsumer.Continuation next = output.accept(entity);
+            Continuation next = output.accept(entity);
             if (next.shouldAbort()) aborted[0] = true;
             return next;
         };
