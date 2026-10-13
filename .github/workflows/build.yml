@@ -21,7 +21,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +40,21 @@ jobs:
           java-version: '25'
       - name: Build, regression tests and exact artifact verification
         run: bash gradlew build -PorbisDebug=${{ matrix.debug }} --no-daemon --stacktrace
+      - name: Play the seam in Minecraft (client game test under Xvfb)
+        if: matrix.variant == 'normal'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+          xvfb-run -a -s "-screen 0 1280x720x24" bash gradlew runClientGameTest --no-daemon --stacktrace
+      - name: Upload game test screenshots and log
+        if: always() && matrix.variant == 'normal'
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-seam-game-test
+          path: |
+            build/run/**/screenshots/*.png
+            build/run/**/logs/latest.log
+          if-no-files-found: ignore
       - name: Upload mod JAR and sources
         uses: actions/upload-artifact@v4
         with:
