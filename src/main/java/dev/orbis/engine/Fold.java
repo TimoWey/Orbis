@@ -2,7 +2,9 @@ package dev.orbis.engine;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import java.util.function.Consumer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -66,5 +68,42 @@ public final class Fold {
     public static BlockPos inChunk(BlockPos pos, ChunkPos chunk) {
         if (SectionPos.blockToSectionCoord(pos.getX()) == chunk.x() && SectionPos.blockToSectionCoord(pos.getZ()) == chunk.z()) return pos;
         return new BlockPos(chunk.getBlockX(pos.getX() & 15), pos.getY(), chunk.getBlockZ(pos.getZ() & 15));
+    }
+
+    /** {@code box} moved by whole widths so that its centre is the image nearest to the reference. */
+    public static AABB nearest(@Nullable Torus torus, AABB box, double referenceX, double referenceZ) {
+        if (torus == null) return box;
+        double centreX = (box.minX + box.maxX) / 2, centreZ = (box.minZ + box.maxZ) / 2;
+        double dx = torus.nearest(centreX, referenceX) - centreX, dz = torus.nearest(centreZ, referenceZ) - centreZ;
+        return dx == 0 && dz == 0 ? box : box.move(dx, 0, dz);
+    }
+
+    /**
+     * The parts of {@code box} that cover the torus, each moved by whole widths so it overlaps the folded world.
+     * A box at least as wide as the torus is clipped to it instead. Without a torus the box itself is the one part.
+     */
+    public static void pieces(@Nullable Torus torus, AABB box, Consumer<AABB> action) {
+        if (torus == null) {
+            action.accept(box);
+            return;
+        }
+        double[] xs = shifts(torus, box.minX, box.maxX), zs = shifts(torus, box.minZ, box.maxZ);
+        for (double x : xs) {
+            for (double z : zs) {
+                double minX = Double.isNaN(x) ? torus.minBlock() : box.minX + x, maxX = Double.isNaN(x) ? torus.minBlock() + torus.widthBlocks() : box.maxX + x;
+                double minZ = Double.isNaN(z) ? torus.minBlock() : box.minZ + z, maxZ = Double.isNaN(z) ? torus.minBlock() + torus.widthBlocks() : box.maxZ + z;
+                action.accept(new AABB(minX, box.minY, minZ, maxX, box.maxY, maxZ));
+            }
+        }
+    }
+
+    /** The whole-width shifts that bring [min, max] onto the torus on one axis; NaN means clip to the torus. */
+    private static double[] shifts(Torus torus, double min, double max) {
+        int width = torus.widthBlocks();
+        if (max - min >= width) return new double[] {Double.NaN};
+        long first = (long) Math.floor((min - torus.minBlock()) / width), last = (long) Math.floor((max - torus.minBlock()) / width);
+        double[] shifts = new double[(int) (last - first + 1)];
+        for (int i = 0; i < shifts.length; i++) shifts[i] = -(first + i) * (double) width;
+        return shifts;
     }
 }
