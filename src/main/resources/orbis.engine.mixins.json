@@ -30,6 +30,7 @@
     "MaterialSystemAccessor",
     "MoveControlAccess",
     "NoiseBasedAquiferMixin",
+    "NoiseBasedChunkGeneratorMixin",
     "NoiseChunkMixin",
     "NoiseFunctionMixin",
     "PathNavigationAccess",
