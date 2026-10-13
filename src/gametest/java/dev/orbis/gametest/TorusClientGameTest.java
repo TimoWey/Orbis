@@ -8,11 +8,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.LightLayer;
@@ -82,19 +82,19 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
             // Entities: one placed past the seam joins at its folded position, one flying over it is folded back,
             // and the client sees both continuing on its side.
-            server.runCommand("summon minecraft:armor_stand " + (HALF + 2) + " " + y + " 2 {Tags:[\"orbis\"],NoGravity:1b}");
-            server.runCommand("summon minecraft:arrow " + (HALF - 3) + " " + (y + 1) + " -1 {Tags:[\"orbis\"],NoGravity:1b,"
+            server.runCommand("summon minecraft:armor_stand " + (HALF + 2) + " " + y + " 2 {NoGravity:1b}");
+            server.runCommand("summon minecraft:arrow " + (HALF - 3) + " " + (y + 1) + " -1 {NoGravity:1b,"
                     + "Motion:[1.0d,0.0d,0.0d]}");
             context.waitTicks(10);
             String outside = server.computeOnServer(s -> {
                 var torus = Tori.of(s.overworld());
-                for (Entity entity : s.overworld().getEntities(EntityTypeTest.forClass(Entity.class), e -> e.getTags().contains("orbis"))) {
+                for (Entity entity : s.overworld().getEntities(EntityTypeTest.forClass(Entity.class), e -> isProbe(e))) {
                     if (!torus.contains(entity.getBlockX()) || !torus.contains(entity.getBlockZ())) return entity.toString();
                 }
                 return null;
             });
             check(outside == null, "Entity left outside the torus: " + outside);
-            double standX = clientEntityX(context, EntityType.ARMOR_STAND), arrowX = clientEntityX(context, EntityType.ARROW);
+            double standX = clientEntityX(context, "armor_stand"), arrowX = clientEntityX(context, "arrow");
             check(standX > HALF && standX < HALF + 4, "Client sees the armor stand at x=" + standX);
             check(arrowX > HALF + 2 && arrowX < HALF + 32, "Client sees the arrow at x=" + arrowX);
             server.runCommand("rotate @p 90 10");
@@ -120,12 +120,16 @@ public final class TorusClientGameTest implements FabricClientGameTest {
     }
 
     /** Where the client sees the first entity of a type, or NaN. */
-    private static double clientEntityX(ClientGameTestContext context, EntityType<?> type) {
+    private static double clientEntityX(ClientGameTestContext context, String type) {
         return context.computeOnClient(mc -> {
-            for (Entity entity : mc.level.entitiesForRendering()) if (entity.getType() == type) return entity.getX();
+            for (Entity entity : mc.level.entitiesForRendering()) if (typeName(entity).equals(type)) return entity.getX();
             return Double.NaN;
         });
     }
+
+    private static String typeName(Entity entity) { return BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getPath(); }
+
+    private static boolean isProbe(Entity entity) { return typeName(entity).equals("armor_stand") || typeName(entity).equals("arrow"); }
 
     /** Every chunk exists once, at its folded position; a holder anywhere else would never be unloaded. */
     private static void checkHoldersFolded(TestServerContext server) {
