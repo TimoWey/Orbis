@@ -37,20 +37,22 @@ public final class Orbis implements ModInitializer {
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> WORLDS.clear());
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            if (WORLDS.contains(server.overworld().getChunkSource().randomState())) {
+            if (dev.orbis.engine.Tori.of(server.overworld()) != null
+                    || WORLDS.contains(server.overworld().getChunkSource().randomState())) {
                 handler.player.sendSystemMessage(biomeWarning());
             }
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) ->
             dispatcher.register(Commands.literal("orbis").executes(context -> {
                 var server = context.getSource().getServer();
-                if (!WORLDS.contains(server.overworld().getChunkSource().randomState())) {
+                var torus = dev.orbis.engine.Tori.of(server.overworld());
+                if (torus == null && !WORLDS.contains(server.overworld().getChunkSource().randomState())) {
                     context.getSource().sendSuccess(() -> Component.translatableWithFallback("message.orbis.not_orbis",
                             "This is not an Orbis world. Create a new world with World Shape: Orbis."), false);
                     return 0;
                 }
-                var shape = ToroidalWorldApi.shapeOf(server.overworld()).orElseThrow();
-                int width = shape.widthChunks(Direction.Axis.X);
+                int width = torus != null ? torus.widthChunks()
+                        : ToroidalWorldApi.shapeOf(server.overworld()).orElseThrow().widthChunks(Direction.Axis.X);
                 context.getSource().sendSuccess(() -> Component.translatableWithFallback("message.orbis.dimensions",
                         "Orbis | Overworld: %1$s × %1$s chunks | Nether: %2$s × %2$s | End: unwrapped", width, width / 8), false);
                 context.getSource().sendSuccess(Orbis::biomeWarning, false);
