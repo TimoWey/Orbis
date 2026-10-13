@@ -7,6 +7,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,6 +50,10 @@ public final class ClientFrame {
     public double z(Torus torus, ServerPlayer player, double z) {
         follow(player);
         return torus.nearest(z, player.getZ()) + lapZ;
+    }
+
+    public Vec3 position(Torus torus, ServerPlayer player, Vec3 pos) {
+        return new Vec3(x(torus, player, pos.x), pos.y, z(torus, player, pos.z));
     }
 
     /** Absolute positions the server puts the player at keep the player's own lap, wherever they are. */
