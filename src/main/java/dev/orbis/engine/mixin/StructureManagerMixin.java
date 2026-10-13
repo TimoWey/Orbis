@@ -50,6 +50,6 @@ public abstract class StructureManagerMixin {
         Torus torus = orbis$torus();
         if (torus == null) return original.call(box, pos);
         BlockPos centre = box.getCenter();
-        return original.call(box, Fold.nearest(torus, new BlockPos(pos), centre.getX() + 0.5, centre.getZ() + 0.5));
+        return original.call(box, Fold.nearest(torus, new BlockPos(pos.getX(), pos.getY(), pos.getZ()), centre.getX() + 0.5, centre.getZ() + 0.5));
     }
 }

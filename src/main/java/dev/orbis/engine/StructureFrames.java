@@ -27,7 +27,7 @@ public final class StructureFrames {
         int dx = (torus.nearestChunk(home.x(), chunk.x()) - home.x()) * 16;
         int dz = (torus.nearestChunk(home.z(), chunk.z()) - home.z()) * 16;
         if (dx == 0 && dz == 0) return start;
-        return ((Holder) start).orbis$images().computeIfAbsent(ChunkPos.pack(dx, dz), key -> moved(level, start, dx, dz));
+        return ((Holder) (Object) start).orbis$images().computeIfAbsent(ChunkPos.pack(dx, dz), key -> moved(level, start, dx, dz));
     }
 
     private static StructureStart moved(ServerLevel level, StructureStart start, int dx, int dz) {
