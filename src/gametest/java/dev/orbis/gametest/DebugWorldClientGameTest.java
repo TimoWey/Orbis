@@ -43,6 +43,7 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
                             .findFirst().orElseThrow());
                     OrbisShape.MODULE.settings(DEBUG);
                     settings.setSeed("8675309");
+                    settings.setGenerateStructures(true);
                 })
                 .create()) {
             var server = world.getServer();
@@ -86,10 +87,54 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("debug-caves-at-seam");
             server.runCommand("gamemode creative @a");
 
+            checkStructureAcrossSeam(context, world, server);
             checkPortalRoundTrip(context, world, server);
             checkHoldersFolded(server, Level.OVERWORLD);
             checkHoldersFolded(server, Level.NETHER);
         }
+    }
+
+    /**
+     * A structure that generated across the seam, seen from beside it: its pieces on both sides belong to one start.
+     * A surface structure is preferred; otherwise a mineshaft, looked at from inside the rock in spectator mode.
+     */
+    private static void checkStructureAcrossSeam(ClientGameTestContext context, TestSingleplayerContext world, TestServerContext server) {
+        String found = server.computeOnServer(s -> {
+            var level = s.overworld();
+            var registry = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+            String best = null;
+            int bestScore = 0, edge = HALF >> 4;
+            for (int cx : java.util.stream.IntStream.concat(java.util.stream.IntStream.range(edge - 8, edge),
+                    java.util.stream.IntStream.range(-edge, -edge + 8)).toArray()) {
+                for (int cz = -edge; cz < edge; cz++) {
+                    var chunk = level.getChunk(cx, cz, net.minecraft.world.level.chunk.status.ChunkStatus.STRUCTURE_STARTS);
+                    for (var entry : chunk.getAllStarts().entrySet()) {
+                        var box = entry.getValue().getBoundingBox();
+                        if (!(box.maxX() >= HALF || box.minX() < -HALF)) continue;
+                        String name = registry.getKey(entry.getKey()).getPath();
+                        int score = (box.maxY() > 50 ? 1_000_000 : 0) + box.getXSpan() * box.getZSpan();
+                        if (score > bestScore) {
+                            bestScore = score;
+                            int seamX = box.maxX() >= HALF ? HALF : -HALF;
+                            best = name + " " + seamX + " " + (box.minZ() + box.maxZ()) / 2 + " " + box.minY() + " " + box.maxY();
+                        }
+                    }
+                }
+            }
+            return best;
+        });
+        check(found != null, "No structure generated across the seam");
+        System.out.println("Orbis debug test: structure across the seam: " + found);
+        String[] parts = found.split(" ");
+        int seamX = Integer.parseInt(parts[1]), z = Integer.parseInt(parts[2]);
+        int bottom = Integer.parseInt(parts[3]), top = Integer.parseInt(parts[4]);
+        boolean surface = top > 50;
+        server.runCommand("gamemode spectator @a");
+        server.runCommand("tp @a " + (seamX - 16) + " " + (surface ? top + 16 : (bottom + top) / 2 + 2) + " " + z + " -90 " + (surface ? 35 : 10));
+        context.waitTicks(40);
+        waitRendered(context, world);
+        context.takeScreenshot("debug-structure-at-seam-" + parts[0]);
+        server.runCommand("gamemode creative @a");
     }
 
     /** A portal whose two columns sit on either side of the seam, into the 16 × 16 chunk Nether, over its seam and back. */
