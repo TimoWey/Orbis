@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorMixin {
-    @WrapOperation(method = "applyCarvers", at = @At(value = "INVOKE",
+    @WrapOperation(method = "generateCarvers", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/levelgen/WorldgenRandom;setLargeFeatureSeed(JII)V"))
     private void orbis$foldCarverSeed(WorldgenRandom random, long seed, int chunkX, int chunkZ, Operation<Void> original) {
         if ((Object) this instanceof TorusChunkGenerator generator) {
