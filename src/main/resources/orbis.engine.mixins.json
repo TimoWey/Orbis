@@ -46,6 +46,8 @@
     "ShiftBNoiseFunctionMixin",
     "ShiftNoiseFunctionMixin",
     "StaticCache2DAccessor",
+    "StructureManagerMixin",
+    "StructureStartMixin",
     "TicketStorageMixin",
     "TrackedEntityMixin"
   ],
