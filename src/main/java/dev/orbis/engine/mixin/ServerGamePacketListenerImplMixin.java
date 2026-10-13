@@ -54,6 +54,21 @@ public abstract class ServerGamePacketListenerImplMixin implements ClientFrame.H
         return torus == null ? clamped : torus.nearest(clamped, player.getZ());
     }
 
+    /** A vehicle the player steers arrives in the client's frame too; it is read near the vehicle. */
+    @WrapOperation(method = "handleMoveVehicle", at = @At(value = "INVOKE", target = CLAMP, ordinal = 0))
+    private double orbis$vehicleX(double x, Operation<Double> original) {
+        double clamped = original.call(x);
+        Torus torus = Tori.of(player.level());
+        return torus == null ? clamped : torus.nearest(clamped, player.getRootVehicle().getX());
+    }
+
+    @WrapOperation(method = "handleMoveVehicle", at = @At(value = "INVOKE", target = CLAMP, ordinal = 1))
+    private double orbis$vehicleZ(double z, Operation<Double> original) {
+        double clamped = original.call(z);
+        Torus torus = Tori.of(player.level());
+        return torus == null ? clamped : torus.nearest(clamped, player.getRootVehicle().getZ());
+    }
+
     /** Crossing the seam: the server moves the player by one width, the client keeps walking. */
     @Inject(method = MOVE, at = @At("RETURN"))
     private void orbis$foldPlayer(CallbackInfo callback) {
