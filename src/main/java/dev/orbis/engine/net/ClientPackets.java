@@ -50,6 +50,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -82,9 +83,13 @@ public final class ClientPackets {
             }
             case ClientboundLevelChunkWithLightPacket chunk -> {
                 var access = (ChunkPacketAccess) (Object) chunk;
-                access.orbis$setX(frame.chunkX(torus, player, chunk.x()));
-                access.orbis$setZ(frame.chunkZ(torus, player, chunk.z()));
-                return chunk;
+                long[] previous = new long[1];
+                long image = frame.sendChunk(torus, player, new ChunkPos(chunk.x(), chunk.z()), previous);
+                access.orbis$setX(ChunkPos.getX(image));
+                access.orbis$setZ(ChunkPos.getZ(image));
+                if (previous[0] == Long.MIN_VALUE) return chunk;
+                // The client still holds this chunk at its old image: drop that copy first.
+                return new ClientboundBundlePacket(List.of(new ClientboundForgetLevelChunkPacket(ChunkPos.unpack(previous[0])), chunk));
             }
             case ClientboundLightUpdatePacket light -> {
                 var copy = copy(ClientboundLightUpdatePacket.STREAM_CODEC, registryBuffer(player), light);
@@ -94,7 +99,7 @@ public final class ClientPackets {
                 return copy;
             }
             case ClientboundForgetLevelChunkPacket forget -> {
-                return new ClientboundForgetLevelChunkPacket(frame.chunk(torus, player, forget.pos()));
+                return new ClientboundForgetLevelChunkPacket(frame.forgetChunk(torus, player, forget.pos()));
             }
             case ClientboundSetChunkCacheCenterPacket centre -> {
                 return new ClientboundSetChunkCacheCenterPacket(frame.chunkX(torus, player, centre.getX()),
@@ -117,10 +122,10 @@ public final class ClientPackets {
             case ClientboundPlayerPositionPacket position -> {
                 PositionMoveRotation change = position.change();
                 Vec3 at = change.position();
-                double x = position.relatives().contains(Relative.X) ? at.x : frame.ownX(player, at.x);
-                double z = position.relatives().contains(Relative.Z) ? at.z : frame.ownZ(player, at.z);
-                if (x == at.x && z == at.z) return position;
-                return new ClientboundPlayerPositionPacket(position.id(), new PositionMoveRotation(new Vec3(x, at.y, z),
+                Vec3 moved = frame.teleported(torus, player, at, position.relatives().contains(Relative.X),
+                        position.relatives().contains(Relative.Z));
+                if (moved.equals(at)) return position;
+                return new ClientboundPlayerPositionPacket(position.id(), new PositionMoveRotation(moved,
                         change.deltaMovement(), change.yRot(), change.xRot()), position.relatives());
             }
             case ClientboundAddEntityPacket add -> {

@@ -20,7 +20,7 @@ class OrbisGenerationTest {
         if (!WorldOptions.all().contains(OrbisShape.ENABLED)) WorldOptions.register(OrbisShape.ENABLED);
         var registries = VanillaRegistries.createWorldLookup();
         var size = WorldSize.Preset.TINY.size;
-        var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), size);
+        var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), size);
         for (var dimension : java.util.List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
             var generator = (NoiseBasedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
             var fold = ((ShapedChunkGenerator) generator).transformer();
