@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 /** Sight runs to the nearest image of the other entity; the ray reads blocks through the folding chunk lookup. */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
-    @WrapOperation(method = "hasLineOfSight(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/level/ClipContext$Block;Lnet/minecraft/world/level/ClipContext$Fluid;D)Z",
+    @WrapOperation(method = "hasLineOfSight", require = 0,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getEyePosition()Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 orbis$nearestEyes(Entity entity, Operation<Vec3> original) {
         Vec3 eyes = original.call(entity);
