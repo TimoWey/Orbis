@@ -3,7 +3,6 @@ package dev.orbis.gametest;
 import dev.orbis.engine.Tori;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
@@ -47,8 +46,10 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("orbis-spawn");
 
             // East seam: stand six blocks before it, facing east, on a cleared corridor that runs across it.
-            int y = surface(server, HALF - 6, 0);
+            int y = surface(context, world, HALF - 6, 0);
             server.runCommand("tp @a " + (HALF - 6) + " " + y + " 0.5 -90 10");
+            waitLoaded(context, world, HALF - 12, 0);
+            waitLoaded(context, world, HALF + 18, 0);
             world.getConnection().waitForChunksRender();
             server.runCommand("fill " + (HALF - 12) + " " + (y - 1) + " -2 " + (HALF + 18) + " " + (y - 1) + " 2 minecraft:stone");
             server.runCommand("fill " + (HALF - 12) + " " + y + " -2 " + (HALF + 18) + " " + (y + 3) + " 2 minecraft:air");
@@ -70,23 +71,38 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             check(serverX >= -HALF && serverX < -HALF + 32, "Server did not fold the player: x=" + serverX);
             check(clientX > HALF && clientX < HALF + 32, "Client frame jumped at the seam: x=" + clientX);
             context.takeScreenshot("orbis-seam-crossed");
-            server.runCommand("tp @a ~ ~ ~ 90 10");
+            server.runCommand("rotate @p 90 10");
+            context.waitTicks(20);
             world.getConnection().waitForChunksRender();
             context.takeScreenshot("orbis-seam-look-back");
 
             // The corner, where both axes wrap at once.
-            int cornerY = surface(server, HALF - 4, HALF - 4);
-            server.runCommand("tp @a " + (HALF - 4) + " " + (cornerY + 1) + " " + (HALF - 4) + " -45 20");
+            int cornerY = surface(context, world, HALF - 4, HALF - 4);
+            server.runCommand("tp @a " + (HALF - 4) + " " + (cornerY + 12) + " " + (HALF - 4) + " -135 40");
+            context.waitTicks(20);
             world.getConnection().waitForChunksRender();
             context.takeScreenshot("orbis-corner");
         }
     }
 
-    private static int surface(TestServerContext server, int x, int z) {
-        return server.computeOnServer(s -> s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z));
+    /** The column must be loaded before its heightmap means anything, so go there from above first. */
+    private static int surface(ClientGameTestContext context, TestSingleplayerContext world, int x, int z) {
+        world.getServer().runCommand("tp @a " + x + " 320 " + z);
+        waitLoaded(context, world, x, z);
+        world.getConnection().waitForChunksRender();
+        return world.getServer().computeOnServer(s -> s.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z));
     }
 
     private static void check(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
+    }
+
+    /** The client may have nothing to render yet right after a teleport; wait until the server has the column. */
+    private static void waitLoaded(ClientGameTestContext context, TestSingleplayerContext world, int x, int z) {
+        BlockPos pos = new BlockPos(x, 0, z);
+        for (int tick = 0; !world.getServer().computeOnServer(s -> s.overworld().isLoaded(pos)); tick++) {
+            check(tick < 600, "Server never loaded the column at " + x + ", " + z);
+            context.waitTick();
+        }
     }
 }
