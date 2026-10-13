@@ -2,6 +2,9 @@ package dev.orbis.engine.net;
 
 import dev.orbis.engine.Fold;
 import dev.orbis.engine.Torus;
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+import it.unimi.dsi.fastutil.longs.Long2LongMaps;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +27,10 @@ public final class ClientFrame {
 
     private @Nullable Level level;
     private volatile int lapX, lapZ;
+    private @Nullable Vec3 teleportFrom;
+    private volatile boolean jumped;
+    /** Folded chunk to the client-frame position it was last sent at, so it is forgotten exactly there. */
+    private final Long2LongMap sentAt = Long2LongMaps.synchronize(new Long2LongOpenHashMap());
 
     /** A new level starts a new frame, just like the client starts a new level. */
     private void follow(ServerPlayer player) {
@@ -32,6 +39,8 @@ public final class ClientFrame {
             level = current;
             lapX = 0;
             lapZ = 0;
+            sentAt.clear();
+            teleportFrom = null;
         }
     }
 
@@ -56,10 +65,32 @@ public final class ClientFrame {
         return new Vec3(x(torus, player, pos.x), pos.y, z(torus, player, pos.z));
     }
 
-    /** Absolute positions the server puts the player at keep the player's own lap, wherever they are. */
-    public double ownX(ServerPlayer player, double x) { follow(player); return x + lapX; }
+    /** Where the server is about to teleport the player from, in the same level. */
+    public void teleporting(ServerPlayer player) {
+        follow(player);
+        teleportFrom = player.position();
+    }
 
-    public double ownZ(ServerPlayer player, double z) { follow(player); return z + lapZ; }
+    /**
+     * Absolute positions the server puts the player at keep the player's own lap, so the client lands where the
+     * command said. Across the seam that is the long way round in the client frame: the chunks it holds are then
+     * all in the wrong place, which {@link #takeJump()} reports once.
+     */
+    public Vec3 teleported(@Nullable Torus torus, ServerPlayer player, Vec3 at, boolean relativeX, boolean relativeZ) {
+        follow(player);
+        Vec3 from = teleportFrom;
+        teleportFrom = null;
+        if (torus != null && from != null && (!relativeX && torus.nearest(at.x, from.x) != at.x
+                || !relativeZ && torus.nearest(at.z, from.z) != at.z)) jumped = true;
+        return new Vec3(relativeX ? at.x : at.x + lapX, at.y, relativeZ ? at.z : at.z + lapZ);
+    }
+
+    /** Whether the client jumped a whole width since the last call: its chunks must all be sent again. */
+    public boolean takeJump() {
+        boolean was = jumped;
+        jumped = false;
+        return was;
+    }
 
     public BlockPos block(Torus torus, ServerPlayer player, BlockPos pos) {
         follow(player);
@@ -78,6 +109,27 @@ public final class ClientFrame {
 
     public ChunkPos chunk(Torus torus, ServerPlayer player, ChunkPos pos) {
         return new ChunkPos(chunkX(torus, player, pos.x()), chunkZ(torus, player, pos.z()));
+    }
+
+    /**
+     * Where a chunk goes in the client frame, and where the client still holds it from an earlier send, if that is
+     * elsewhere. In a world narrower than the view the nearest image of a chunk changes while it stays in view.
+     */
+    public long sendChunk(Torus torus, ServerPlayer player, ChunkPos folded, long[] previous) {
+        long image = chunk(torus, player, folded).pack();
+        long key = folded.pack();
+        boolean held = sentAt.containsKey(key);
+        long old = sentAt.put(key, image);
+        previous[0] = held && old != image ? old : Long.MIN_VALUE;
+        return image;
+    }
+
+    /** The client-frame position a forgotten chunk was sent at, or its nearest image if it never was. */
+    public ChunkPos forgetChunk(Torus torus, ServerPlayer player, ChunkPos folded) {
+        follow(player);
+        long key = folded.pack();
+        if (sentAt.containsKey(key)) return ChunkPos.unpack(sentAt.remove(key));
+        return chunk(torus, player, folded);
     }
 
     public SectionPos section(Torus torus, ServerPlayer player, SectionPos pos) {

@@ -7,9 +7,14 @@ import com.toroidalworld.api.v1.shape.LoopSpans;
 import com.toroidalworld.api.v1.shape.ShapeDimensions;
 import com.toroidalworld.api.v1.shape.ShapeModule;
 import net.minecraft.core.Direction;
+import dev.orbis.engine.TorusChunkGenerator;
+import java.util.LinkedHashMap;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 
 public final class OrbisShape {
@@ -18,7 +23,32 @@ public final class OrbisShape {
             Identifier.fromNamespaceAndPath("orbis", "finite"), WorldSize.DEFAULT,
             OrbisShape::apply, OrbisShape::read);
 
+    /**
+     * New worlds run on the Orbis engine: the Overworld and the Nether keep their noise settings and biomes, and
+     * their generators become {@code orbis:torus} at 1:8. World types that are not noise-based keep the old engine.
+     */
     public static WorldDimensions apply(WorldDimensions dimensions, WorldSize size) {
+        var overworld = dimensions.get(LevelStem.OVERWORLD).orElse(null);
+        var nether = dimensions.get(LevelStem.NETHER).orElse(null);
+        if (overworld != null && nether != null && overworld.generator() instanceof NoiseBasedChunkGenerator
+                && nether.generator() instanceof NoiseBasedChunkGenerator) {
+            var stems = new LinkedHashMap<>(dimensions.dimensions());
+            stems.put(LevelStem.OVERWORLD, torus(overworld, size.overworldChunks()));
+            stems.put(LevelStem.NETHER, torus(nether, size.netherChunks()));
+            WorldDimensions result = new WorldDimensions(stems);
+            if (read(result) == null) throw new IllegalArgumentException("Invalid Orbis engine dimensions for " + size);
+            return result;
+        }
+        return applyLegacy(dimensions, size);
+    }
+
+    private static LevelStem torus(LevelStem stem, int widthChunks) {
+        var noise = (NoiseBasedChunkGenerator) stem.generator();
+        return new LevelStem(stem.type(), new TorusChunkGenerator(noise.getBiomeSource(), noise.generatorSettings(), widthChunks));
+    }
+
+    /** The vendored engine, for worlds it still owns until stage 5 removes it. */
+    static WorldDimensions applyLegacy(WorldDimensions dimensions, WorldSize size) {
         LoopSpans overworld = LoopSpans.ofWidth(size.overworldChunks());
         // An explicit NONE is intentional: it prevents the engine deriving a
         // toroidal End from the Overworld during dimension setup.
@@ -47,6 +77,8 @@ public final class OrbisShape {
     }
 
     public static WorldSize read(WorldDimensions dimensions) {
+        WorldSize engine = readEngine(dimensions);
+        if (engine != null) return engine;
         if (!owns(dimensions)) return null;
         var overworldStem = dimensions.get(LevelStem.OVERWORLD).orElse(null);
         var netherStem = dimensions.get(LevelStem.NETHER).orElse(null);
@@ -67,5 +99,25 @@ public final class OrbisShape {
             return null;
         }
     }
+    /** An Orbis-engine world: torus Overworld and Nether at exactly 1:8, End untouched. */
+    private static WorldSize readEngine(WorldDimensions dimensions) {
+        ChunkGenerator overworld = generator(dimensions, LevelStem.OVERWORLD), nether = generator(dimensions, LevelStem.NETHER);
+        if (!(overworld instanceof TorusChunkGenerator ow) || !(nether instanceof TorusChunkGenerator ne)
+                || generator(dimensions, LevelStem.END) instanceof TorusChunkGenerator) return null;
+        var overworldType = dimensions.get(LevelStem.OVERWORLD).orElseThrow().type().value();
+        var netherType = dimensions.get(LevelStem.NETHER).orElseThrow().type().value();
+        if (overworldType.coordinateScale() != 1.0 || netherType.coordinateScale() != 8.0) return null;
+        try {
+            WorldSize size = new WorldSize(ow.torus().widthChunks());
+            return ne.torus().equals(ow.torus().nether()) ? size : null;
+        } catch (IllegalArgumentException | IllegalStateException invalid) {
+            return null;
+        }
+    }
+
+    private static ChunkGenerator generator(WorldDimensions dimensions, ResourceKey<LevelStem> key) {
+        return dimensions.get(key).map(LevelStem::generator).orElse(null);
+    }
+
     private OrbisShape() {}
 }

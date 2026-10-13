@@ -137,11 +137,11 @@ public final class OrbisSettingsScreen extends Screen {
                     .append(tr("area", area(valid)).withStyle(ChatFormatting.WHITE)));
             dimensions.setMessage(tr("dimensions", number(valid.overworldChunks()), number(valid.overworldBlocks()),
                     number(valid.netherChunks()), number(valid.netherBlocks())).withStyle(ChatFormatting.GRAY));
-            warning.setMessage(tr(valid.equals(WorldSize.Preset.EARTH.size) ? "earth_warning" : "biome_warning")
+            warning.setMessage(tr(valid.debug() ? "debug_warning" : valid.equals(WorldSize.Preset.EARTH.size) ? "earth_warning" : "biome_warning")
                     .withStyle(ChatFormatting.YELLOW));
         } catch (IllegalArgumentException bad) {
             valid = null;
-            Component error = tr("invalid", number(WorldSize.MIN_CHUNKS), number(WorldSize.EARTH_CHUNKS));
+            Component error = tr("invalid", number(WorldSize.DEBUG_MIN_CHUNKS), number(WorldSize.EARTH_CHUNKS));
             widthInput.setMessage(tr("exact_chunks").append(". ").append(error));
             inputHint.setMessage(error.copy().withStyle(ChatFormatting.YELLOW));
             summary.setMessage(tr("choose_valid").withStyle(ChatFormatting.YELLOW));
@@ -163,7 +163,7 @@ public final class OrbisSettingsScreen extends Screen {
 
         SizeSlider(WorldSize initial, int width) {
             super(0, 0, width, 20, Component.empty(), initial.sliderPosition());
-            displayed = initial.overworldChunks() < WorldSize.MIN_CHUNKS ? WorldSize.Preset.TINY.size : initial;
+            displayed = initial;
             updateMessage();
             setTooltip(Tooltip.create(tr("slider_hint")));
         }
