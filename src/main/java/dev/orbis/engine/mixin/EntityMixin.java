@@ -2,12 +2,16 @@ package dev.orbis.engine.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import dev.orbis.engine.Fold;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /** On a torus the distance between two things is the distance to the nearest image, the way round that is shorter. */
 @Mixin(Entity.class)
@@ -43,6 +47,26 @@ public abstract class EntityMixin {
         Entity self = (Entity) (Object) this;
         double dx = torus.delta(self.getX(), other.getX()), dy = other.getY() - self.getY(), dz = torus.delta(self.getZ(), other.getZ());
         return dx * dx + dz * dz < horizontal * horizontal && dy * dy < vertical * vertical;
+    }
+
+    /** Two entities touching across the seam push each other apart, not along the long way round. */
+    @WrapOperation(method = "push(Lnet/minecraft/world/entity/Entity;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getX()D"))
+    private double orbis$pushX(Entity entity, Operation<Double> original) {
+        return Fold.nearX((Entity) (Object) this, original.call(entity));
+    }
+
+    @WrapOperation(method = "push(Lnet/minecraft/world/entity/Entity;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getZ()D"))
+    private double orbis$pushZ(Entity entity, Operation<Double> original) {
+        return Fold.nearZ((Entity) (Object) this, original.call(entity));
+    }
+
+    @ModifyVariable(method = "lookAt(Lnet/minecraft/commands/arguments/EntityAnchorArgument$Anchor;Lnet/minecraft/world/phys/Vec3;)V",
+            at = @At("HEAD"), argsOnly = true)
+    private Vec3 orbis$lookAtNearest(Vec3 pos) {
+        Entity self = (Entity) (Object) this;
+        return Fold.nearest(orbis$torus(), pos, self.position());
     }
 
     @Unique
