@@ -1,5 +1,7 @@
 package dev.orbis.gametest;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.orbis.atlas.AtlasProbe;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.mixin.ChunkMapAccessor;
@@ -8,11 +10,15 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -35,8 +41,33 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             ResourceKey.create(Registries.WORLD_PRESET, Identifier.fromNamespaceAndPath("orbis", "torus_tiny"));
     private static final int HALF = 8_192;
 
+    /** Classes with engine mixins that this test does not otherwise load; a broken injection fails when they do. */
+    private static final String[] MIXIN_TARGETS = {
+            "net.minecraft.world.entity.animal.equine.Llama",
+            "net.minecraft.world.entity.animal.golem.SnowGolem",
+            "net.minecraft.world.entity.boss.wither.WitherBoss",
+            "net.minecraft.world.entity.monster.Blaze$BlazeAttackGoal",
+            "net.minecraft.world.entity.monster.Ghast",
+            "net.minecraft.world.entity.monster.Ghast$GhastShootFireballGoal",
+            "net.minecraft.world.entity.monster.Witch",
+            "net.minecraft.world.entity.monster.breeze.Shoot",
+            "net.minecraft.world.entity.monster.illager.Illusioner",
+            "net.minecraft.world.entity.monster.zombie.Drowned",
+            "net.minecraft.world.entity.projectile.ShulkerBullet",
+            "net.minecraft.world.entity.ai.goal.LeapAtTargetGoal",
+            "net.minecraft.world.item.CrossbowItem",
+            "net.minecraft.commands.arguments.selector.EntitySelector",
+    };
+
     @Override
     public void runTest(ClientGameTestContext context) {
+        for (String target : MIXIN_TARGETS) {
+            try {
+                Class.forName(target, false, TorusClientGameTest.class.getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw new AssertionError("Missing mixin target " + target, e);
+            }
+        }
         try (TestSingleplayerContext world = context.worldBuilder()
                 .adjustSettings(settings -> {
                     var preset = settings.getSettings().worldgenLoadContext().lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(TINY);
@@ -100,6 +131,18 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                 return null;
             });
             check(outside == null, "Entity left outside the torus: " + outside);
+            for (String selector : new String[] {
+                    "@e[type=minecraft:armor_stand,x=" + (HALF - 4) + ",y=" + (y - 1) + ",z=-1,dx=6,dy=3,dz=3]",
+                    "@e[type=minecraft:armor_stand,x=" + (HALF - 1) + ",y=" + y + ",z=2,distance=..4]"}) {
+                int selected = server.computeOnServer(s -> {
+                    try {
+                        return EntityArgument.entities().parse(new StringReader(selector)).findEntities(s.createCommandSourceStack()).size();
+                    } catch (CommandSyntaxException e) {
+                        throw new AssertionError(e);
+                    }
+                });
+                check(selected == 1, selector + " selected " + selected + " armor stands across the seam");
+            }
             double standX = clientEntityX(context, "armor_stand"), arrowX = clientEntityX(context, "arrow");
             check(standX > HALF && standX < HALF + 4, "Client sees the armor stand at x=" + standX);
             check(arrowX > HALF + 2 && arrowX < HALF + 32, "Client sees the arrow at x=" + arrowX);
@@ -121,6 +164,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
             checkPortalAcrossNetherSeam(server);
             checkMobAcrossSeam(context, server, y);
+            checkCombatAcrossSeam(context, world, server, y);
 
             // The corner, where both axes wrap at once.
             int cornerY = surface(context, world, HALF - 4, HALF - 4);
@@ -194,6 +238,97 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         check(hurt, "The husk never reached the villager across the seam");
         server.runCommand("kill @e[type=minecraft:husk]");
         server.runCommand("kill @e[type=minecraft:villager]");
+    }
+
+    /**
+     * Fighting over the seam, with the player just before it and the mobs just past it: the player's hit lands, a
+     * zombie's blow knocks the player away from it rather than toward it, and a skeleton's arrows fly across and hit.
+     */
+    private static void checkCombatAcrossSeam(ClientGameTestContext context, TestSingleplayerContext world,
+                                              TestServerContext server, int y) {
+        server.runCommand("difficulty normal");
+        server.runCommand("tp @a " + (HALF - 1.5) + " " + y + " 0.5 -90 20");
+        server.runCommand("summon minecraft:zombie " + (HALF + 1) + " " + y + " 0.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b}");
+        server.runCommand("item replace entity @e[type=minecraft:zombie] armor.head with minecraft:leather_helmet");
+        context.waitTicks(10);
+        world.getConnection().waitForChunksRender();
+        String aimed = context.computeOnClient(mc -> mc.crosshairPickEntity == null ? "nothing" : typeName(mc.crosshairPickEntity));
+        check(aimed.equals("zombie"), "The crosshair is on " + aimed + ", not the zombie past the seam");
+        // The client attacks what its crosshair is on, as a click would; the server must accept the reach.
+        context.runOnClient(mc -> mc.gameMode.attack(mc.player, mc.crosshairPickEntity));
+        context.waitTicks(5);
+        context.takeScreenshot("orbis-hit-across-seam");
+        String hitBy = server.computeOnServer(s -> {
+            for (Entity e : s.overworld().getEntities(EntityTypeTest.forClass(Mob.class), e -> typeName(e).equals("zombie"))) {
+                DamageSource source = ((Mob) e).getLastDamageSource();
+                return source == null ? "nothing" : source.getMsgId() + (source.getEntity() == null ? "" : " by " + typeName(source.getEntity()));
+            }
+            return "no zombie";
+        });
+        check(hitBy.equals("player by player"), "The player's hit on the zombie past the seam did not count: hurt by " + hitBy);
+        server.runCommand("kill @e[type=minecraft:zombie]");
+
+        // A zombie with its AI walks up across the seam and hits; the blow pushes the player west, away from it.
+        server.runCommand("gamemode survival @a");
+        server.runCommand("summon minecraft:zombie " + (HALF + 3) + " " + y + " 0.5 {PersistenceRequired:1b,Silent:1b}");
+        double startX = context.computeOnClient(mc -> mc.player.getX());
+        double westmost = startX;
+        boolean hurt = false;
+        for (int tick = 0; tick < 200 && !hurt; tick += 2) {
+            context.waitTicks(2);
+            hurt = context.computeOnClient(mc -> mc.player.getHealth() < mc.player.getMaxHealth());
+        }
+        check(hurt, "The zombie never hit the player across the seam");
+        for (int tick = 0; tick < 8; tick++) {
+            context.waitTick();
+            westmost = Math.min(westmost, context.computeOnClient(mc -> mc.player.getX()));
+        }
+        check(westmost < startX - 0.2, "The zombie's blow did not push the player away from it: x " + startX + " -> " + westmost);
+        server.runCommand("kill @e[type=minecraft:zombie]");
+        heal(server);
+
+        // A skeleton past the seam shoots the player before it.
+        server.runCommand("tp @a " + (HALF - 4) + " " + y + " 0.5 -90 0");
+        server.runCommand("summon minecraft:skeleton " + (HALF + 8) + " " + y + " 0.5 {PersistenceRequired:1b,Silent:1b}");
+        server.runCommand("item replace entity @e[type=minecraft:skeleton] weapon.mainhand with minecraft:bow");
+        server.runCommand("item replace entity @e[type=minecraft:skeleton] armor.head with minecraft:leather_helmet");
+        boolean shot = false;
+        String seen = "";
+        for (int tick = 0; tick < 300 && !shot; tick += 5) {
+            context.waitTicks(5);
+            String state = server.computeOnServer(s -> {
+                ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+                DamageSource source = player.getLastDamageSource();
+                return (source != null && source.is(DamageTypes.ARROW)) + " " + (source == null ? "-" : source.getMsgId())
+                        + " hp=" + player.getHealth() + " x=" + player.getX() + mobs(s, "skeleton") + mobs(s, "arrow");
+            });
+            shot = state.startsWith("true");
+            if (!state.equals(seen)) seen = seen + " | " + tick + ": " + state;
+        }
+        context.takeScreenshot("orbis-skeleton-across-seam");
+        check(shot, "The skeleton's arrows never hit the player across the seam:" + seen);
+        server.runCommand("kill @e[type=minecraft:skeleton]");
+        server.runCommand("kill @e[type=minecraft:arrow]");
+        heal(server);
+        server.runCommand("gamemode creative @a");
+    }
+
+    private static String mobs(net.minecraft.server.MinecraftServer s, String type) {
+        StringBuilder out = new StringBuilder();
+        for (Entity e : s.overworld().getAllEntities()) {
+            if (!typeName(e).equals(type)) continue;
+            out.append(' ').append(type).append('@').append(Math.round(e.getX() * 10) / 10.0).append(',').append(Math.round(e.getY() * 10) / 10.0);
+            if (e instanceof Mob mob) out.append(" t=").append(mob.getTarget() == null ? "-" : typeName(mob.getTarget()))
+                    .append(" hand=").append(mob.getMainHandItem().getItem()).append(" hp=").append(mob.getHealth());
+        }
+        return out.toString();
+    }
+
+    private static void heal(TestServerContext server) {
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.setHealth(player.getMaxHealth());
+        });
     }
 
     /** Where the client sees the first entity of a type, or NaN. */
