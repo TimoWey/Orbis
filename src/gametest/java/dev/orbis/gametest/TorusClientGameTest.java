@@ -1,5 +1,6 @@
 package dev.orbis.gametest;
 
+import dev.orbis.atlas.AtlasProbe;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.mixin.ChunkMapAccessor;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -14,6 +15,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
@@ -102,6 +105,19 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             world.getConnection().waitForChunksRender();
             context.takeScreenshot("orbis-seam-look-back");
 
+            // The map shows the torus: one frame of the world's width, and the terrain just crossed folded into it.
+            context.waitTicks(20);
+            String frame = context.computeOnClient(mc -> AtlasProbe.frame());
+            check(("true " + -HALF + " " + -HALF + " " + 2 * HALF).equals(frame), "Map frame is " + frame);
+            long outsideCells = context.computeOnClient(mc -> AtlasProbe.cellsOutside());
+            check(outsideCells == 0, outsideCells + " map cells lie outside the torus");
+            context.runOnClient(AtlasProbe::openMap);
+            context.waitTicks(10);
+            context.takeScreenshot("orbis-map-at-seam");
+            context.runOnClient(mc -> mc.gui.setScreen(null));
+
+            checkPortalAcrossNetherSeam(server);
+
             // The corner, where both axes wrap at once.
             int cornerY = surface(context, world, HALF - 4, HALF - 4);
             server.runCommand("tp @a " + (HALF - 4) + " " + (cornerY + 12) + " " + (HALF - 4) + " -135 40");
@@ -117,6 +133,27 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             context.waitTicks(2);
             checkHoldersFolded(server);
         }
+    }
+
+    /**
+     * The Nether is exactly an eighth of the Overworld. A portal just inside its west edge is the one found from an
+     * exit just inside its east edge, five blocks away across the seam rather than the whole width.
+     */
+    private static void checkPortalAcrossNetherSeam(TestServerContext server) {
+        String problem = server.computeOnServer(s -> {
+            var nether = s.getLevel(Level.NETHER);
+            var torus = Tori.of(nether);
+            if (torus == null) return "Nether is not on the new engine";
+            if (torus.widthBlocks() * 8 != Tori.of(s.overworld()).widthBlocks()) return "Nether width " + torus.widthBlocks();
+            BlockPos portal = new BlockPos(torus.minBlock() + 2, 64, 0);
+            BlockPos exit = new BlockPos(torus.minBlock() + torus.widthBlocks() - 3, 64, 0);
+            nether.getChunk(portal);
+            nether.getChunk(exit);
+            nether.setBlock(portal, Blocks.NETHER_PORTAL.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+            var found = nether.getPortalForcer().findClosestPortalPosition(exit, true, nether.getWorldBorder());
+            return found.filter(portal::equals).isPresent() ? null : "Found " + found + " instead of " + portal;
+        });
+        check(problem == null, "Portal across the Nether seam: " + problem);
     }
 
     /** Where the client sees the first entity of a type, or NaN. */

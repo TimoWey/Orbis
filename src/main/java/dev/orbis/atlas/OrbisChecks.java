@@ -1,13 +1,11 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.api.v1.ToroidalWorldApi;
 import java.util.*;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -53,12 +51,11 @@ public final class OrbisChecks {
         List<DimensionCheck> dimensions = new ArrayList<>();
         for (var key : List.of(Level.OVERWORLD, Level.NETHER)) {
             var level = server.getLevel(key);
-            var shape = level == null ? null : ToroidalWorldApi.shapeOf(level).orElse(null);
-            if (shape == null || !shape.loops(Direction.Axis.X) || !shape.loops(Direction.Axis.Z)) {
+            var shape = level == null ? AtlasShape.OPEN : AtlasShape.server(level);
+            if (!shape.wrapped()) {
                 reply(source, "Check benötigt eine endliche Orbis-Oberwelt und einen endlichen Nether."); return 0;
             }
-            dimensions.add(new DimensionCheck(level, shape.minBlock(Direction.Axis.X), shape.minBlock(Direction.Axis.Z),
-                    shape.widthBlocks(Direction.Axis.X), biomes, structures));
+            dimensions.add(new DimensionCheck(level, shape.minX(), shape.minZ(), shape.span(), biomes, structures));
         }
         JOBS.put(server, new Job(source, dimensions)); RESULTS.remove(server);
         reply(source, "Check gestartet: Oberwelt + Nether. Läuft im Hintergrund; Status mit /orbis check status.");
