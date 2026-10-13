@@ -9,7 +9,6 @@ import dev.orbis.engine.mixin.SectionBlocksPacketAccess;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.Packet;
@@ -58,14 +57,14 @@ public final class ClientPackets {
                 return changed ? new ClientboundBundlePacket(parts) : bundle;
             }
             case ClientboundLevelChunkWithLightPacket chunk -> {
-                var access = (ChunkPacketAccess) chunk;
+                var access = (ChunkPacketAccess) (Object) chunk;
                 access.orbis$setX(frame.chunkX(torus, player, chunk.x()));
                 access.orbis$setZ(frame.chunkZ(torus, player, chunk.z()));
                 return chunk;
             }
             case ClientboundLightUpdatePacket light -> {
-                var copy = copy(ClientboundLightUpdatePacket.STREAM_CODEC, new FriendlyByteBuf(Unpooled.buffer()), light);
-                var access = (LightPacketAccess) copy;
+                var copy = copy(ClientboundLightUpdatePacket.STREAM_CODEC, registryBuffer(player), light);
+                var access = (LightPacketAccess) (Object) copy;
                 access.orbis$setX(frame.chunkX(torus, player, light.x()));
                 access.orbis$setZ(frame.chunkZ(torus, player, light.z()));
                 return copy;
@@ -81,15 +80,14 @@ public final class ClientPackets {
                 return new ClientboundBlockUpdatePacket(frame.block(torus, player, block.getPos()), block.getBlockState());
             }
             case ClientboundSectionBlocksUpdatePacket blocks -> {
-                var copy = copy(ClientboundSectionBlocksUpdatePacket.STREAM_CODEC, new FriendlyByteBuf(Unpooled.buffer()), blocks);
-                var access = (SectionBlocksPacketAccess) copy;
-                access.orbis$setSectionPos(frame.section(torus, player, ((SectionBlocksPacketAccess) blocks).orbis$sectionPos()));
+                var copy = copy(ClientboundSectionBlocksUpdatePacket.STREAM_CODEC, registryBuffer(player), blocks);
+                var access = (SectionBlocksPacketAccess) (Object) copy;
+                access.orbis$setSectionPos(frame.section(torus, player, ((SectionBlocksPacketAccess) (Object) blocks).orbis$sectionPos()));
                 return copy;
             }
             case ClientboundBlockEntityDataPacket blockEntity -> {
-                var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.level().registryAccess());
-                var copy = copy(ClientboundBlockEntityDataPacket.STREAM_CODEC, buffer, blockEntity);
-                ((BlockEntityDataPacketAccess) copy).orbis$setPos(frame.block(torus, player, blockEntity.getPos()));
+                var copy = copy(ClientboundBlockEntityDataPacket.STREAM_CODEC, registryBuffer(player), blockEntity);
+                ((BlockEntityDataPacketAccess) (Object) copy).orbis$setPos(frame.block(torus, player, blockEntity.getPos()));
                 return copy;
             }
             case ClientboundPlayerPositionPacket position -> {
@@ -107,8 +105,12 @@ public final class ClientPackets {
         }
     }
 
+    private static RegistryFriendlyByteBuf registryBuffer(ServerPlayer player) {
+        return new RegistryFriendlyByteBuf(Unpooled.buffer(), player.level().registryAccess());
+    }
+
     /** An independent copy through the packet's own codec, so a packet shared between players stays untouched. */
-    private static <B extends FriendlyByteBuf, T> T copy(StreamCodec<B, T> codec, B buffer, T packet) {
+    private static <T> T copy(StreamCodec<? super RegistryFriendlyByteBuf, T> codec, RegistryFriendlyByteBuf buffer, T packet) {
         try {
             codec.encode(buffer, packet);
             return codec.decode(buffer);
