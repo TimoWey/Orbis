@@ -47,8 +47,25 @@ jobs:
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 mesa-utils > /dev/null
           export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
           xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" glxinfo -B | head -20
+          # If the game is still running after ten minutes it is stuck: print thread dumps every two minutes.
+          (
+            sleep 600
+            while true; do
+              for pid in $(jps -l | grep -v -i -e gradle -e jps | awk '{print $1}'); do
+                echo "=== jstack $pid at $(date -u +%T)"
+                jstack "$pid" | head -n 800
+              done
+              sleep 120
+            done
+          ) &
+          watchdog=$!
+          set +e
           timeout 20m xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
             bash gradlew runClientGameTest --no-daemon --stacktrace
+          status=$?
+          kill "$watchdog" 2> /dev/null
+          for log in $(find build/run -path '*logs/latest.log'); do echo "=== tail $log"; tail -n 150 "$log"; done
+          exit $status
       - name: Upload game test screenshots and log
         if: always() && matrix.variant == 'normal'
         uses: actions/upload-artifact@v4
