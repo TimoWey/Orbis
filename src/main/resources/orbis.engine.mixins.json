@@ -16,6 +16,7 @@
     "ConnectionMixin",
     "DensityFunctionCompilerAccessor",
     "DistanceManagerAccessor",
+    "DistanceManagerMixin",
     "LayerLightSectionStorageMixin",
     "LevelChunkMixin",
     "LevelMixin",
@@ -39,7 +40,8 @@
     "ShiftANoiseFunctionMixin",
     "ShiftBNoiseFunctionMixin",
     "ShiftNoiseFunctionMixin",
-    "StaticCache2DAccessor"
+    "StaticCache2DAccessor",
+    "TicketStorageMixin"
   ],
   "client": [],
   "injectors": {
