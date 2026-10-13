@@ -14,6 +14,7 @@ import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.util.StaticCache2D;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.TicketStorage;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -44,11 +45,14 @@ public abstract class ChunkMapMixin {
     }
 
     @Shadow public abstract net.minecraft.server.level.DistanceManager getDistanceManager();
+    @Shadow private TicketStorage ticketStorage;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void orbis$foldTickets(CallbackInfo callback) {
         Torus torus = Tori.of(level);
         if (torus == null) return;
+        ((TorusHolder) getDistanceManager()).orbis$setTorus(torus);
+        ((TorusHolder) ticketStorage).orbis$setTorus(torus);
         var trackers = (DistanceManagerAccessor) getDistanceManager();
         ((TorusHolder) trackers.orbis$loading()).orbis$setTorus(torus);
         ((TorusHolder) trackers.orbis$simulation()).orbis$setTorus(torus);

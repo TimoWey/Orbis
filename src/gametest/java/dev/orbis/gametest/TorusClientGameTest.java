@@ -15,7 +15,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Plays a Tiny world on the new engine: looks over the east seam, checks light and blocks on the far side, walks
- * across it and looks back, then visits the corner. Screenshots land in the run directory's screenshots folder.
+ * across it and looks back, visits the corner, then leaves and checks that the seam unloads. Screenshots land in the
+ * run directory's screenshots folder.
  */
 public final class TorusClientGameTest implements FabricClientGameTest {
     private static final ResourceKey<net.minecraft.world.level.levelgen.presets.WorldPreset> TINY =
@@ -82,7 +83,21 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             context.waitTicks(20);
             world.getConnection().waitForChunksRender();
             context.takeScreenshot("orbis-corner");
+
+            // Leave both seams. Nothing may keep them loaded once the player is gone, or saving the world on
+            // exit waits forever for those chunks to unload.
+            surface(context, world, 0, 0);
+            for (int tick = 0; seamLoaded(world); tick++) {
+                check(tick < 600, "Chunks at the seam stayed loaded after the player left");
+                context.waitTick();
+            }
         }
+    }
+
+    private static boolean seamLoaded(TestSingleplayerContext world) {
+        return world.getServer().computeOnServer(s -> s.overworld().isLoaded(new BlockPos(HALF - 6, 0, 0))
+                || s.overworld().isLoaded(new BlockPos(-HALF + 6, 0, 0))
+                || s.overworld().isLoaded(new BlockPos(HALF - 4, 0, HALF - 4)));
     }
 
     /** The column must be loaded before its heightmap means anything, so go there from above first. */
