@@ -36,6 +36,7 @@
     "PersistentEntitySectionManagerMixin",
     "PlayerChunkSenderMixin",
     "PlayerListMixin",
+    "PortalForcerMixin",
     "ProtoChunkMixin",
     "RandomStateMixin",
     "SectionBlocksPacketAccess",
