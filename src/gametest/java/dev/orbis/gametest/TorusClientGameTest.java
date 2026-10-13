@@ -1,22 +1,25 @@
 package dev.orbis.gametest;
 
 import dev.orbis.engine.Tori;
+import dev.orbis.engine.mixin.ChunkMapAccessor;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Plays a Tiny world on the new engine: looks over the east seam, checks light and blocks on the far side, walks
- * across it and looks back, visits the corner, then leaves and checks that the seam unloads. Screenshots land in the
- * run directory's screenshots folder.
+ * across it and looks back, visits the corner, then leaves straight after a teleport over the seam. Screenshots
+ * land in the run directory's screenshots folder.
  */
 public final class TorusClientGameTest implements FabricClientGameTest {
     private static final ResourceKey<net.minecraft.world.level.levelgen.presets.WorldPreset> TINY =
@@ -72,6 +75,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             check(serverX >= -HALF && serverX < -HALF + 32, "Server did not fold the player: x=" + serverX);
             check(clientX > HALF && clientX < HALF + 32, "Client frame jumped at the seam: x=" + clientX);
             context.takeScreenshot("orbis-seam-crossed");
+            checkHoldersFolded(server);
             server.runCommand("rotate @p 90 10");
             context.waitTicks(20);
             world.getConnection().waitForChunksRender();
@@ -84,20 +88,28 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             world.getConnection().waitForChunksRender();
             context.takeScreenshot("orbis-corner");
 
-            // Leave both seams. Nothing may keep them loaded once the player is gone, or saving the world on
-            // exit waits forever for those chunks to unload.
-            surface(context, world, 0, 0);
-            for (int tick = 0; seamLoaded(world); tick++) {
-                check(tick < 600, "Chunks at the seam stayed loaded after the player left");
-                context.waitTick();
-            }
+            checkHoldersFolded(server);
+
+            // Leave right after a long teleport across the seam. A player counted at an unfolded chunk left a
+            // holder behind that never unloaded, and saving on exit then waited for it forever.
+            server.runCommand("tp @a " + (HALF - 40) + " 200 " + (-HALF + 40));
+            context.waitTicks(2);
+            checkHoldersFolded(server);
         }
     }
 
-    private static boolean seamLoaded(TestSingleplayerContext world) {
-        return world.getServer().computeOnServer(s -> s.overworld().isLoaded(new BlockPos(HALF - 6, 0, 0))
-                || s.overworld().isLoaded(new BlockPos(-HALF + 6, 0, 0))
-                || s.overworld().isLoaded(new BlockPos(HALF - 4, 0, HALF - 4)));
+    /** Every chunk exists once, at its folded position; a holder anywhere else would never be unloaded. */
+    private static void checkHoldersFolded(TestServerContext server) {
+        String stray = server.computeOnServer(s -> {
+            var torus = Tori.of(s.overworld());
+            var chunks = ((ChunkMapAccessor) s.overworld().getChunkSource().chunkMap).orbis$updatingChunks();
+            for (long key : chunks.keySet()) {
+                int x = ChunkPos.getX(key), z = ChunkPos.getZ(key);
+                if (!torus.containsChunk(x) || !torus.containsChunk(z)) return "[" + x + ", " + z + "]";
+            }
+            return null;
+        });
+        check(stray == null, "Chunk holder outside the torus at " + stray);
     }
 
     /** The column must be loaded before its heightmap means anything, so go there from above first. */
