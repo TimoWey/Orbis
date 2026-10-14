@@ -3,6 +3,7 @@ package dev.orbis.gametest;
 import static dev.orbis.gametest.SeamWorld.*;
 
 import dev.orbis.engine.Tori;
+import dev.orbis.engine.mixin.ChunkMapAccessor;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -282,7 +283,7 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         // The blast hurts a zombie in a chunk that does not tick yet, but only a ticking one moves; wait for it.
         BlockPos standing = BlockPos.containing(before);
         for (int tick = 0; !server.computeOnServer(sv -> place.level(sv).isPositionEntityTicking(standing)); tick++) {
-            check(tick < 600, where + ": the zombie past the seam never ticks at " + standing.toShortString());
+            check(tick < 600, where + ": the zombie past the seam never ticks at " + standing.toShortString() + ";" + chunkState(server, place, standing));
             context.waitTick();
         }
         server.runCommand(place.in("summon minecraft:tnt " + seam.at(half, -0.5, y, mid) + " {fuse:20}"));
@@ -321,6 +322,30 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
             for (Entity e : place.level(sv).getAllEntities()) {
                 if (e instanceof LivingEntity) out.append(' ').append(typeName(e)).append('@').append(e.blockPosition().toShortString())
                         .append(e.isRemoved() ? " removed " + e.getRemovalReason() : "");
+            }
+            return out.toString();
+        });
+    }
+
+    /** How the chunk at a spot and the chunk under each player stand with the server, for a failure message. */
+    private static String chunkState(TestServerContext server, Place place, BlockPos spot) {
+        return server.computeOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            StringBuilder out = new StringBuilder();
+            java.util.List<BlockPos> spots = new java.util.ArrayList<>(java.util.List.of(spot));
+            for (ServerPlayer player : level.players()) spots.add(player.blockPosition());
+            var distances = level.getChunkSource().chunkMap.getDistanceManager();
+            var holders = ((ChunkMapAccessor) level.getChunkSource().chunkMap).orbis$updatingChunks();
+            for (BlockPos at : spots) {
+                long key = ChunkPos.pack(at);
+                var holder = holders.get(key);
+                out.append(" chunk ").append(ChunkPos.unpack(key)).append(" at ").append(at.toShortString())
+                        .append(": simulation ").append(distances.getChunkLevel(key, true))
+                        .append(" loading ").append(distances.getChunkLevel(key, false))
+                        .append(" entityTicking ").append(distances.inEntityTickingRange(key))
+                        .append(" entitiesLoaded ").append(level.areEntitiesLoaded(key))
+                        .append(" holder ").append(holder == null ? "none" : holder.getTicketLevel() + "/" + holder.getFullStatus())
+                        .append(" players ").append(distances.hasPlayersNearby(key)).append(';');
             }
             return out.toString();
         });
