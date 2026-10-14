@@ -25,6 +25,8 @@ Orbis is built around a different idea: a world small enough to get to know. Dis
 
 ![A square landscape folds into a cylinder and then a torus. The map on the right stays unchanged.](URL_TORUS)
 
+![Orbis Atlas: switch between map and globe and turn the globe to see how the world connects.](URL_ATLAS_GIF)
+
 ## How it works
 
 Imagine a square map. Join its top and bottom edges to make a cylinder, then connect the two open ends to make a torus. Both pairs of opposite edges are now neighbours. In Minecraft, the ground and gravity stay normal; only the two horizontal directions wrap. Walk east long enough and you arrive back where you started. The same holds north–south and diagonally.
