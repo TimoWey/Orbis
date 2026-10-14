@@ -5,7 +5,16 @@
   "name": "Orbis engine game tests",
   "environment": "*",
   "entrypoints": {
-    "fabric-client-gametest": ["dev.orbis.gametest.TorusClientGameTest", "dev.orbis.gametest.DebugWorldClientGameTest", "dev.orbis.gametest.BehaviourClientGameTest"]
+    "fabric-client-gametest": [
+      "dev.orbis.gametest.TorusClientGameTest",
+      "dev.orbis.gametest.DebugWorldClientGameTest",
+      "dev.orbis.gametest.BehaviourClientGameTest"
+    ]
   },
-  "depends": {"orbis": "*"}
+  "depends": {
+    "orbis": "*"
+  },
+  "mixins": [
+    "orbis-gametest.mixins.json"
+  ]
 }
