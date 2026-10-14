@@ -160,7 +160,8 @@ class DebugAtlasTest {
         assertEquals(0xffabcdef, pixels[63 * 128 + 63]);
         assertEquals(AtlasUnknownTerrain.color(-432, -432, AtlasUnknownTerrain.level(32)), pixels[50 * 128 + 50]);
         var farAway = new AtlasMapRaster.View(128, 128, 1e12, -1e12, 100, false, 0, 0, true, true);
-        assertTrue(Arrays.stream(raster.render(data, farAway)).allMatch(p -> p == AtlasMapRaster.BACKGROUND));
+        // Far from every copy of the cell: only the wrapped world's fog, never the cell or its outline.
+        assertTrue(Arrays.stream(raster.render(data, farAway)).noneMatch(p -> p == 0xffabcdef || p == AtlasMapRaster.LOADED));
     }
 
     @Test void completedGlobeHidesSampleColorsAndLeavesOutsidePixelsEmpty() {
