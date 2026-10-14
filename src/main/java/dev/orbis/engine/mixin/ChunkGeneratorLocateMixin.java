@@ -1,26 +1,40 @@
 package dev.orbis.engine.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import dev.orbis.engine.Fold;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
+import com.mojang.datafixers.util.Pair;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
  * Structure search ({@code /locate}, explorer maps, eyes of ender) looks across the seam. Structures are placed on
- * the grid of folded chunk positions, so a grid cell reached past the seam is read at its folded position; the
- * nearest find is the nearest the short way round.
+ * the grid of folded chunk positions, so the search visits the grid cells at their folded positions; the nearest
+ * find is the nearest the short way round.
  */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorLocateMixin {
@@ -31,12 +45,52 @@ public abstract class ChunkGeneratorLocateMixin {
             + "Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/core/BlockPos;ZLnet/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement;)"
             + "Lcom/mojang/datafixers/util/Pair;";
 
-    @WrapOperation(method = RANDOM_SPREAD, at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement;getPotentialStructureChunk(JII)Lnet/minecraft/world/level/ChunkPos;"))
-    private static ChunkPos orbis$foldedCell(RandomSpreadStructurePlacement placement, long seed, int x, int z,
-                                             Operation<ChunkPos> original, @Local(argsOnly = true) LevelReader level) {
+    /**
+     * One ring of the search for a spread-out structure. Structures generate where a folded chunk is its own grid
+     * cell's pick, and the cells next to the seam are cut short, so stepping across it by whole cells would skip
+     * some. Instead every cell within reach is visited at its folded position, and a pick counts for the ring its
+     * short-way distance falls in; within the ring the nearest one is tried first.
+     */
+    @WrapMethod(method = RANDOM_SPREAD)
+    private static @Nullable Pair<BlockPos, Holder<Structure>> orbis$searchFoldedCells(Set<Holder<Structure>> structures,
+            LevelReader level, StructureManager structureManager, int originX, int originZ, int radius, boolean createReference,
+            long seed, RandomSpreadStructurePlacement config, Operation<Pair<BlockPos, Holder<Structure>>> original) {
         Torus torus = level instanceof Level real ? Tori.of(real) : null;
-        return torus == null ? original.call(placement, seed, x, z) : original.call(placement, seed, torus.foldChunk(x), torus.foldChunk(z));
+        if (torus == null) return original.call(structures, level, structureManager, originX, originZ, radius, createReference, seed, config);
+        int spacing = config.spacing();
+        int[] cellsX = orbis$cellsInReach(torus, originX, radius, spacing), cellsZ = orbis$cellsInReach(torus, originZ, radius, spacing);
+        List<ChunkPos> picks = new ArrayList<>();
+        for (int cellX : cellsX) {
+            for (int cellZ : cellsZ) {
+                ChunkPos pick = config.getPotentialStructureChunk(seed, cellX * spacing, cellZ * spacing);
+                if (!torus.containsChunk(pick.x()) || !torus.containsChunk(pick.z())) continue;
+                int dx = Math.abs(torus.deltaChunks(originX, pick.x())), dz = Math.abs(torus.deltaChunks(originZ, pick.z()));
+                if (Math.max(dx, dz) / spacing == radius) picks.add(pick);
+            }
+        }
+        picks.sort(Comparator.comparingLong(pick -> {
+            long dx = torus.deltaChunks(originX, pick.x()), dz = torus.deltaChunks(originZ, pick.z());
+            return dx * dx + dz * dz;
+        }));
+        for (ChunkPos pick : picks) {
+            Pair<BlockPos, Holder<Structure>> found = getStructureGeneratingAt(structures, level, structureManager, createReference, config, pick);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    /** The grid cells, along one axis, that hold folded chunks within reach of the given ring. */
+    private static int[] orbis$cellsInReach(Torus torus, int origin, int radius, int spacing) {
+        int reach = Math.min((radius + 1) * spacing, torus.widthChunks() / 2);
+        IntSet cells = new IntOpenHashSet();
+        for (int chunk = origin - reach; chunk <= origin + reach; chunk++) cells.add(Math.floorDiv(torus.foldChunk(chunk), spacing));
+        return cells.toIntArray();
+    }
+
+    @Shadow
+    private static @Nullable Pair<BlockPos, Holder<Structure>> getStructureGeneratingAt(Set<Holder<Structure>> structures, LevelReader level,
+            StructureManager structureManager, boolean createReference, StructurePlacement config, ChunkPos chunkTarget) {
+        throw new AssertionError();
     }
 
     @WrapOperation(method = "findNearestMapStructure", at = @At(value = "INVOKE", target = "Lnet/minecraft/core/BlockPos;distSqr(Lnet/minecraft/core/Vec3i;)D"))
