@@ -87,6 +87,7 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         checkCreeper(context, server, place, seam, y, where, tag);
         if (place == Place.OVERWORLD) checkRaid(context, server, place, seam, y, where, tag);
         checkNaturalSpawning(context, server, place, seam, y, where, tag);
+        checkElytra(context, server, place, seam, y, where, tag);
         server.runCommand(place.clear(seam, y));
     }
 
@@ -663,6 +664,45 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         server.runCommand("effect clear @a");
         check(spawned == null, where + ": natural spawning in the dark room past the seam: " + spawned);
         server.runCommand(place.clear(seam, y));
+        corridor(server, place, seam, y);
+    }
+
+    /** A player gliding with an elytra and a rocket over the seam: the server folds them, the client flies on. */
+    private static void checkElytra(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                    String where, String tag) {
+        int half = place.half();
+        // Open sky above the corridor, also under the Nether's roof; in slices, each within /fill's limit.
+        for (int k = -14; k < 72; k += 8) server.runCommand(place.in("fill " + seam.box(half, k, k + 7, y + 5, y + 36, -4, 4) + " minecraft:air"));
+        survival(server);
+        server.runCommand("item replace entity @a armor.chest with minecraft:elytra");
+        server.runCommand("item replace entity @a weapon.mainhand with minecraft:firework_rocket[fireworks={flight_duration:2}]");
+        server.runCommand(place.in("tp @a " + seam.at(half, -12.5, y + 32, seam.mid()) + " " + seam.facing(5)));
+        context.waitTicks(8);
+        int[] lap = lap(context, place, seam, -12.5);
+        context.getInput().holdKeyFor(options -> options.keyJump, 2);
+        context.waitTicks(3);
+        boolean gliding = context.computeOnClient(mc -> mc.player.isFallFlying());
+        check(gliding, where + ": the elytra did not open");
+        context.getInput().pressKey(options -> options.keyUse);
+        boolean serverGlided = false;
+        for (int tick = 0; tick < 60; tick += 5) {
+            context.waitTicks(5);
+            serverGlided |= server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().isFallFlying());
+            if (tick == 15) context.takeScreenshot("stage3-elytra-" + tag);
+        }
+        Vec3 onServer = server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().position());
+        Vec3 onClient = context.computeOnClient(mc -> mc.player.position());
+        check(serverGlided, where + ": the server never saw the player glide");
+        String client = seam.past(half, onClient, new double[] {lap[0], lap[1]}, 1, 120);
+        check(client == null, where + ": the glide did not carry the client smoothly over the seam: " + client);
+        // A rocket carries the player further than the corridor checks reach, so only ask that it is inside the world.
+        boolean inside = server.computeOnServer(sv -> {
+            var torus = Tori.of(place.level(sv));
+            return torus.contains((int) Math.floor(onServer.x)) && torus.contains((int) Math.floor(onServer.z));
+        });
+        check(inside, where + ": the server did not fold the gliding player: " + onServer);
+        creative(server);
+        server.runCommand("item replace entity @a armor.chest with minecraft:air");
         corridor(server, place, seam, y);
     }
 }
