@@ -28,7 +28,7 @@ final class AtlasMapTexture implements AutoCloseable {
         if (texture == null || w != width || h != height) {
             close();
             width = w; height = h;
-            raster = new AtlasMapRaster(w, h);
+            raster = new AtlasMapRaster(w, h, true);
             texture = new DynamicTexture(() -> "Orbis atlas", new NativeImage(w, h, false));
             Minecraft.getInstance().getTextureManager().register(id, texture);
         }

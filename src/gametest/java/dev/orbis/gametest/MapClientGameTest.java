@@ -101,6 +101,15 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("map-after-relog");
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the map after reopening the world");
+            // The globe, lit from the upper left, with its thin atmosphere.
+            context.runOnClient(mc -> AtlasProbe.prepare(OVERWORLD, true, 0));
+            context.getInput().pressKey(AtlasProbe.mapKey());
+            waitForMap(context, true, "M did not open the globe");
+            context.waitTicks(40);
+            context.takeScreenshot("globe");
+            context.getInput().pressKey(AtlasProbe.mapKey());
+            waitForMap(context, false, "M did not close the globe");
+            context.runOnClient(mc -> AtlasProbe.prepare(OVERWORLD, false, DEBUG.overworldBlocks()));
             world.getServer().runCommand("execute in minecraft:the_nether run tp @a 0 100 0");
             waitForDimension(context, Level.NETHER);
             checkKnown(context, NETHER, netherExplored, "in the Nether after reopening the world");
