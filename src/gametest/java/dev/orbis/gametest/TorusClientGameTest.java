@@ -194,6 +194,22 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             server.runCommand("tp @a " + (-HALF + 40) + " 200 " + (HALF - 40));
             context.waitTicks(2);
             checkHoldersFolded(server);
+
+            // The same at the Nether's seam: marks either side of it and an armor stand past it, and the player
+            // leaves the world standing just past it, sent there by its unfolded coordinates.
+            int nh = HALF / 8;
+            BlockPos netherSide = new BlockPos(nh - 1, 100, 40);
+            server.runCommand("execute in minecraft:the_nether run tp @a " + (nh - 6) + " 101 40.5");
+            waitLoaded(context, world, Level.NETHER, netherSide);
+            waitLoaded(context, world, Level.NETHER, new BlockPos(-nh, 100, 40));
+            server.runCommand("execute in minecraft:the_nether run fill " + (nh - 8) + " 99 36 " + (nh + 8) + " 99 44 minecraft:netherrack");
+            server.runCommand("execute in minecraft:the_nether run fill " + (nh - 8) + " 100 36 " + (nh + 8) + " 104 44 minecraft:air");
+            server.runCommand("execute in minecraft:the_nether run setblock " + (nh - 1) + " 103 40 minecraft:gold_block");
+            server.runCommand("execute in minecraft:the_nether run setblock " + -nh + " 103 40 minecraft:lapis_block");
+            server.runCommand("execute in minecraft:the_nether run summon minecraft:armor_stand " + (nh + 2.5) + " 100 41.5 {NoGravity:1b,CustomName:\"kept\"}");
+            server.runCommand("execute in minecraft:the_nether run tp @a " + (nh + 4.5) + " 100 40.5 90 0");
+            context.waitTicks(2);
+            checkHoldersFolded(server);
         }
 
         // Back into the saved world: the marks stand where they were on both sides of the seam, the armor stand is
@@ -209,11 +225,44 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                 if (stands.size() != 1) return stands.size() + " armor stands";
                 Entity stand = stands.getFirst();
                 if (Math.abs(stand.getX() - (-HALF + 2.5)) > 0.01) return "armor stand at " + stand.position();
-                Vec3 player = s.getPlayerList().getPlayers().getFirst().position();
-                if (Math.abs(player.x - (-HALF + 40.5)) > 1 || Math.abs(player.z - (HALF - 39.5)) > 1) return "player at " + player;
+                int nh = HALF / 8;
+                var nether = s.getLevel(Level.NETHER);
+                if (!nether.getBlockState(new BlockPos(nh - 1, 103, 40)).is(Blocks.GOLD_BLOCK)) return "Nether gold block gone";
+                if (!nether.getBlockState(new BlockPos(-nh, 103, 40)).is(Blocks.LAPIS_BLOCK)) return "Nether lapis block gone";
+                var netherStands = nether.getEntities(EntityTypeTest.forClass(Entity.class), e -> typeName(e).equals("armor_stand"));
+                if (netherStands.size() != 1) return netherStands.size() + " armor stands in the Nether";
+                if (Math.abs(netherStands.getFirst().getX() - (-nh + 2.5)) > 0.01) return "Nether armor stand at " + netherStands.getFirst().position();
+                var player = s.getPlayerList().getPlayers().getFirst();
+                if (player.level().dimension() != Level.NETHER) return "player in " + player.level().dimension().identifier();
+                if (Math.abs(player.getX() - (-nh + 4.5)) > 1 || Math.abs(player.getZ() - 40.5) > 1) return "player at " + player.position();
                 return null;
             });
             check(marks == null, "After reloading: " + marks);
+            String netherSeen = context.computeOnClient(mc -> {
+                int nh = HALF / 8;
+                double px = mc.player.getX();
+                var torus = dev.orbis.engine.Torus.centered(2 * nh);
+                BlockPos gold = BlockPos.containing(torus.nearest(nh - 1 + 0.5, px), 103, 40);
+                BlockPos lapis = BlockPos.containing(torus.nearest(-nh + 0.5, px), 103, 40);
+                if (!mc.level.getBlockState(gold).is(Blocks.GOLD_BLOCK)) return "no gold block at " + gold.toShortString();
+                if (!mc.level.getBlockState(lapis).is(Blocks.LAPIS_BLOCK)) return "no lapis block at " + lapis.toShortString();
+                return null;
+            });
+            check(netherSeen == null, "After reloading at the Nether seam the client sees " + netherSeen);
+            server.runCommand("execute in minecraft:the_nether run tp @a " + (-HALF / 8 + 6.5) + " 100 40.5 90 15");
+            context.waitTicks(40);
+            context.takeScreenshot("orbis-after-reload-nether-seam");
+            checkHoldersFolded(server);
+            // Back to the Overworld marks for the rest.
+            server.runCommand("execute in minecraft:overworld run tp @a " + (-HALF + 40.5) + " 200 " + (HALF - 39.5));
+            for (int tick = 0; !server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().level().dimension() == Level.OVERWORLD); tick++) {
+                check(tick < 200, "The player did not get back to the Overworld");
+                context.waitTick();
+            }
+            waitLoaded(context, world, HALF - 1, -HALF + 40);
+            waitLoaded(context, world, -HALF, -HALF + 40);
+            context.waitTicks(20);
+            world.getConnection().waitForChunksRender();
             String seen = context.computeOnClient(mc -> {
                 double px = mc.player.getX(), pz = mc.player.getZ();
                 var torus = dev.orbis.engine.Torus.centered(2 * HALF);
