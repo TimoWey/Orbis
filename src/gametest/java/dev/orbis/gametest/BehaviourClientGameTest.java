@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -52,6 +53,14 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         for (int k : new int[] {-BEFORE, PAST}) {
             for (int b : new int[] {-3, 3}) waitLoaded(context, world, place.key(), seam.block(half, k, 0, b));
         }
+        // Entities summoned into a chunk whose entities have not loaded yet stay hidden; wait for both sides.
+        for (int k : new int[] {-BEFORE, 0, PAST}) {
+            BlockPos at = seam.block(half, k, y, 0);
+            for (int tick = 0; !server.computeOnServer(sv -> place.level(sv).areEntitiesLoaded(ChunkPos.pack(at))); tick++) {
+                check(tick < 600, where + ": the entities at " + at.toShortString() + " never loaded");
+                context.waitTick();
+            }
+        }
         corridor(server, place, seam, y);
         String built = server.computeOnServer(sv -> {
             var level = place.level(sv);
@@ -70,6 +79,10 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         checkRedstone(context, server, place, seam, y, where, tag);
         checkCommands(context, server, place, seam, y, where);
         checkEnderPearl(context, server, place, seam, y, where, tag);
+        checkDespawnAndSpawner(context, server, place, seam, y, where, tag);
+        checkTrident(context, server, place, seam, y, where, tag);
+        checkHorse(context, server, place, seam, y, where, tag);
+        checkCreeper(context, server, place, seam, y, where, tag);
         server.runCommand(place.clear(seam, y));
     }
 
@@ -93,8 +106,8 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         server.runCommand(place.in("tp @a " + seam.at(half, -22.5, y, mid) + " " + seam.facing(10)));
         // Through a corner both axes count, so the spots move in to keep thirty blocks between them.
         double reach = seam.corner() ? 10.5 : 15;
-        server.runCommand(place.in("summon minecraft:villager " + seam.at(half, reach + 0.5, y, mid) + " {NoAI:1b,PersistenceRequired:1b}"));
-        server.runCommand(place.in("summon minecraft:husk " + seam.at(half, 0.5 - reach, y, mid) + " {PersistenceRequired:1b}"));
+        server.runCommand(place.in("summon minecraft:villager " + seam.at(half, reach + 0.5, y, mid) + " {NoAI:1b,PersistenceRequired:1b,Tags:[\"orbis\"]}"));
+        server.runCommand(place.in("summon minecraft:husk " + seam.at(half, 0.5 - reach, y, mid) + " {PersistenceRequired:1b,Tags:[\"orbis\"]}"));
         boolean hunted = false;
         double closest = Double.MAX_VALUE;
         for (int tick = 0; tick < 900 && !hunted; tick += 10) {
@@ -102,20 +115,30 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
             double[] state = server.computeOnServer(sv -> {
                 Mob husk = null;
                 LivingEntity villager = null;
-                for (Entity e : place.level(sv).getEntities(EntityTypeTest.forClass(LivingEntity.class), e -> true)) {
+                // Only the test's own pair: a village nearby has villagers of its own.
+                for (Entity e : place.level(sv).getEntities(EntityTypeTest.forClass(LivingEntity.class), e -> e.entityTags().contains("orbis"))) {
                     if (typeName(e).equals("husk")) husk = (Mob) e;
                     if (typeName(e).equals("villager")) villager = (LivingEntity) e;
                 }
-                if (husk == null || villager == null) return new double[] {Double.MAX_VALUE, 0};
+                if (husk == null || villager == null) return new double[] {Double.MAX_VALUE, 0, villager == null ? 1 : 0};
                 var torus = Tori.of(place.level(sv));
                 double gap = Math.hypot(torus.delta(husk.getX(), villager.getX()), torus.delta(husk.getZ(), villager.getZ()));
                 return new double[] {gap, villager.getHealth() < villager.getMaxHealth() ? 1 : 0};
             });
+            // Killed between two looks counts too, once the villager was seen alive.
+            hunted = state[1] > 0 || state.length > 2 && state[2] > 0 && closest < Double.MAX_VALUE;
             closest = Math.min(closest, state[0]);
-            hunted = state[1] > 0;
         }
         context.takeScreenshot("stage3-chase-" + tag);
-        check(hunted, where + ": the husk never reached the villager thirty blocks away over the seam; it came within " + closest);
+        String husk = server.computeOnServer(sv -> {
+            for (Mob mob : place.level(sv).getEntities(EntityTypeTest.forClass(Mob.class), e -> typeName(e).equals("husk"))) {
+                var path = mob.getNavigation().getPath();
+                return "husk at " + mob.position() + ", target " + (mob.getTarget() == null ? "-" : typeName(mob.getTarget()) + " at " + mob.getTarget().position())
+                        + ", path " + (path == null ? "-" : "to " + path.getTarget().toShortString() + " reach " + path.canReach());
+            }
+            return "no husk";
+        });
+        check(hunted, where + ": the husk never reached the villager thirty blocks away over the seam; it came within " + closest + "; " + husk);
         server.runCommand(place.clear(seam, y));
     }
 
@@ -162,6 +185,9 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         });
         check(done, where + ": the villager did not take the bed " + homeWanted.toShortString() + " and composter "
                 + jobWanted.toShortString() + " past the seam: " + state + "; points near its start: " + seen);
+        // The claimed points make a village, and it reaches over the seam: the ground before it belongs to it too.
+        boolean village = server.computeOnServer(sv -> place.level(sv).isVillage(seam.block(half, -12, y, 0)));
+        check(village, where + ": the village past the seam does not reach the ground before it");
         server.runCommand(place.clear(seam, y));
         server.runCommand(place.in("fill " + seam.box(half, 1 - BEFORE, PAST - 1, y, y + 2, -2, 2) + " minecraft:air"));
     }
@@ -354,5 +380,135 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         String onClient = seam.past(half, context.computeOnClient(mc -> mc.player.position()), lap, 0, 64);
         check(onClient == null, where + ": the client jumped when the pearl landed past the seam: " + onClient);
         server.runCommand("clear @a");
+    }
+
+    private static void survival(TestServerContext server) {
+        server.runCommand("gamemode survival @a");
+        server.runCommand("effect give @a minecraft:resistance 600 4 true");
+        server.runCommand("clear @a");
+    }
+
+    private static void creative(TestServerContext server) {
+        server.runCommand("effect clear @a");
+        server.runCommand("clear @a");
+        server.runCommand("gamemode creative @a");
+        server.runOnServer(sv -> {
+            ServerPlayer player = sv.getPlayerList().getPlayers().getFirst();
+            player.setHealth(player.getMaxHealth());
+        });
+    }
+
+    private static int count(TestServerContext server, Place place, String type) {
+        return server.computeOnServer(sv -> {
+            int n = 0;
+            for (Entity e : place.level(sv).getAllEntities()) if (typeName(e).equals(type) && e.isAlive()) n++;
+            return n;
+        });
+    }
+
+    /**
+     * A zombie past the seam, near the player the short way, does not despawn as if it were a world away; and a
+     * spawner past the seam counts the player before it as near and spawns.
+     */
+    private static void checkDespawnAndSpawner(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                               String where, String tag) {
+        int half = place.half();
+        server.runCommand("difficulty normal");
+        server.runCommand(place.in("tp @a " + seam.at(half, -8.5, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand(place.in("summon minecraft:zombie " + seam.at(half, 12.5, y, seam.mid()) + " {Silent:1b}"));
+        context.waitTicks(40);
+        check(count(server, place, "zombie") == 1, where + ": a zombie 21 blocks away past the seam despawned as if it were far");
+        server.runCommand(place.clear(seam, y));
+
+        // Through a corner both axes count, so there the player steps up to stay within the spawner's sixteen blocks.
+        BlockPos spawner = seam.block(half, 3, y, seam.corner() ? 0 : 2);
+        if (seam.corner()) server.runCommand(place.in("tp @a " + seam.at(half, -4.5, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand(place.in("setblock " + Seam.text(spawner) + " minecraft:spawner{SpawnData:{entity:{id:\"minecraft:zombie\",Silent:1b},"
+                + "custom_spawn_rules:{block_light_limit:[0,15],sky_light_limit:[0,15]}},Delay:0s,MinSpawnDelay:20s,MaxSpawnDelay:40s,"
+                + "SpawnRange:2s,SpawnCount:2s,RequiredPlayerRange:16s}"));
+        int spawned = 0;
+        for (int tick = 0; tick < 300 && spawned == 0; tick += 10) {
+            context.waitTicks(10);
+            spawned = count(server, place, "zombie");
+        }
+        context.takeScreenshot("stage3-spawner-" + tag);
+        check(spawned > 0, where + ": the spawner past the seam did not notice the player before it");
+        server.runCommand(place.in("setblock " + Seam.text(spawner) + " minecraft:air"));
+        server.runCommand(place.clear(seam, y));
+    }
+
+    /** A loyal trident thrown over the seam flies past it and comes back to the player the short way. */
+    private static void checkTrident(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                     String where, String tag) {
+        int half = place.half();
+        survival(server);
+        server.runCommand(place.in("tp @a " + seam.at(half, -5.5, y, seam.mid()) + " " + seam.facing(0)));
+        server.runCommand("item replace entity @a weapon.mainhand with minecraft:trident[enchantments={\"minecraft:loyalty\":3}]");
+        context.waitTicks(5);
+        context.getInput().holdKeyFor(options -> options.keyUse, 15);
+        boolean crossed = false, back = false;
+        for (int tick = 0; tick < 300 && !back; tick += 5) {
+            context.waitTicks(5);
+            Vec3 at = server.computeOnServer(sv -> {
+                for (Entity e : place.level(sv).getAllEntities()) if (typeName(e).equals("trident")) return e.position();
+                return null;
+            });
+            if (at != null && seam.folded(half, at) == null) crossed = true;
+            if (crossed && !back && at != null) context.takeScreenshot("stage3-trident-" + tag);
+            back = crossed && server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().getInventory()
+                    .countItem(net.minecraft.world.item.Items.TRIDENT) == 1);
+        }
+        check(crossed, where + ": the trident never flew over the seam");
+        check(back, where + ": the loyal trident did not come back over the seam");
+        creative(server);
+        server.runCommand(place.clear(seam, y));
+    }
+
+    /** A saddled horse ridden over the seam: the server folds horse and rider, the client rides on. */
+    private static void checkHorse(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                   String where, String tag) {
+        int half = place.half();
+        server.runCommand(place.in("tp @a " + seam.at(half, -10.5, y, seam.mid()) + " " + seam.facing(10)));
+        context.waitTicks(5);
+        int[] lap = lap(context, place, seam, -10.5);
+        server.runCommand(place.in("summon minecraft:horse " + seam.at(half, -10.5, y, seam.mid())
+                + " {Tags:[\"orbis\"],Tame:1b,Rotation:[" + seam.facing(0).split(" ")[0] + "f,0f],equipment:{saddle:{id:\"minecraft:saddle\",count:1}},"
+                + "attributes:[{id:\"minecraft:movement_speed\",base:0.3d}]}"));
+        // By tag: a wild horse elsewhere may be nearer to where the command runs.
+        server.runCommand(place.in("ride @p mount @e[type=minecraft:horse,tag=orbis,limit=1]"));
+        context.waitTicks(5);
+        check(server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().isPassenger()), where + ": the player is not on the horse");
+        context.getInput().holdKeyFor(options -> options.keyUp, 60);
+        context.waitTicks(5);
+        Vec3[] now = server.computeOnServer(sv -> {
+            ServerPlayer player = sv.getPlayerList().getPlayers().getFirst();
+            return new Vec3[] {player.position(), player.getVehicle() == null ? null : player.getVehicle().position()};
+        });
+        check(now[1] != null, where + ": the player fell off the horse at the seam");
+        String horse = seam.folded(half, now[1]), rider = seam.folded(half, now[0]);
+        check(horse == null && rider == null, where + ": the server did not fold the horse and its rider: " + horse + " / " + rider);
+        String onClient = seam.past(half, context.computeOnClient(mc -> mc.player.position()), new double[] {lap[0], lap[1]}, 0, 64);
+        context.takeScreenshot("stage3-horse-" + tag);
+        check(onClient == null, where + ": the client's ride jumped at the seam: " + onClient);
+        server.runCommand("ride @p dismount");
+        server.runCommand(place.clear(seam, y));
+    }
+
+    /** A creeper past the seam stalks the player before it and blows up next to them. */
+    private static void checkCreeper(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                     String where, String tag) {
+        int half = place.half();
+        survival(server);
+        server.runCommand(place.in("tp @a " + seam.at(half, -4.5, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand(place.in("summon minecraft:creeper " + seam.at(half, 6.5, y, seam.mid()) + " {PersistenceRequired:1b}"));
+        boolean blown = false;
+        for (int tick = 0; tick < 400 && !blown; tick += 5) {
+            context.waitTicks(5);
+            blown = count(server, place, "creeper") == 0;
+        }
+        context.takeScreenshot("stage3-creeper-" + tag);
+        check(blown, where + ": the creeper past the seam never came over and blew up");
+        creative(server);
+        corridor(server, place, seam, y);
     }
 }
