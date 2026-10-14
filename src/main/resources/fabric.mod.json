@@ -38,7 +38,8 @@
     "toroidal_world.compat.biolith.mixins.json",
     "toroidal_world.compat.sodium.mixins.json",
     "toroidal_world.compat.lithium.mixins.json",
-    "orbis.mixins.json"
+    "orbis.mixins.json",
+    "orbis.engine.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.5",
@@ -56,5 +57,10 @@
     "toroidal_world": "*",
     "journeymap": "<26.3-6.0.8",
     "c2me": "<0.4.2-alpha.0.85"
+  },
+  "custom": {
+    "lithium:options": {
+      "mixin.ai.poi": false
+    }
   }
 }
