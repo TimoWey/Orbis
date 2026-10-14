@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raids;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.entity.PersistentEntitySectionManager;
 import net.minecraft.world.level.material.Fluid;
@@ -26,6 +27,7 @@ public abstract class ServerLevelMixin {
     @Shadow @Final private LevelTicks<Block> blockTicks;
     @Shadow @Final private LevelTicks<Fluid> fluidTicks;
     @Shadow @Final private PersistentEntitySectionManager<Entity> entityManager;
+    @Shadow @Final protected Raids raids;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void orbis$foldTicks(CallbackInfo callback) {
@@ -33,6 +35,7 @@ public abstract class ServerLevelMixin {
         ((TorusHolder) blockTicks).orbis$setTorus(torus);
         ((TorusHolder) fluidTicks).orbis$setTorus(torus);
         ((TorusHolder) entityManager).orbis$setTorus(torus);
+        ((TorusHolder) raids).orbis$setTorus(torus);
     }
 
     /** An entity that walked, flew or was pushed past the seam this tick is moved back into the world. */
