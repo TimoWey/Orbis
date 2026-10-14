@@ -506,12 +506,23 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         server.runCommand(place.in("tp @a " + seam.at(half, -4.5, y, seam.mid()) + " " + seam.facing(10)));
         server.runCommand(place.in("summon minecraft:creeper " + seam.at(half, 6.5, y, seam.mid()) + " {PersistenceRequired:1b}"));
         boolean blown = false;
-        for (int tick = 0; tick < 400 && !blown; tick += 5) {
+        // Once a creeper at a corner stalled four blocks short for the whole 400 ticks; it gets longer now.
+        for (int tick = 0; tick < 800 && !blown; tick += 5) {
             context.waitTicks(5);
             blown = count(server, place, "creeper") == 0;
         }
         context.takeScreenshot("stage3-creeper-" + tag);
-        check(blown, where + ": the creeper past the seam never came over and blew up");
+        String creeper = blown ? "" : server.computeOnServer(sv -> {
+            for (Entity e : place.level(sv).getAllEntities()) {
+                if (e instanceof Mob mob && typeName(e).equals("creeper")) {
+                    var path = mob.getNavigation().getPath();
+                    return " (at " + e.blockPosition().toShortString() + ", target " + mob.getTarget() + ", path "
+                            + (path == null ? "none" : path.getEndNode() + (path.isDone() ? " done" : "")) + ")";
+                }
+            }
+            return "";
+        });
+        check(blown, where + ": the creeper past the seam never came over and blew up" + creeper);
         creative(server);
         corridor(server, place, seam, y);
     }
