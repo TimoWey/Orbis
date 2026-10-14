@@ -23,6 +23,7 @@
     "DistanceManagerAccessor",
     "DistanceManagerMixin",
     "EntityMixin",
+    "ExperienceOrbMixin",
     "EntitySectionCallbackMixin",
     "EntitySectionStorageMixin",
     "EntitySelectorMixin",
