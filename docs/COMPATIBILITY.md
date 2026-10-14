@@ -1,14 +1,14 @@
 # Mod compatibility
 
-As of 2026-10-12. **Only Fabric API and vanilla clients have been tested with Orbis so far.**
+As of 2026-10-14. The client game tests run with Sodium, Lithium and Distant Horizons via `gradlew runClientGameTest -PorbisCompat=true`.
 
 | Mod | Priority | Upstream / research | Orbis |
 | --- | --- | --- | --- |
-| Distant Horizons | Required; particularly important | Support documented upstream | Map import adapter unit-tested; gameplay untested |
+| Distant Horizons | Required; particularly important | Support documented upstream | 3.3.4: all seam game tests pass with it (new engine, 2026-10-14); LOD rendering across seams not yet checked |
 | Fabric API | Runtime dependency | Required by the standalone build | Tested on a dedicated server, alpha.7–11 |
 | Vanilla client | Joining an Orbis server | No client mod required | Tested; no map without Orbis |
-| Sodium | Required | Support documented upstream | Untested |
-| Lithium | Required | Support documented upstream | Untested |
+| Sodium | Required | Support documented upstream | 0.9.2: all seam game tests pass with it (2026-10-14) |
+| Lithium | Required | Support documented upstream | 0.26.2: all seam game tests pass with it (2026-10-14). Orbis turns off `mixin.ai.poi`, whose own POI search does not see beds and workstations past the seam |
 | FerriteCore | Compatibility priority | Memory optimization | Untested |
 | Entity Culling | Compatibility priority | Check visibility across seams | Untested |
 | Litematica | Compatibility priority | Check schematic placement across seams | Untested |
