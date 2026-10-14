@@ -279,6 +279,12 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         context.waitTicks(2);
         Vec3 before = zombie(server, place);
         check(before != null, where + ": the zombie summoned past the seam is missing: " + mobsNear(server, place, seam, y));
+        // The blast hurts a zombie in a chunk that does not tick yet, but only a ticking one moves; wait for it.
+        BlockPos standing = BlockPos.containing(before);
+        for (int tick = 0; !server.computeOnServer(sv -> place.level(sv).isPositionEntityTicking(standing)); tick++) {
+            check(tick < 600, where + ": the zombie past the seam never ticks at " + standing.toShortString());
+            context.waitTick();
+        }
         server.runCommand(place.in("summon minecraft:tnt " + seam.at(half, -0.5, y, mid) + " {fuse:20}"));
         double pushed = -1;
         float health = 20;
@@ -505,8 +511,11 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
                                      String where, String tag) {
         int half = place.half();
         survival(server);
-        server.runCommand(place.in("tp @a " + seam.at(half, -4.5, y, seam.mid()) + " " + seam.facing(10)));
-        server.runCommand(place.in("summon minecraft:creeper " + seam.at(half, 6.5, y, seam.mid()) + " {PersistenceRequired:1b}"));
+        // Through a corner both axes count: eleven blocks along the diagonal are 15.6 apart, the edge of a creeper's
+        // follow range of 16, so there the spots move in.
+        double player = seam.corner() ? -3.5 : -4.5, start = seam.corner() ? 4.5 : 6.5;
+        server.runCommand(place.in("tp @a " + seam.at(half, player, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand(place.in("summon minecraft:creeper " + seam.at(half, start, y, seam.mid()) + " {PersistenceRequired:1b}"));
         boolean blown = false;
         // Once a creeper at a corner stalled four blocks short for the whole 400 ticks; it gets longer now.
         for (int tick = 0; tick < 800 && !blown; tick += 5) {

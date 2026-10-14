@@ -57,5 +57,10 @@
     "toroidal_world": "*",
     "journeymap": "<26.3-6.0.8",
     "c2me": "<0.4.2-alpha.0.85"
+  },
+  "custom": {
+    "lithium:options": {
+      "mixin.ai.poi": false
+    }
   }
 }
