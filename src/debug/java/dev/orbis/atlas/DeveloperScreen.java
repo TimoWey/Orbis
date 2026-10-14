@@ -302,8 +302,9 @@ final class DeveloperScreen extends Screen {
     }
     private void constrainView() {
         if (data == null || !data.wrapped() || globe || followPlayer) return;
-        centerX = AtlasMapMath.clampCenter(centerX, data.minX(), data.span(), (mapRight - mapLeft) / scale());
-        centerZ = AtlasMapMath.clampCenter(centerZ, data.minZ(), data.span(), (mapBottom - mapTop) / scale());
+        // Panning past a seam continues into the other side of the world, as on the player map.
+        centerX = AtlasMapMath.canonical(centerX, data.minX(), data.span());
+        centerZ = AtlasMapMath.canonical(centerZ, data.minZ(), data.span());
     }
     private double scale() { return Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop)) * zoom / (data == null ? 4096 : data.span()); }
     private double midX() { return (mapLeft + mapRight) / 2.0; }
