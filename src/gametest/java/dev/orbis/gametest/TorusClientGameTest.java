@@ -482,6 +482,20 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         });
         check(hitBy.equals("player by player"), where + ": the player's hit on the zombie past the seam did not count: hurt by " + hitBy);
         server.runCommand(place.in("kill @e[type=minecraft:zombie]"));
+        server.runCommand(place.in("kill @e[type=minecraft:experience_orb]"));
+
+        // An experience orb just past the seam flies the short way to the player and is picked up. Aimed the long
+        // way, its first move swept a whole world width for collisions and stalled the server for minutes.
+        server.runCommand(place.in("summon minecraft:experience_orb " + seam.at(half, 2.5, y + 0.5, mid) + " {Value:1s}"));
+        long orbStart = System.nanoTime();
+        boolean collected = false;
+        for (int tick = 0; tick < 100 && !collected; tick += 5) {
+            context.waitTicks(5);
+            collected = server.computeOnServer(sv -> place.level(sv).getEntities(EntityTypeTest.forClass(net.minecraft.world.entity.ExperienceOrb.class), e -> true).isEmpty());
+        }
+        double orbSeconds = (System.nanoTime() - orbStart) / 1e9;
+        check(collected, where + ": the experience orb past the seam never reached the player");
+        check(orbSeconds < 20, where + ": collecting an experience orb across the seam took " + orbSeconds + " s");
 
         // A zombie with its AI walks up across the seam and hits; the blow pushes the player back, away from it.
         server.runCommand("gamemode survival @a");
