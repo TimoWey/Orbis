@@ -18,5 +18,15 @@
     "file": "common/src/main/java/com/toroidalworld/settings/SettingsService.java",
     "before": "public static final String FILE_NAME = ToroidalWorld.MODID + \".json\";",
     "after": "public static final String FILE_NAME = \"orbis-engine.json\";"
+  },
+  {
+    "file": "common/src/main/resources/toroidal_world.compat.lithium.mixins.json",
+    "before": "    \"AcquirePoiRetryMixin\",\n",
+    "after": ""
+  },
+  {
+    "file": "common/src/main/resources/toroidal_world.compat.lithium.mixins.json",
+    "before": "    \"PoiClosestBatchMixin\",\n",
+    "after": ""
   }
 ]
