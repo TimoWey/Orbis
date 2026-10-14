@@ -37,7 +37,7 @@ class AtlasBiomeSamplerTest {
         assertEquals(AtlasMapMath.biomeColor(first.id()), first.color());
     }
     @Test void cachedSamplerExactlyMatchesAllUncachedTinySamplesInEveryDimension() {
-        var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
+        var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
         for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER, LevelStem.END)) {
             var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
             var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),
@@ -64,7 +64,7 @@ class AtlasBiomeSamplerTest {
 
     @Test void nativeQuickChecksShareFindsWithMapAndStopWithinSmallBudgetForTinyAndLarge() {
         for (var preset : List.of(WorldSize.Preset.TINY, WorldSize.Preset.LARGE)) {
-            var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), preset.size);
+            var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), preset.size);
             for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
                 var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
                 var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),

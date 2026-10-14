@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WorldSizeTest {
-    @ParameterizedTest @ValueSource(ints = {128, 256, 512, 1024, 8832, 76544, 625008, 1411456, 1448160})
+    @ParameterizedTest @ValueSource(ints = {128, 144, 256, 512, 1024, 8832, 76544, 625008, 1411456, 1448160})
     void centredEdgesHaveExactNetherMapping(int width) {
         WorldSize size = new WorldSize(width);
         assertEquals(size.overworldBlocks(), 8 * size.netherBlocks());
@@ -15,7 +15,7 @@ class WorldSizeTest {
         assertEquals(size.overworldChunkCount(), 64 * size.netherChunkCount());
     }
 
-    @ParameterizedTest @ValueSource(ints = {-16, 0, 16, 32, 64, 127, 129, 136, 1448176, Integer.MAX_VALUE})
+    @ParameterizedTest @ValueSource(ints = {-16, 0, 16, 32, 64, 112, 127, 129, 136, 1448176, Integer.MAX_VALUE})
     void rejectInvalidOrMisalignedBounds(int width) {
         assertThrows(IllegalArgumentException.class, () -> new WorldSize(width));
     }
@@ -27,10 +27,17 @@ class WorldSizeTest {
         assertTrue(earth.overworldBlocks() / 2 < 29_999_984);
     }
 
-    @Test void newSelectionRejectsLegacySizesWithoutBreakingSaveDecoding() {
+    @Test void typedSizesGoDownToTheDebugMinimumButPresetsAndSliderStartAtTiny() {
         assertEquals(512, new WorldSize(512).overworldChunks());
-        assertThrows(IllegalArgumentException.class, () -> WorldSize.select(512));
-        assertThrows(IllegalArgumentException.class, () -> WorldSize.select(1008));
+        var debug = WorldSize.select(WorldSize.DEBUG_MIN_CHUNKS);
+        assertEquals(16, debug.netherChunks());
+        assertTrue(debug.debug());
+        assertEquals("Debug", debug.label());
+        assertTrue(WorldSize.select(1008).debug());
+        assertFalse(WorldSize.Preset.TINY.size.debug());
+        assertEquals(WorldSize.Preset.TINY.size, WorldSize.fromSlider(0));
+        assertThrows(IllegalArgumentException.class, () -> WorldSize.select(112));
+        assertThrows(IllegalArgumentException.class, () -> WorldSize.select(136));
         assertThrows(IllegalArgumentException.class, () -> WorldSize.select(1025));
         assertThrows(IllegalArgumentException.class, () -> WorldSize.select(WorldSize.EARTH_CHUNKS + 16));
         assertEquals(WorldSize.Preset.TINY.size, WorldSize.select(WorldSize.MIN_CHUNKS));

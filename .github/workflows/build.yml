@@ -21,7 +21,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +40,57 @@ jobs:
           java-version: '25'
       - name: Build, regression tests and exact artifact verification
         run: bash gradlew build -PorbisDebug=${{ matrix.debug }} --no-daemon --stacktrace
+      - name: Print requested Minecraft API facts
+        if: always() && matrix.variant == 'normal'
+        run: python3 tools/api_probe.py
+      - name: Play the seam in Minecraft (client game test under Xvfb)
+        if: matrix.variant == 'normal'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 mesa-utils > /dev/null
+          export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+          # SDL found no GLX visual it liked on Xvfb; create the context through EGL instead, and offer
+          # 32-bit visuals (Composite) in case the game asks for an alpha channel.
+          export SDL_VIDEO_DRIVER=x11 SDL_VIDEO_FORCE_EGL=1 SDL_VIDEO_X11_FORCE_EGL=1
+          xvfb_args="-screen 0 1280x720x24 +extension GLX +extension Composite +render -noreset"
+          xvfb-run -a -s "$xvfb_args" glxinfo -B | head -20
+          xvfb-run -a -s "$xvfb_args" glxinfo | grep -c -i "TrueColor" || true
+          # Without a graphics backend the game waits on an error box forever: stop it at once. If it is still
+          # running after ten minutes otherwise, it is stuck: print thread dumps every two minutes.
+          (
+            game_jvms() { jps -l | grep -v -i -e gradle -e jps | awk '{print $1}'; }
+            for _ in $(seq 60); do
+              sleep 10
+              if grep -qs "Failed to create backend Vulkan" build/run/clientGameTest/logs/latest.log; then
+                echo "=== No graphics backend could be created; stopping the game"
+                for pid in $(game_jvms); do jstack "$pid" | head -n 60; kill "$pid"; done
+                exit 0
+              fi
+            done
+            while true; do
+              for pid in $(game_jvms); do
+                echo "=== jstack $pid at $(date -u +%T)"
+                jstack "$pid" | head -n 800
+              done
+              sleep 120
+            done
+          ) &
+          watchdog=$!
+          set +e
+          timeout 75m xvfb-run -a -s "$xvfb_args" bash gradlew runClientGameTest --no-daemon --stacktrace
+          status=$?
+          kill "$watchdog" 2> /dev/null
+          for log in $(find build/run -path '*logs/latest.log'); do echo "=== tail $log"; tail -n 150 "$log"; done
+          exit $status
+      - name: Upload game test screenshots and log
+        if: always() && matrix.variant == 'normal'
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-seam-game-test
+          path: |
+            build/run/**/screenshots/*.png
+            build/run/**/logs/latest.log
+          if-no-files-found: ignore
       - name: Upload mod JAR and sources
         uses: actions/upload-artifact@v4
         with:
