@@ -69,22 +69,22 @@ final class AtlasMapRaster {
     private void flat() {
         double densityX = view.scale * ratioX, densityY = view.scale * ratioY;
         int fogLevel = AtlasUnknownTerrain.level(fogScale * Math.max(1 / densityX, 1 / densityY));
-        int fogLeft = data.wrapped() ? Math.clamp((int) Math.ceil((data.minX() - leftWorld) * densityX - .5), 0, width) : 0;
-        int fogRight = data.wrapped() ? Math.clamp((int) Math.ceil(((double) data.minX() + data.span() - leftWorld) * densityX - .5), 0, width) : width;
+        // A wrapped world continues past its edges, so the fog repeats with it (its pattern has the world's period).
         for (int py = 0; py < height; py++) {
             double z = topWorld + (py + .5) / densityY;
-            if (data.wrapped() && (z < data.minZ() || z >= (double) data.minZ() + data.span())) continue;
-            for (int px = fogLeft; px < fogRight; px++)
+            for (int px = 0; px < width; px++)
                 pixels[py * width + px] = AtlasUnknownTerrain.color((leftWorld + (px + .5) / densityX) * fogScale, z * fogScale, fogLevel);
         }
         // Sample original block colors at visible pixel centers, regardless of zoom.
         if (archived != null) for (int i = 0; i < pixels.length; i++) if (archived[i] != 0) pixels[i] = archived[i];
         // Work stays bounded by screen coverage without replacing terrain with coarse averages.
-        for (var cell : data.chunks()) {
-            double cx = cell.x() * 16.0, cz = cell.z() * 16.0;
+        // Views are at most one world wide, so on a wrapped world each cell shows in one of its neighbouring copies.
+        int copies = data.wrapped() ? 1 : 0;
+        for (var cell : data.chunks()) for (int kx = -copies; kx <= copies; kx++) for (int kz = -copies; kz <= copies; kz++) {
+            double cx = cell.x() * 16.0 + kx * (double) data.span(), cz = cell.z() * 16.0 + kz * (double) data.span();
             if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
-            if (data.wrapped() && (cx < data.minX() || cz < data.minZ()
-                    || cx >= (double) data.minX() + data.span() || cz >= (double) data.minZ() + data.span())) continue;
+            if (data.wrapped() && (cell.x() * 16 < data.minX() || cell.z() * 16 < data.minZ()
+                    || cell.x() * 16 >= data.minX() + data.span() || cell.z() * 16 >= data.minZ() + data.span())) continue;
             int left = Math.clamp((int) Math.ceil((cx - leftWorld) * densityX - .5), 0, width);
             int right = Math.clamp((int) Math.ceil((cx + 16 - leftWorld) * densityX - .5), 0, width);
             int top = Math.clamp((int) Math.ceil((cz - topWorld) * densityY - .5), 0, height);
@@ -100,13 +100,15 @@ final class AtlasMapRaster {
             }
         }
         if (view.chunks && 16 * view.scale >= 1) {
-            for (long key : data.loaded()) {
-                double x = ChunkPos.getX(key) * 16.0, z = ChunkPos.getZ(key) * 16.0;
+            for (long key : data.loaded()) for (int kx = -copies; kx <= copies; kx++) for (int kz = -copies; kz <= copies; kz++) {
+                double x = ChunkPos.getX(key) * 16.0 + kx * (double) data.span(), z = ChunkPos.getZ(key) * 16.0 + kz * (double) data.span();
                 if (16 * view.scale >= 6) outline(x(x), y(z), x(x + 16), y(z + 16), LOADED);
             }
         }
-        if (data.wrapped()) outline(x(data.minX()), y(data.minZ()), x((double) data.minX() + data.span()),
-                y((double) data.minZ() + data.span()), 0xffeac66c);
+        // The seams, where the world meets itself.
+        for (int kx = -copies; kx <= copies; kx++) for (int kz = -copies; kz <= copies; kz++) if (data.wrapped())
+            outline(x(data.minX() + kx * (double) data.span()), y(data.minZ() + kz * (double) data.span()),
+                    x(data.minX() + (kx + 1) * (double) data.span()), y(data.minZ() + (kz + 1) * (double) data.span()), 0xffeac66c);
     }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
@@ -170,8 +172,8 @@ final class AtlasMapRaster {
                 | ((base & 255) * 4 + (tint & 255)) / 5;
     }
     private double[] project(double x, double z) {
-        if (!view.globe) return new double[] {x(data.wrapped() ? AtlasMapMath.canonical(x, data.minX(), data.span()) : x),
-                y(data.wrapped() ? AtlasMapMath.canonical(z, data.minZ(), data.span()) : z)};
+        if (!view.globe) return new double[] {x(data.wrapped() ? AtlasMapMath.nearest(x, view.centerX, data.span()) : x),
+                y(data.wrapped() ? AtlasMapMath.nearest(z, view.centerZ, data.span()) : z)};
         double[] p = AtlasMapMath.globe((x - data.minX()) / data.span(), (z - data.minZ()) / data.span(), view.yaw, view.pitch);
         if (p[2] <= 0) return null;
         double r = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;

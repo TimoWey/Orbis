@@ -18,6 +18,7 @@ Updated: 2026-10-12. The latest user decision takes precedence.
 | Documentation | Concise tables; distinguish goals from tested features |
 | Language | Documentation in English; in-game text in English and German |
 | Explainer | Square → cylinder → torus; X, Z and offset diagonal walks |
+| Joining a server | Orbis required on every client; a game without it is turned away with an install message ([2026-10-12](#orbis-required-2026-10-12)) |
 
 ## Open
 
@@ -31,6 +32,7 @@ Biome validation of the chosen dimensions, minimum biome areas, scan depth/durat
 - A 4- or 8-chunk-wide Nether as a development target: replaced for now by a larger minimum.
 - Dedicated multiplayer in the first release: excluded. Reversed on 2026-10-09; Alpha.7 added server support.
 - Biome-check screen and existing-world conversion as release requirements: parked on 2026-10-12.
+- Vanilla clients joining an Orbis server: replaced on 2026-10-12 by Orbis on every client.
 
 ## Repository
 
@@ -57,6 +59,10 @@ The implementation uses Tiny at 1,024 chunks, and provisional intermediate area 
 ## Focus (2026-10-12)
 
 The user narrowed Orbis to four things: the torus wrap, selectable world sizes, the fixed 1:8 Overworld/Nether ratio and the small player map. Everything else (world conversion, a biome-check screen, visual extras) is parked. Orbis should stay small enough to maintain without upstream help.
+
+## Orbis required (2026-10-12)
+
+With its own engine, Orbis no longer rewrites vanilla packets so that unmodded games can play across the seams. Every player installs Orbis. While a player connects to an Orbis world, the server greets the client's Orbis; a game that cannot take the greeting is turned away with a message naming the Orbis version to install. An Orbis client with a different protocol leaves with both versions named. Worlds that are not Orbis worlds are unaffected.
 
 ## Upstream license change (2026-10-12)
 

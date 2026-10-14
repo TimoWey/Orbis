@@ -6,7 +6,7 @@ As of 2026-10-14. The client game tests run with Sodium, Lithium and Distant Hor
 | --- | --- | --- | --- |
 | Distant Horizons | Required; particularly important | Support documented upstream | 3.3.4: all seam game tests pass with it (new engine, 2026-10-14); LOD rendering across seams not yet checked |
 | Fabric API | Runtime dependency | Required by the standalone build | Tested on a dedicated server, alpha.7–11 |
-| Vanilla client | Joining an Orbis server | No client mod required | Tested; no map without Orbis |
+| Vanilla client | Joining an Orbis server | Turned away: Orbis is required on every client | Game test: the disconnect screen names the Orbis version to install |
 | Sodium | Required | Support documented upstream | 0.9.2: all seam game tests pass with it (2026-10-14) |
 | Lithium | Required | Support documented upstream | 0.26.2: all seam game tests pass with it (2026-10-14). Orbis turns off `mixin.ai.poi`, whose own POI search does not see beds and workstations past the seam |
 | FerriteCore | Compatibility priority | Memory optimization | Untested |

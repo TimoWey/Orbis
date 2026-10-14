@@ -104,7 +104,10 @@ final class PlayerAtlasScreen extends Screen {
     @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) { follow = false;
             if (globe) { yaw += dx * .015; pitch = Math.clamp(pitch + dy * .0075, -Math.PI / 2, Math.PI / 2); }
-            else { x -= dx * blocks / size; z -= dy * blocks / size; }
+            else {
+                x -= dx * blocks / size; z -= dy * blocks / size;
+                if (data.wrapped()) { x = AtlasMapMath.canonical(x, data.minX(), data.span()); z = AtlasMapMath.canonical(z, data.minZ(), data.span()); }
+            }
             return true;
         }
         return super.mouseDragged(event, dx, dy);

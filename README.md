@@ -43,7 +43,7 @@ Orbis is an early development alpha (current version **0.1.0-alpha.12**). The fe
 - **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
 - **A small player map.** A corner minimap and a map/globe view (press **M**) show the terrain you have seen and the other players in your dimension. Settings are saved. It works in singleplayer and on servers.
-- **Server ready.** One JAR for server and players; vanilla clients can join too. Operators can run `/orbis check` to look for the expected biomes and structures. See the [server and player guide](docs/SERVER.md).
+- **Server ready.** One JAR for server and players; players without Orbis are told which version to install. Operators can run `/orbis check` to look for the expected biomes and structures. See the [server and player guide](docs/SERVER.md).
 - **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
 | Map | Globe | Minimap |

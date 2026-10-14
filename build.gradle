@@ -87,6 +87,11 @@ tasks.register('testDistantTerrain', Test) {
 }
 tasks.named('check') { dependsOn tasks.named('testDistantTerrain') }
 
+// -PorbisChunky=true adds Chunky 1.5.3 (Fabric 26.1-26.3) for the pre-generation map test.
+if (providers.gradleProperty('orbisChunky').map { it.toBoolean() }.getOrElse(false)) {
+    dependencies { localRuntime 'maven.modrinth:chunky:4Eotm6ov' }
+}
+
 // -PorbisCompat=true runs the game (and its game tests) with the mods Orbis must work beside.
 if (providers.gradleProperty('orbisCompat').map { it.toBoolean() }.getOrElse(false)) {
     dependencies {
