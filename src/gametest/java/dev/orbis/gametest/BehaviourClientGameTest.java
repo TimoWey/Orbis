@@ -577,18 +577,25 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
                     + server.computeOnServer(sv -> place.level(sv).isVillage(raid.getCenter())));
         }
         check(alive > 0, where + ": the raid's first wave never came");
+        // The wave's own raiders, wherever they landed; raiders left over from another seam's raid do not count.
+        java.util.Set<java.util.UUID> wave = server.computeOnServer(sv -> {
+            var ids = new java.util.HashSet<java.util.UUID>();
+            for (Entity e : place.level(sv).getAllEntities())
+                if (e instanceof net.minecraft.world.entity.raid.Raider raider && raider.getCurrentRaid() == raid) ids.add(e.getUUID());
+            return ids;
+        });
         context.waitTicks(100);
         String kept = server.computeOnServer(sv -> {
             ServerLevel level = place.level(sv);
             if (raid.isStopped()) return "the raid ended during its first wave";
             int raiders = 0;
             for (Entity e : level.getAllEntities()) {
-                if (e instanceof net.minecraft.world.entity.raid.Raider raider && raider.isAlive()) {
+                if (e instanceof net.minecraft.world.entity.raid.Raider raider && raider.isAlive() && wave.contains(e.getUUID())) {
                     raiders++;
                     if (raider.getCurrentRaid() != raid) return typeName(e) + " at " + e.blockPosition().toShortString() + " fell out of the raid";
                 }
             }
-            return raiders == 0 ? "no raider left" : null;
+            return raiders == 0 ? "no raider of the wave left" : null;
         });
         context.takeScreenshot("stage3-raid-" + tag);
         check(kept == null, where + ": " + kept);
