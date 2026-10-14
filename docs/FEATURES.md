@@ -9,7 +9,7 @@ Status for 0.1.0-alpha.12. See [Implementation status](IMPLEMENTATION.md) for te
 | Connected Nether | Always exactly 1:8 of the Overworld width | Implemented; portal mapping verified |
 | Unchanged End | Familiar exploration, dragon fight, portals and gateways | Implemented; gateways not yet verified |
 | Player map | Corner minimap, M atlas with flat map and globe, player markers, saved settings | Implemented |
-| Server support | `orbis:tiny` … `orbis:earth` level types, vanilla clients can join | Implemented |
+| Server support | `orbis:tiny` … `orbis:earth` level types; players need Orbis, a game without it is turned away with an install message | Implemented |
 | Admin check | `/orbis check` looks for expected biomes and structures in a fixed time budget | Implemented |
 | Performance mods | Distant Horizons, Sodium and Lithium as optional installs | Engine support present; untested together |
 | Biome-check screen | Check a new world before first play and report found / missing / unconfirmed | Parked |

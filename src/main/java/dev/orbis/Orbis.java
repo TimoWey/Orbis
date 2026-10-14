@@ -27,6 +27,21 @@ public final class Orbis implements ModInitializer {
                 + "Existing-world conversion is not available in this alpha.");
     }
 
+    /** One line on joining: how big the world is, that its edges meet, and which key opens the map. */
+    static Component welcome(int blocks) {
+        return Component.translatableWithFallback("message.orbis.welcome",
+                "Orbis world · %1$s × %1$s blocks · the edges connect · map: %2$s", blocks,
+                Component.keybind("key.orbis.atlas")).withStyle(net.minecraft.ChatFormatting.AQUA);
+    }
+
+    /** The Overworld's side length in blocks, or 0 when this is not an Orbis world. */
+    static int widthBlocks(net.minecraft.server.MinecraftServer server) {
+        var torus = dev.orbis.engine.Tori.of(server.overworld());
+        if (torus != null) return torus.widthBlocks();
+        if (!WORLDS.contains(server.overworld().getChunkSource().randomState())) return 0;
+        return ToroidalWorldApi.shapeOf(server.overworld()).map(shape -> shape.widthChunks(Direction.Axis.X) * 16).orElse(0);
+    }
+
     @Override public void onInitialize() {
         new com.toroidalworld.ToroidalWorldFabric().onInitialize();
         dev.orbis.engine.Tori.register();
@@ -37,10 +52,8 @@ public final class Orbis implements ModInitializer {
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> WORLDS.clear());
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            if (dev.orbis.engine.Tori.of(server.overworld()) != null
-                    || WORLDS.contains(server.overworld().getChunkSource().randomState())) {
-                handler.player.sendSystemMessage(biomeWarning());
-            }
+            int blocks = widthBlocks(server);
+            if (blocks > 0) handler.player.sendSystemMessage(welcome(blocks));
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) ->
             dispatcher.register(Commands.literal("orbis").executes(context -> {
@@ -58,6 +71,7 @@ public final class Orbis implements ModInitializer {
                 context.getSource().sendSuccess(Orbis::biomeWarning, false);
                 return 1;
             })));
+        OrbisRequired.register();
         dev.orbis.atlas.OrbisChecks.register();
         dev.orbis.atlas.AtlasPlayersServer.register();
         LOGGER.info("Orbis standalone alpha initialized. Complete biome and structure coverage is not guaranteed; existing-world conversion is unavailable.");
