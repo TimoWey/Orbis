@@ -58,6 +58,7 @@
     "PlayerChunkSenderMixin",
     "PlayerListMixin",
     "PlayerMixin",
+    "PlayerTicketTrackerMixin",
     "PoiBehaviourMixin",
     "PoiDistanceTrackerMixin",
     "PoiManagerMixin",
