@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 OUT = Path(__file__).resolve().parent
 W, H, FPS, SS = 1440, 600, 25, 2
@@ -361,7 +361,19 @@ def render(name, t):
     point = project(world_point)
     sprite, position = occluded_avatar(point, walk_time, uv)
     image.paste(sprite, position, sprite)
-    avatar(d, MAP_X+MAP_SIZE*uv[0], MAP_Y+MAP_SIZE*uv[1], walk_time, scale=1.15)
+    # On the flat map Steve leaves one edge while already entering the opposite one:
+    # draw him at every wrapped position and clip each copy to the map square.
+    layer = Image.new('RGBA', image.size)
+    layer_pen = Pen(layer)
+    for shift_x in (-1, 0, 1):
+        for shift_z in (-1, 0, 1):
+            wrapped = (uv[0]+shift_x, uv[1]+shift_z)
+            if -.08 < wrapped[0] < 1.08 and -.14 < wrapped[1] < 1.14:
+                avatar(layer_pen, MAP_X+MAP_SIZE*wrapped[0], MAP_Y+MAP_SIZE*wrapped[1], walk_time, scale=1.15)
+    clip = Image.new('L', image.size)
+    ImageDraw.Draw(clip).rectangle((MAP_X*SS, MAP_Y*SS, (MAP_X+MAP_SIZE)*SS, (MAP_Y+MAP_SIZE)*SS), fill=255)
+    layer.putalpha(ImageChops.multiply(layer.getchannel('A'), clip))
+    image.paste(layer, (0, 0), layer)
     return image.resize((W, H), Image.Resampling.LANCZOS)
 
 
