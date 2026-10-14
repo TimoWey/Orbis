@@ -25,6 +25,9 @@ public final class ClientFrame {
         ClientFrame orbis$frame();
     }
 
+    /** Beyond the farthest view distance a teleport keeps none of the client's chunks, so its frame may start afresh. */
+    private static final int FAR = 512;
+
     private @Nullable Level level;
     private volatile int lapX, lapZ;
     private @Nullable Vec3 teleportFrom;
@@ -67,21 +70,40 @@ public final class ClientFrame {
 
     /** Where the server is about to teleport the player from, in the same level. */
     public void teleporting(ServerPlayer player) {
+        // Changing dimension, the player is already in the new level but still at the old position, which means
+        // nothing there: the new frame starts at the arrival.
+        boolean sameLevel = player.level() == level;
         follow(player);
-        teleportFrom = player.position();
+        teleportFrom = sameLevel ? player.position() : null;
     }
 
     /**
-     * Absolute positions the server puts the player at keep the player's own lap, so the client lands where the
-     * command said. Across the seam that is the long way round in the client frame: the chunks it holds are then
-     * all in the wrong place, which {@link #takeJump()} reports once.
+     * Absolute positions the server puts the player at go to the image nearest to where the client is, so a short
+     * teleport over the seam is a short move for the client too. A far one starts the frame afresh instead, so the
+     * client lands at exactly the coordinates the command named. Either way the lap may change, which moves every
+     * chunk the client holds; {@link #takeJump()} reports that once.
      */
     public Vec3 teleported(@Nullable Torus torus, ServerPlayer player, Vec3 at, boolean relativeX, boolean relativeZ) {
         follow(player);
         Vec3 from = teleportFrom;
         teleportFrom = null;
-        if (torus != null && from != null && (!relativeX && torus.nearest(at.x, from.x) != at.x
-                || !relativeZ && torus.nearest(at.z, from.z) != at.z)) jumped = true;
+        if (torus != null && from != null) {
+            double nearX = relativeX ? from.x : torus.nearest(at.x, from.x);
+            double nearZ = relativeZ ? from.z : torus.nearest(at.z, from.z);
+            int newLapX = lapX, newLapZ = lapZ;
+            if (Math.abs(nearX - from.x) > FAR || Math.abs(nearZ - from.z) > FAR) {
+                if (!relativeX) newLapX = 0;
+                if (!relativeZ) newLapZ = 0;
+            } else {
+                if (!relativeX) newLapX += (int) Math.round(nearX - at.x);
+                if (!relativeZ) newLapZ += (int) Math.round(nearZ - at.z);
+            }
+            if (newLapX != lapX || newLapZ != lapZ) {
+                lapX = newLapX;
+                lapZ = newLapZ;
+                jumped = true;
+            }
+        }
         return new Vec3(relativeX ? at.x : at.x + lapX, at.y, relativeZ ? at.z : at.z + lapZ);
     }
 
