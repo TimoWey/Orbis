@@ -58,6 +58,7 @@
     "PlayerListMixin",
     "PlayerMixin",
     "PoiBehaviourMixin",
+    "PoiDistanceTrackerMixin",
     "PoiManagerMixin",
     "PoiWorkMixin",
     "PortalForcerMixin",
@@ -67,6 +68,7 @@
     "RangedAttackMixin",
     "SectionBlocksPacketAccess",
     "SectionStorageMixin",
+    "SectionTrackerMixin",
     "ServerChunkCacheMixin",
     "ServerEntityGetterMixin",
     "ServerExplosionMixin",
@@ -79,6 +81,7 @@
     "StaticCache2DAccessor",
     "StructureManagerMixin",
     "StructureStartMixin",
+    "ThrownTridentMixin",
     "TicketStorageMixin",
     "TrackedEntityMixin",
     "WitherBossMixin"
