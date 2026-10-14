@@ -67,7 +67,7 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         String built = server.computeOnServer(sv -> {
             var level = place.level(sv);
             for (int k = 1 - BEFORE; k < PAST; k++) {
-                if (!level.getBlockState(seam.block(half, k, y - 1, 0)).is(Blocks.STONE)) return "no floor at " + k;
+                if (level.getBlockState(seam.block(half, k, y - 1, 0)).isAir()) return "no floor at " + k;
                 if (!level.getBlockState(seam.block(half, k, y + 1, 0)).isAir()) return "blocked at " + k;
             }
             return null;
@@ -100,6 +100,7 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         // Closed at both ends, so nothing walks off to the terrain or a village nearby.
         server.runCommand(place.in("fill " + seam.box(half, 1 - BEFORE, PAST - 1, y, y + 3, -2, 2) + " minecraft:air"));
         server.runCommand(place.in("fill " + seam.box(half, 1 - BEFORE, PAST - 1, y + 3, y + 3, -2, 2) + " minecraft:glowstone"));
+        seam.mark(server, place, -BEFORE, PAST, y);
     }
 
     /** A husk fifteen blocks before the seam hunts a villager fifteen past it, within its follow range of 35, the whole way over. */

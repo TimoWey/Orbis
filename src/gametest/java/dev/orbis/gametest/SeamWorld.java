@@ -112,6 +112,34 @@ final class SeamWorld {
             return null;
         }
 
+        /**
+         * Marks the seam in a corridor over the spots {@code k0..k1}, three blocks to each side, with floor at
+         * {@code y - 1}: the last row before it turns red and the first row past it blue, in the stone floor and in
+         * the glass walls and roof alike, so a screenshot shows where the world wraps.
+         */
+        void mark(TestServerContext server, Place place, int k0, int k1, int y) {
+            int half = place.half();
+            String[] corners = box(half, k0, k1, y - 1, y + 4, -3, 3).split(" ");
+            int minX = Integer.parseInt(corners[0]), minZ = Integer.parseInt(corners[2]);
+            int maxX = Integer.parseInt(corners[3]), maxZ = Integer.parseInt(corners[5]);
+            for (String[] row : new String[][] {{"red", "-1"}, {"blue", "0"}}) {
+                int k = Integer.parseInt(row[1]);
+                if (sx != 0) {
+                    int x = sx > 0 ? half + k : -half - 1 - k;
+                    paint(server, place, x + " " + (y - 1) + " " + minZ, x + " " + (y + 4) + " " + maxZ, row[0]);
+                }
+                if (sz != 0) {
+                    int z = sz > 0 ? half + k : -half - 1 - k;
+                    paint(server, place, minX + " " + (y - 1) + " " + z, maxX + " " + (y + 4) + " " + z, row[0]);
+                }
+            }
+        }
+
+        private static void paint(TestServerContext server, Place place, String from, String to, String color) {
+            server.runCommand(place.in("fill " + from + " " + to + " minecraft:" + color + "_concrete replace minecraft:stone"));
+            server.runCommand(place.in("fill " + from + " " + to + " minecraft:" + color + "_stained_glass replace minecraft:glass"));
+        }
+
         /** The two corners of the box over the spots {@code k0..k1} and {@code b0..b1}. */
         String box(int half, int k0, int k1, int y0, int y1, int b0, int b1) {
             BlockPos a = block(half, k0, y0, b0), c = block(half, k1, y1, b1), d = block(half, k0, y0, b1), e = block(half, k1, y1, b0);

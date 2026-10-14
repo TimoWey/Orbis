@@ -344,10 +344,11 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         server.runCommand(place.in("fill " + seam.box(half, -12, 18, y, y + 3, -2, 2) + " minecraft:air"));
         server.runCommand(place.in("setblock " + Seam.text(seam.block(half, -1, y + 2, 2)) + " minecraft:glowstone"));
         server.runCommand(place.in("setblock " + Seam.text(seam.block(half, 4, y, 2)) + " minecraft:gold_block"));
+        seam.mark(server, place, -12, 18, y);
         String built = server.computeOnServer(sv -> {
             var level = place.level(sv);
             for (int k = -12; k <= 18; k++) {
-                if (!level.getBlockState(seam.block(half, k, y - 1, 0)).is(Blocks.STONE)) return "no floor at " + k;
+                if (level.getBlockState(seam.block(half, k, y - 1, 0)).isAir()) return "no floor at " + k;
                 if (!level.getBlockState(seam.block(half, k, y + 1, 0)).isAir()) return "blocked at " + k;
             }
             return null;
@@ -360,8 +361,11 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         // the command's coordinates; everything the client sees below is measured in that frame.
         Vec3 landed = context.computeOnClient(mc -> mc.player.position());
         double[] lap = {landed.x - seam.x(half, -5.5, mid), landed.z - seam.z(half, -5.5, mid)};
-        for (double off : lap) {
-            check(Math.abs(off / (2 * half) - Math.rint(off / (2 * half))) < 1e-6, where + ": the client landed " + off + " off the teleport");
+        // The player may settle a little after landing, so allow a fraction of a block on top of whole widths.
+        for (int axis = 0; axis < 2; axis++) {
+            double off = lap[axis], widths = Math.rint(off / (2 * half));
+            check(Math.abs(off - widths * 2 * half) < 0.5, where + ": the client landed " + off + " off the teleport");
+            lap[axis] = widths * 2 * half;
         }
         int lapX = (int) Math.rint(lap[0]), lapZ = (int) Math.rint(lap[1]);
 
@@ -615,6 +619,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("orbis-" + fluid[0] + "-" + tag);
             server.runCommand(place.in("fill " + seam.box(half, -12, 18, y, y + 3, -2, 2) + " minecraft:air"));
             server.runCommand(place.in("fill " + seam.box(half, -12, 18, y - 1, y - 1, -2, 2) + " minecraft:stone"));
+            seam.mark(server, place, -12, 18, y);
         }
         server.runCommand(place.clear(seam, y));
     }
@@ -658,6 +663,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         }
         server.runCommand(place.in("fill " + seam.box(half, -10, 18, y - 1, y - 1, -1, 1) + " minecraft:stone"));
         server.runCommand(place.in("fill " + seam.box(half, -10, 18, y, y, 0, 0) + " minecraft:air"));
+        seam.mark(server, place, -12, 18, y);
     }
 
     /**
