@@ -2,6 +2,7 @@ package dev.orbis.engine.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import dev.orbis.engine.EntityFold;
 import dev.orbis.engine.Fold;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
@@ -11,6 +12,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.BlockHitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -35,6 +37,10 @@ public abstract class ServerGamePacketListenerImplMixin implements ClientFrame.H
     @Shadow private double firstGoodZ;
     @Shadow private double lastGoodX;
     @Shadow private double lastGoodZ;
+    @Shadow private double vehicleFirstGoodX;
+    @Shadow private double vehicleFirstGoodZ;
+    @Shadow private double vehicleLastGoodX;
+    @Shadow private double vehicleLastGoodZ;
 
     @Unique private final ClientFrame orbis$frame = new ClientFrame();
 
@@ -92,6 +98,25 @@ public abstract class ServerGamePacketListenerImplMixin implements ClientFrame.H
         lastGoodX += dx;
         lastGoodZ += dz;
         orbis$frame.playerShifted(player, dx, dz);
+    }
+
+    /**
+     * Crossing the seam in a vehicle the client steers, such as a boat: the server moves it there from the packet,
+     * not in its own tick, and an entity past the seam is never ticked, so it is folded here, with its riders.
+     */
+    @Inject(method = "handleMoveVehicle", at = @At("RETURN"))
+    private void orbis$foldVehicle(CallbackInfo callback) {
+        Torus torus = Tori.of(player.level());
+        Entity vehicle = player.getRootVehicle();
+        if (torus == null || vehicle == player) return;
+        double x = vehicle.getX(), z = vehicle.getZ();
+        int dx = (int) Math.round(torus.fold(x) - x), dz = (int) Math.round(torus.fold(z) - z);
+        if (dx == 0 && dz == 0) return;
+        EntityFold.fold(torus, vehicle);
+        vehicleFirstGoodX += dx;
+        vehicleFirstGoodZ += dz;
+        vehicleLastGoodX += dx;
+        vehicleLastGoodZ += dz;
     }
 
     @ModifyVariable(method = "handleUseItemOn", at = @At("HEAD"), argsOnly = true)

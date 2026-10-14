@@ -21,5 +21,13 @@ public final class AtlasProbe {
                 || cell.z() < (data.minZ() >> 4) || cell.z() >= (data.minZ() >> 4) + width).count();
     }
 
+    /** The block coordinates the map label shows for the player now, as "x z", or null before the first snapshot. */
+    public static String shownCoordinates(Minecraft client) {
+        var data = PlayerAtlasClient.snapshot;
+        if (data == null || !data.dimension().equals(client.level.dimension().identifier().toString())) return null;
+        int[] shown = OrbisMinimap.shownBlock(data, client.player.getX(), client.player.getZ());
+        return shown[0] + " " + shown[1];
+    }
+
     public static void openMap(Minecraft client) { client.gui.setScreen(new PlayerAtlasScreen()); }
 }

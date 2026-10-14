@@ -48,15 +48,22 @@ final class OrbisMinimap implements AutoCloseable {
         label(g, net.minecraft.network.chat.Component.translatable("orbis.atlas.east").getString(), left + size + 8, top + size / 2 - 4);
         label(g, "S", left + size / 2, top + size + 4);
         label(g, "W", left - 9, top + size / 2 - 4);
-        // The client keeps walking past the seam in one continuous frame; the label shows the world's own coordinates.
-        double shownX = client.player.getX(), shownZ = client.player.getZ();
-        if (data.wrapped()) {
-            shownX = AtlasMapMath.canonical(shownX, data.minX(), data.span());
-            shownZ = AtlasMapMath.canonical(shownZ, data.minZ(), data.span());
-        }
-        label(g, "X: " + (int) Math.floor(shownX), left + size / 2, top + size + 16);
+        int[] label = shownBlock(data, client.player.getX(), client.player.getZ());
+        label(g, "X: " + label[0], left + size / 2, top + size + 16);
         label(g, "Y: " + client.player.getBlockY(), left + size / 2, top + size + 26);
-        label(g, "Z: " + (int) Math.floor(shownZ), left + size / 2, top + size + 36);
+        label(g, "Z: " + label[1], left + size / 2, top + size + 36);
+    }
+
+    /**
+     * The block coordinates the label shows. The client keeps walking past the seam in one continuous frame; the
+     * label shows the world's own coordinates.
+     */
+    static int[] shownBlock(AtlasSnapshot data, double x, double z) {
+        if (data.wrapped()) {
+            x = AtlasMapMath.canonical(x, data.minX(), data.span());
+            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+        }
+        return new int[] {(int) Math.floor(x), (int) Math.floor(z)};
     }
 
     static int fittedSize(int width, int height, int requested) {
