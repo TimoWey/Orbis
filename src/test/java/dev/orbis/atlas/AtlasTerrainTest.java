@@ -94,13 +94,12 @@ class AtlasTerrainTest {
         assertEquals(0, pixels[0]);
     }
 
-    @Test void flatNeverDrawsCopiesBeyondTheCanonicalWorld() {
+    @Test void flatContinuesPastTheSeam() {
         var data = fixture(List.of(new AtlasSnapshot.Cell(-64, 0, 0xffabcdef)));
         var raster = new AtlasMapRaster(64, 64);
+        // Block 1028 lies past the east seam, in the world's westernmost chunk.
         var edge = new AtlasMapRaster.View(64, 64, 1024, 8, 1, false, 0, 0, false, false);
-        assertEquals(AtlasMapRaster.BACKGROUND, raster.render(data, edge)[32 * 64 + 36]);
-        var far = new AtlasMapRaster.View(64, 64, 1024 + 2048 * 3, 8, 1, false, 0, 0, false, false);
-        assertTrue(Arrays.stream(raster.render(data, far)).allMatch(p -> p == AtlasMapRaster.BACKGROUND));
+        assertEquals(0xffabcdef, raster.render(data, edge)[32 * 64 + 36]);
     }
 
     private static AtlasSnapshot fixture(List<AtlasSnapshot.Cell> chunks) {

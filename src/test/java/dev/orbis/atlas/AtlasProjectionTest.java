@@ -40,19 +40,20 @@ class AtlasProjectionTest {
             }
         }
     }
-    @Test void flatOverviewContainsOneWorldAndClampedPanCannotEscapeIt() {
-        Map<Integer, Integer> colors = new HashMap<>();
-        for (int i = 0; i < 65536; i++) colors.put(i, 0xff456789);
-        int[] pixels = new AtlasMapRaster(192, 128).render(world(colors, List.of()),
-                new AtlasMapRaster.View(192, 128, 0, 0, 128.0 / 2048, false, 0, 0, false, false));
-        for (int y = 0; y < 128; y++) for (int x = 0; x < 192; x++) {
-            if (x < 32 || x >= 160) assertEquals(AtlasMapRaster.BACKGROUND, pixels[y * 192 + x]);
-        }
-        assertEquals(AtlasUnknownTerrain.color(16, 16, AtlasUnknownTerrain.level(32)), pixels[64 * 192 + 96]);
-        assertEquals(0, AtlasMapMath.clampCenter(10000, -1024, 2048, 3000));
-        assertEquals(896, AtlasMapMath.clampCenter(10000, -1024, 2048, 256));
-        assertEquals(-896, AtlasMapMath.clampCenter(-10000, -1024, 2048, 256));
+    @Test void flatMapContinuesAcrossTheSeam() {
+        // Two chunks on either side of the east seam of a 2048-block world, seen from just before it.
+        AtlasSnapshot.Cell west = new AtlasSnapshot.Cell(-64, 0, 0xffff0000), east = new AtlasSnapshot.Cell(63, 0, 0xff00ff00);
+        var data = world(Map.of(), List.of(west, east));
+        var view = new AtlasMapRaster.View(128, 128, 1000, 8, 1, false, 0, 0, false, false);
+        int[] pixels = new AtlasMapRaster(128, 128).render(data, view);
+        assertEquals(0xff00ff00, pixels[64 * 128 + 80]); // blocks 1008..1023
+        assertEquals(0xffff0000, pixels[64 * 128 + 96]); // blocks 1024..1039, the world's west edge again
+        for (int x = 0; x < 128; x++) assertNotEquals(AtlasMapRaster.BACKGROUND, pixels[20 * 128 + x]);
+        double[] marker = AtlasPlayerMarker.project(data, view, -1020, 8);
+        assertEquals(64 + 1028 - 1000, marker[0], 1e-9);
         assertEquals(-1024, AtlasMapMath.canonical(1024, -1024, 2048));
+        assertEquals(1028, AtlasMapMath.nearest(-1020, 1000, 2048), 1e-9);
+        assertEquals(-1020, AtlasMapMath.nearest(-1020, -900, 2048), 1e-9);
     }
     @Test void exploredBlocksHaveIndividualColors() {
         List<Integer> colors = new ArrayList<>(Collections.nCopies(256, 0xff000000));

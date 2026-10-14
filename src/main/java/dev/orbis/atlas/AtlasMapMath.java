@@ -30,10 +30,8 @@ public final class AtlasMapMath {
     }
 
     static double canonical(double value, int min, int span) { return min + unit((value - min) / span) * span; }
-    static double clampCenter(double center, int min, int span, double visible) {
-        if (visible >= span) return min + span * .5;
-        return Math.clamp(center, min + visible * .5, min + span - visible * .5);
-    }
+    /** The copy of {@code value} on a wrapped axis that lies closest to {@code center}. */
+    static double nearest(double value, double center, int span) { return center + (unit((value - center) / span + .5) - .5) * span; }
 
     public static int biomeColor(String name) {
         // Check these before generic forest/desert matching so Nether biomes stay distinguishable.

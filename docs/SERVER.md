@@ -7,20 +7,20 @@ The normal build `orbis-0.1.0-alpha.12.jar` contains the world engine, the minim
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
 - Server: put Fabric API and `orbis-0.1.0-alpha.12.jar` into the Fabric server's `mods/` folder.
-- Players who want the map: install the same Fabric Loader, Fabric API and Orbis versions in their own Minecraft profile.
+- Players: install the same Fabric Loader, Fabric API and Orbis versions in their own Minecraft profile.
 - Do not install Toroidal World or Exotic Worlds as well. Move older Orbis JARs out of `mods/` first. Never install the normal and debug builds together; `-sources.jar` does not belong in `mods/`.
 
-Vanilla clients can join an Orbis server without Fabric or Orbis; this was checked with a second real Minecraft 26.3 client. World wrapping runs on the server. Without the client mod there is no map and no German Orbis text; English fallback text stays readable. Other mods may have their own client requirements.
+Every player needs Orbis. A game without it is turned away while connecting, with the message "This world needs the Orbis mod. Install Orbis *version* for Fabric (Minecraft 26.3) to join." A player whose Orbis cannot play with the server's leaves with both versions named. Servers whose world is not an Orbis world let anyone in. Other mods may have their own client requirements.
 
 ## Map controls
 
-**M** opens and closes the atlas (rebindable under Controls). Top row: **Map**, **Globe**, **Center**, **Close**. Drag to move the map or rotate the globe; the mouse wheel zooms (the +/− keys work too). Dragging stops following the player; **Center** (or Home) follows the player again. Bottom row: minimap on/off, corner, size and minimap zoom. **F1** hides the HUD. The unwrapped End always uses the flat map. In the Nether the map shows a fixed slice at Y=32.
+**M** opens and closes the atlas (rebindable under Controls). Top row: **Map**, **Globe**, **Center**, **Close**. Drag to move the map or rotate the globe; the mouse wheel zooms (the +/− keys work too). Dragging stops following the player; **Center** (or Home) follows the player again. Bottom row: minimap on/off, corner, size and minimap zoom. **F1** hides the HUD. The unwrapped End always uses the flat map. In the Nether the map shows a fixed slice at Y=32. On an Orbis world the flat map and minimap stay centred on you beside a seam and go on with the other side of the world; yellow lines mark the seams.
 
 Settings are saved atomically in `config/orbis-atlas.properties` and survive restarts. Flat zoom, globe zoom and view mode are stored per dimension; minimap corner, size, visibility and zoom are global. When reopened, the map follows the player again. The settings also apply on other servers, without transferring terrain.
 
 Your own marker is Minecraft's white map cursor with its 16 directions. Other players appear as green vanilla map markers; hovering in the large atlas shows their name. The atlas and minimap show players of the current dimension inside the visible area; zoom out to find distant players. On the globe, markers on the far side stay hidden. Resource packs apply to these textures just like on vanilla maps.
 
-With Orbis on both server and client, player positions are sent twice per second, including players outside entity view distance. Those players do not need Orbis themselves. Invisible players and spectators are hidden, and no chunks are requested for this. The server only sends to clients that support the channel, at most 4,096 players per dimension. Logouts and dimension changes replace the list; it is cleared on disconnect. Stale positions disappear after three seconds without an update.
+Player positions are sent twice per second, including players outside entity view distance. Invisible players and spectators are hidden, and no chunks are requested for this. The server only sends to clients that support the channel, at most 4,096 players per dimension. Logouts and dimension changes replace the list; it is cleared on disconnect. Stale positions disappear after three seconds without an update.
 
 ## How the map gets its terrain
 
@@ -38,7 +38,7 @@ Operator permission level **3** or the server console:
 - `/orbis check status`: progress, or the last result since server start.
 - `/orbis check cancel`: stop a running check.
 
-Only one check runs per server. The result appears as plain text for the operator who started it and in the server log, also with a vanilla client. It looks for the biomes and structures the current generator can produce in each dimension, including a separate Stronghold portal-room check.
+Only one check runs per server. The result appears in chat for the operator who started it, in English or German, and in the server log. It looks for the biomes and structures the current generator can produce in each dimension, including a separate Stronghold portal-room check.
 
 The check does not load or generate world chunks. It queries the biome generator and tests possible structure starts in unsaved scratch chunks. It runs on the server thread with a soft budget of 3 ms per tick, at most one structure placement per tick, up to 33,792 biome queries and 2,048 structure candidates per dimension. Single native generator calls can take longer. After 2,400 ticks per dimension it stops with a note that the time budget was reached (about two minutes per dimension at 20 TPS).
 
