@@ -221,10 +221,6 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                 var level = s.overworld();
                 if (!level.getBlockState(new BlockPos(HALF - 1, 220, -HALF + 40)).is(Blocks.DIAMOND_BLOCK)) return "diamond block gone";
                 if (!level.getBlockState(new BlockPos(-HALF, 220, -HALF + 40)).is(Blocks.EMERALD_BLOCK)) return "emerald block gone";
-                var stands = level.getEntities(EntityTypeTest.forClass(Entity.class), e -> typeName(e).equals("armor_stand"));
-                if (stands.size() != 1) return stands.size() + " armor stands";
-                Entity stand = stands.getFirst();
-                if (Math.abs(stand.getX() - (-HALF + 2.5)) > 0.01) return "armor stand at " + stand.position();
                 int nh = HALF / 8;
                 var nether = s.getLevel(Level.NETHER);
                 if (!nether.getBlockState(new BlockPos(nh - 1, 103, 40)).is(Blocks.GOLD_BLOCK)) return "Nether gold block gone";
@@ -261,6 +257,19 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             }
             waitLoaded(context, world, HALF - 1, -HALF + 40);
             waitLoaded(context, world, -HALF, -HALF + 40);
+            // The player came back from the Nether, so the Overworld's entities load only now.
+            long standChunk = net.minecraft.world.level.ChunkPos.pack(new BlockPos(-HALF + 2, 220, -HALF + 40));
+            for (int tick = 0; !server.computeOnServer(sv -> sv.overworld().areEntitiesLoaded(standChunk)); tick++) {
+                check(tick < 600, "The Overworld's entities at the seam never loaded after reloading");
+                context.waitTick();
+            }
+            String stand = server.computeOnServer(s -> {
+                var stands = s.overworld().getEntities(EntityTypeTest.forClass(Entity.class), e -> typeName(e).equals("armor_stand"));
+                if (stands.size() != 1) return stands.size() + " armor stands";
+                if (Math.abs(stands.getFirst().getX() - (-HALF + 2.5)) > 0.01) return "armor stand at " + stands.getFirst().position();
+                return null;
+            });
+            check(stand == null, "After reloading: " + stand);
             context.waitTicks(20);
             world.getConnection().waitForChunksRender();
             String seen = context.computeOnClient(mc -> {
