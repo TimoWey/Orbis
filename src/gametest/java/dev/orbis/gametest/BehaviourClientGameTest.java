@@ -604,7 +604,12 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
             for (Entity e : level.getAllEntities()) {
                 if (e instanceof net.minecraft.world.entity.raid.Raider raider && raider.isAlive() && wave.contains(e.getUUID())) {
                     raiders++;
-                    if (raider.getCurrentRaid() != raid) return typeName(e) + " at " + e.blockPosition().toShortString() + " fell out of the raid";
+                    // A raid lets go of raiders 112 blocks from its centre; waves land up to about 100 out.
+                    var torus = Tori.of(level);
+                    BlockPos at = e.blockPosition(), c = raid.getCenter();
+                    double dx = torus.delta(c.getX(), at.getX()), dz = torus.delta(c.getZ(), at.getZ());
+                    if (raider.getCurrentRaid() != raid && dx * dx + dz * dz < 100 * 100)
+                        return typeName(e) + " at " + at.toShortString() + " fell out of the raid at " + c.toShortString();
                 }
             }
             return raiders == 0 ? "no raider of the wave left" : null;
