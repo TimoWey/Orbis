@@ -4,6 +4,7 @@ import static dev.orbis.gametest.SeamWorld.*;
 
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.mixin.ChunkMapAccessor;
+import dev.orbis.gametest.mixin.ServerChunkCacheAccessor;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -345,9 +346,11 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
                         .append(" entityTicking ").append(distances.inEntityTickingRange(key))
                         .append(" entitiesLoaded ").append(level.areEntitiesLoaded(key))
                         .append(" holder ").append(holder == null ? "none" : holder.getTicketLevel() + "/" + holder.getFullStatus())
-                        .append(" players ").append(distances.hasPlayersNearby(key)).append(';');
+                        .append(" players ").append(distances.hasPlayersNearby(key))
+                        .append(" tickets ").append(((ServerChunkCacheAccessor) level.getChunkSource()).orbisGametest$tickets()
+                                .getTicketDebugString(key, false)).append(';');
             }
-            return out.toString();
+            return out.append(" throttle ").append(distances.getDebugStatus()).toString();
         });
     }
 
