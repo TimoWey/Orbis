@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.BlockPos;
@@ -16,6 +17,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import java.util.List;
+import java.util.UUID;
+import net.fabricmc.fabric.api.entity.FakePlayer;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +30,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -33,6 +40,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Plays a Tiny world on the new engine: looks over the east seam, checks light and blocks on the far side, walks
@@ -71,6 +79,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                 throw new AssertionError("Missing mixin target " + target, e);
             }
         }
+        TestWorldSave save;
         try (TestSingleplayerContext world = context.worldBuilder()
                 .adjustSettings(settings -> {
                     var preset = settings.getSettings().worldgenLoadContext().lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(TINY);
@@ -80,6 +89,7 @@ public final class TorusClientGameTest implements FabricClientGameTest {
                 })
                 .create()) {
             var server = world.getServer();
+            save = world.getWorldSave();
             int width = server.computeOnServer(s -> {
                 var torus = Tori.of(s.overworld());
                 if (torus == null) throw new AssertionError("Overworld is not on the new engine");
@@ -168,13 +178,17 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
             checkPortalAcrossNetherSeam(server);
             server.runCommand("gamerule spawn_mobs false");
-            for (Seam seam : Seam.ALL) checkSeam(context, world, server, Place.OVERWORLD, seam);
+            for (Seam seam : Seam.SIDES) checkSeam(context, world, server, Place.OVERWORLD, seam);
+            for (Seam seam : Seam.CORNERS) checkSeam(context, world, server, Place.OVERWORLD, seam);
             // A far teleport starts the client's frame afresh: it lands exactly where the command said.
             server.runCommand("tp @a 100.25 200 -100.25");
             context.waitTicks(5);
             Vec3 landed = context.computeOnClient(mc -> mc.player.position());
             check(landed.x == 100.25 && landed.z == -100.25, "The client landed at " + landed + " after a far teleport");
-            for (Seam seam : Seam.ALL) checkSeam(context, world, server, Place.NETHER, seam);
+            for (Seam seam : Seam.SIDES) checkSeam(context, world, server, Place.NETHER, seam);
+            for (Seam seam : Seam.CORNERS) checkSeam(context, world, server, Place.NETHER, seam);
+            checkTerrainAcrossSeams(server);
+            checkFortressAcrossSeam(context, world, server);
             checkLocateAcrossSeam(server, Place.OVERWORLD, "#minecraft:village");
             checkLocateAcrossSeam(server, Place.NETHER, "minecraft:fortress");
 
@@ -187,17 +201,61 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
             checkHoldersFolded(server);
 
+            // Marks for after reloading: a block either side of the seam and an armor stand placed past it.
+            server.runCommand("tp @a " + (HALF - 40) + " 200 " + (-HALF + 40));
+            waitLoaded(context, world, HALF - 1, -HALF + 40);
+            waitLoaded(context, world, -HALF, -HALF + 40);
+            server.runCommand("setblock " + (HALF - 1) + " 220 " + (-HALF + 40) + " minecraft:diamond_block");
+            server.runCommand("setblock " + -HALF + " 220 " + (-HALF + 40) + " minecraft:emerald_block");
+            server.runCommand("summon minecraft:armor_stand " + (HALF + 2.5) + " 220 " + (-HALF + 40.5) + " {NoGravity:1b,CustomName:\"kept\"}");
+
             // Leave right after a long teleport across the seam. A player counted at an unfolded chunk left a
             // holder behind that never unloaded, and saving on exit then waited for it forever.
-            server.runCommand("tp @a " + (HALF - 40) + " 200 " + (-HALF + 40));
+            server.runCommand("tp @a " + (-HALF + 40) + " 200 " + (HALF - 40));
             context.waitTicks(2);
+            checkHoldersFolded(server);
+        }
+
+        // Back into the saved world: the marks stand where they were on both sides of the seam, the armor stand is
+        // there once at its folded place, and the client sees them the short way round.
+        try (TestSingleplayerContext world = save.open()) {
+            var server = world.getServer();
+            world.getConnection().waitForChunksRender();
+            String marks = server.computeOnServer(s -> {
+                var level = s.overworld();
+                if (!level.getBlockState(new BlockPos(HALF - 1, 220, -HALF + 40)).is(Blocks.DIAMOND_BLOCK)) return "diamond block gone";
+                if (!level.getBlockState(new BlockPos(-HALF, 220, -HALF + 40)).is(Blocks.EMERALD_BLOCK)) return "emerald block gone";
+                var stands = level.getEntities(EntityTypeTest.forClass(Entity.class), e -> typeName(e).equals("armor_stand"));
+                if (stands.size() != 1) return stands.size() + " armor stands";
+                Entity stand = stands.getFirst();
+                if (Math.abs(stand.getX() - (-HALF + 2.5)) > 0.01) return "armor stand at " + stand.position();
+                Vec3 player = s.getPlayerList().getPlayers().getFirst().position();
+                if (Math.abs(player.x - (-HALF + 40.5)) > 1 || Math.abs(player.z - (HALF - 39.5)) > 1) return "player at " + player;
+                return null;
+            });
+            check(marks == null, "After reloading: " + marks);
+            String seen = context.computeOnClient(mc -> {
+                double px = mc.player.getX(), pz = mc.player.getZ();
+                var torus = dev.orbis.engine.Torus.centered(2 * HALF);
+                BlockPos diamond = BlockPos.containing(torus.nearest(HALF - 1 + 0.5, px), 220, torus.nearest(-HALF + 40 + 0.5, pz));
+                BlockPos emerald = BlockPos.containing(torus.nearest(-HALF + 0.5, px), 220, torus.nearest(-HALF + 40 + 0.5, pz));
+                if (!mc.level.getBlockState(diamond).is(Blocks.DIAMOND_BLOCK)) return "no diamond block at " + diamond.toShortString();
+                if (!mc.level.getBlockState(emerald).is(Blocks.EMERALD_BLOCK)) return "no emerald block at " + emerald.toShortString();
+                return null;
+            });
+            check(seen == null, "After reloading the client sees " + seen);
+            server.runCommand("tp @a " + (HALF - 6) + " 222 " + (-HALF + 44) + " -90 30");
+            context.waitTicks(20);
+            world.getConnection().waitForChunksRender();
+            context.takeScreenshot("orbis-after-reload");
             checkHoldersFolded(server);
         }
     }
 
     /**
-     * The Nether is exactly an eighth of the Overworld. A portal just inside its west edge is the one found from an
-     * exit just inside its east edge, five blocks away across the seam rather than the whole width.
+     * The Nether is exactly an eighth of the Overworld. A portal just inside one edge is the one found from an exit
+     * just inside the opposite edge, five blocks away across the seam rather than the whole width; on both axes and
+     * both ways round.
      */
     private static void checkPortalAcrossNetherSeam(TestServerContext server) {
         String problem = server.computeOnServer(s -> {
@@ -205,48 +263,104 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             var torus = Tori.of(nether);
             if (torus == null) return "Nether is not on the new engine";
             if (torus.widthBlocks() * 8 != Tori.of(s.overworld()).widthBlocks()) return "Nether width " + torus.widthBlocks();
-            BlockPos portal = new BlockPos(torus.minBlock() + 2, 64, 0);
-            BlockPos exit = new BlockPos(torus.minBlock() + torus.widthBlocks() - 3, 64, 0);
-            nether.getChunk(portal);
-            nether.getChunk(exit);
-            nether.setBlock(portal, Blocks.NETHER_PORTAL.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
-            var found = nether.getPortalForcer().findClosestPortalPosition(exit, true, nether.getWorldBorder());
-            return found.filter(portal::equals).isPresent() ? null : "Found " + found + " instead of " + portal;
+            int low = torus.minBlock() + 2, high = torus.minBlock() + torus.widthBlocks() - 3;
+            for (boolean alongX : new boolean[] {true, false}) {
+                for (int[] pair : new int[][] {{low, high}, {high - 1, low - 1}}) {
+                    BlockPos portal = alongX ? new BlockPos(pair[0], 64, 0) : new BlockPos(0, 64, pair[0]);
+                    BlockPos exit = alongX ? new BlockPos(pair[1], 64, 0) : new BlockPos(0, 64, pair[1]);
+                    nether.getChunk(portal);
+                    nether.getChunk(exit);
+                    nether.setBlock(portal, Blocks.NETHER_PORTAL.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                    var found = nether.getPortalForcer().findClosestPortalPosition(exit, true, nether.getWorldBorder());
+                    nether.setBlock(portal, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                    if (found.filter(portal::equals).isEmpty()) return "Found " + found + " instead of " + portal + " from " + exit;
+                }
+            }
+            return null;
         });
         check(problem == null, "Portal across the Nether seam: " + problem);
     }
 
-    /** One of the four seams: the axis that crosses it and the side of the world it is on. */
-    private record Seam(String name, boolean alongX, int sign) {
-        static final Seam[] ALL = {new Seam("east", true, 1), new Seam("west", true, -1), new Seam("south", false, 1), new Seam("north", false, -1)};
+    /**
+     * One way over the seam: east, west, south, north, or diagonally through the corner, where both axes wrap at
+     * once. Spots are {@code k} blocks past the seam (negative: before it) and {@code b} blocks to the side; the
+     * spots on opposite sides mirror each other exactly.
+     */
+    private record Seam(String name, int sx, int sz) {
+        static final Seam[] SIDES = {new Seam("east", 1, 0), new Seam("west", -1, 0), new Seam("south", 0, 1), new Seam("north", 0, -1)};
+        static final Seam[] CORNERS = {new Seam("southeast-corner", 1, 1), new Seam("northwest-corner", -1, -1)};
 
-        /** Block coordinates for a spot {@code a} along the crossing axis and {@code b} across it. */
-        String at(double a, double y, double b) { return alongX ? n(a) + " " + n(y) + " " + n(b) : n(b) + " " + n(y) + " " + n(a); }
+        boolean corner() { return sx != 0 && sz != 0; }
 
-        /** Whole numbers without a decimal point, so that block position arguments accept them. */
-        private static String n(double value) { return value == Math.rint(value) ? Long.toString((long) value) : Double.toString(value); }
+        /** The side direction: across the corridor for a side, across the diagonal for a corner. */
+        private int px() { return sz == 0 ? 0 : sx == 0 ? 1 : -1; }
+
+        private int pz() { return sx == 0 ? 0 : 1; }
+
+        /** The line entities stand on: the middle of the corridor's centre blocks. */
+        double mid() { return corner() ? 0 : 0.5; }
+
+        double x(int half, double k, double b) { return sx * (half + k) + px() * b; }
+
+        double z(int half, double k, double b) { return sz * (half + k) + pz() * b; }
+
+        /** An exact position for a command; always written with a decimal point, so nothing re-centres it. */
+        String at(int half, double k, double y, double b) { return x(half, k, b) + " " + y + " " + z(half, k, b); }
+
+        /** The block {@code k} past the seam: on the negative side the first block past it is {@code -half - 1}. */
+        BlockPos block(int half, int k, int y, int b) {
+            int x = sx > 0 ? half + k : sx < 0 ? -half - 1 - k : 0, z = sz > 0 ? half + k : sz < 0 ? -half - 1 - k : 0;
+            return new BlockPos(x + px() * b, y, z + pz() * b);
+        }
+
+        static String text(BlockPos pos) { return pos.getX() + " " + pos.getY() + " " + pos.getZ(); }
 
         /** The command rotation that faces across the seam. */
-        String facing(int pitch) { return (alongX ? (sign > 0 ? -90 : 90) : (sign > 0 ? 0 : 180)) + " " + pitch; }
+        String facing(int pitch) { return (int) Math.toDegrees(Math.atan2(-sx, sz)) + " " + pitch; }
 
-        BlockPos pos(int a, int y, int b) { return alongX ? new BlockPos(a, y, b) : new BlockPos(b, y, a); }
+        String motion(double speed) { return "[" + sx * speed + "d,0.0d," + sz * speed + "d]"; }
 
-        double along(Entity entity) { return alongX ? entity.getX() : entity.getZ(); }
+        /** How far a position has come along the way over the seam. */
+        double along(double x, double z) { return sx * x + sz * z; }
 
-        String motion(double speed) { return alongX ? "[" + sign * speed + "d,0.0d,0.0d]" : "[0.0d,0.0d," + sign * speed + "d]"; }
+        /**
+         * Whether a position seen by the client, in its frame shifted by {@code lap}, lies between {@code min} and
+         * {@code max} blocks past the seam on every axis this way crosses; null when it does.
+         */
+        @Nullable String past(int half, Vec3 at, double[] lap, double min, double max) {
+            if (sx != 0 && !(sx * (at.x - lap[0]) - half > min && sx * (at.x - lap[0]) - half < max)) return "x=" + at.x;
+            if (sz != 0 && !(sz * (at.z - lap[1]) - half > min && sz * (at.z - lap[1]) - half < max)) return "z=" + at.z;
+            return null;
+        }
+
+        /** Whether the server holds a position just past the seam at its folded place, on the far side; null when so. */
+        @Nullable String folded(int half, Vec3 at) {
+            if (sx != 0 && !(Math.abs(at.x + sx * half) < 64 && at.x >= -half && at.x < half)) return "x=" + at.x;
+            if (sz != 0 && !(Math.abs(at.z + sz * half) < 64 && at.z >= -half && at.z < half)) return "z=" + at.z;
+            return null;
+        }
+
+        /** The two corners of the box over the spots {@code k0..k1} and {@code b0..b1}. */
+        String box(int half, int k0, int k1, int y0, int y1, int b0, int b1) {
+            BlockPos a = block(half, k0, y0, b0), c = block(half, k1, y1, b1), d = block(half, k0, y0, b1), e = block(half, k1, y1, b0);
+            int minX = Math.min(Math.min(a.getX(), c.getX()), Math.min(d.getX(), e.getX()));
+            int maxX = Math.max(Math.max(a.getX(), c.getX()), Math.max(d.getX(), e.getX()));
+            int minZ = Math.min(Math.min(a.getZ(), c.getZ()), Math.min(d.getZ(), e.getZ()));
+            int maxZ = Math.max(Math.max(a.getZ(), c.getZ()), Math.max(d.getZ(), e.getZ()));
+            return minX + " " + y0 + " " + minZ + " " + maxX + " " + y1 + " " + maxZ;
+        }
     }
 
     /** A dimension on the torus: the Overworld, and the Nether an eighth its size. */
     private record Place(String name, ResourceKey<Level> key, String id, int half) {
         static final Place OVERWORLD = new Place("overworld", Level.OVERWORLD, "minecraft:overworld", HALF);
         static final Place NETHER = new Place("nether", Level.NETHER, "minecraft:the_nether", HALF / 8);
-        static final Place[] ALL = {OVERWORLD, NETHER};
 
         String in(String command) { return "execute in " + id + " run " + command; }
 
         /** Clears everything but the player from the corridor around a seam. */
         String clear(Seam seam, int y) {
-            return "execute in " + id + " positioned " + seam.at(seam.sign() * half, y, 0) + " run kill @e[type=!minecraft:player,distance=..64]";
+            return "execute in " + id + " positioned " + seam.at(half, 0, y, 0) + " run kill @e[type=!minecraft:player,distance=..64]";
         }
 
         ServerLevel level(MinecraftServer server) { return server.getLevel(key); }
@@ -254,57 +368,62 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
     /**
      * Everything at one seam of one dimension, in a glass corridor that runs across it: light and blocks past it,
-     * entities placed past it and flying over it, selectors, walking over it, a husk hunting a villager across it,
-     * and fighting over it: the player's hit lands, a zombie's blow knocks the player away from it rather than toward
-     * it, and a skeleton's arrows fly across and hit.
+     * entities placed past it and flying over it, selectors, walking over it, the map's frame and coordinates, items
+     * thrown over it and picked up across it, a minecart and a boat carrying the player over it, a second player
+     * past it, a husk hunting a villager across it, and fighting over it: the player's hit lands, a zombie's blow
+     * knocks the player away from it rather than toward it, and arrows and a skeleton's shots fly across and hit.
      */
     private static void checkSeam(ClientGameTestContext context, TestSingleplayerContext world, TestServerContext server,
                                   Place place, Seam seam) {
-        int s = seam.sign(), half = place.half();
+        int half = place.half();
+        double mid = seam.mid(), side = mid + 2;
+        boolean corner = seam.corner();
         String where = place.name() + " " + seam.name();
         String tag = place.name() + "-" + seam.name();
         int y = floor(context, world, place, seam);
-        int from = Math.min(s * (half - 12), s * (half + 18)), to = Math.max(s * (half - 12), s * (half + 18));
         // Fill refuses a corridor whose far end, past the seam, the server has not loaded yet.
-        for (int end : new int[] {from, to}) waitLoaded(context, world, place.key(), seam.pos(end, 0, 0));
+        for (int k : new int[] {-12, 18}) {
+            for (int b : new int[] {-3, 3}) waitLoaded(context, world, place.key(), seam.block(half, k, 0, b));
+        }
         server.runCommand(place.clear(seam, y));
-        server.runCommand(place.in("fill " + seam.at(from, y - 1, -3) + " " + seam.at(to, y + 4, 3) + " minecraft:glass"));
-        server.runCommand(place.in("fill " + seam.at(from, y - 1, -2) + " " + seam.at(to, y - 1, 2) + " minecraft:stone"));
-        server.runCommand(place.in("fill " + seam.at(from, y, -2) + " " + seam.at(to, y + 3, 2) + " minecraft:air"));
-        server.runCommand(place.in("setblock " + seam.at(s * (half - 1), y + 2, 2) + " minecraft:glowstone"));
-        server.runCommand(place.in("setblock " + seam.at(s * (half + 4), y, 2) + " minecraft:gold_block"));
+        server.runCommand(place.in("fill " + seam.box(half, -12, 18, y - 1, y + 4, -3, 3) + " minecraft:glass"));
+        server.runCommand(place.in("fill " + seam.box(half, -12, 18, y - 1, y - 1, -2, 2) + " minecraft:stone"));
+        server.runCommand(place.in("fill " + seam.box(half, -12, 18, y, y + 3, -2, 2) + " minecraft:air"));
+        server.runCommand(place.in("setblock " + Seam.text(seam.block(half, -1, y + 2, 2)) + " minecraft:glowstone"));
+        server.runCommand(place.in("setblock " + Seam.text(seam.block(half, 4, y, 2)) + " minecraft:gold_block"));
         String built = server.computeOnServer(sv -> {
             var level = place.level(sv);
-            for (int a = from; a <= to; a++) {
-                if (!level.getBlockState(seam.pos(a, y - 1, 0)).is(Blocks.STONE)) return "no floor at " + a;
-                if (!level.getBlockState(seam.pos(a, y + 1, 0)).isAir()) return "blocked at " + a;
+            for (int k = -12; k <= 18; k++) {
+                if (!level.getBlockState(seam.block(half, k, y - 1, 0)).is(Blocks.STONE)) return "no floor at " + k;
+                if (!level.getBlockState(seam.block(half, k, y + 1, 0)).isAir()) return "blocked at " + k;
             }
             return null;
         });
         check(built == null, where + ": corridor not built: " + built);
-        server.runCommand(place.in("tp @a " + seam.at(s * (half - 6), y, 0.5) + " " + seam.facing(10)));
+        server.runCommand(place.in("tp @a " + seam.at(half, -5.5, y, mid) + " " + seam.facing(10)));
         context.waitTicks(40);
         world.getConnection().waitForChunksRender();
         // A short teleport over the seam is a short move for the client too, so its frame may be whole widths off
         // the command's coordinates; everything the client sees below is measured in that frame.
-        double lap = context.computeOnClient(mc -> seam.along(mc.player)) - (s * (half - 6) + 0.5);
-        check(Math.abs(lap / (2 * half) - Math.rint(lap / (2 * half))) < 1e-6, where + ": the client landed " + lap + " off the teleport");
+        Vec3 landed = context.computeOnClient(mc -> mc.player.position());
+        double[] lap = {landed.x - seam.x(half, -5.5, mid), landed.z - seam.z(half, -5.5, mid)};
+        for (double off : lap) {
+            check(Math.abs(off / (2 * half) - Math.rint(off / (2 * half))) < 1e-6, where + ": the client landed " + off + " off the teleport");
+        }
+        int lapX = (int) Math.rint(lap[0]), lapZ = (int) Math.rint(lap[1]);
 
         // Light from a lamp before the seam shines past it, and the client sees a block placed past it.
-        int lightAcross = server.computeOnServer(sv -> place.level(sv).getBrightness(LightLayer.BLOCK, seam.pos(s * (half + 1), y + 2, 2)));
-        check(lightAcross >= 12, where + ": block light did not cross the seam: " + lightAcross);
-        boolean goldSeen = context.computeOnClient(mc -> mc.level.getBlockState(seam.pos(s * (half + 4) + (int) lap, y, 2)).is(Blocks.GOLD_BLOCK));
-        check(goldSeen, where + ": the client does not see the block placed across the seam:" + context.computeOnClient(mc -> {
-            BlockPos gold = seam.pos(s * (half + 4) + (int) lap, y, 2);
-            BlockPos folded = seam.pos(s * (half + 4) - s * 2 * half, y, 2);
-            return " client " + mc.level.getBlockState(gold) + " folded " + mc.level.getBlockState(folded) + " player " + mc.player.position();
-        }) + " server " + server.computeOnServer(sv -> place.level(sv).getBlockState(seam.pos(s * (half + 4), y, 2)).toString()));
+        int lightAcross = server.computeOnServer(sv -> place.level(sv).getBrightness(LightLayer.BLOCK, seam.block(half, 1, y + 2, 2)));
+        check(lightAcross >= 11, where + ": block light did not cross the seam: " + lightAcross);
+        BlockPos gold = seam.block(half, 4, y, 2);
+        boolean goldSeen = context.computeOnClient(mc -> mc.level.getBlockState(gold.offset(lapX, 0, lapZ)).is(Blocks.GOLD_BLOCK));
+        check(goldSeen, where + ": the client does not see the block placed across the seam");
         context.takeScreenshot("orbis-seam-" + tag);
 
         // An entity placed past the seam joins at its folded position, one flying over it is folded back, the
         // selectors find them the short way, and the client sees both continuing on its side.
-        server.runCommand(place.in("summon minecraft:armor_stand " + seam.at(s * (half + 2), y, 2) + " {NoGravity:1b}"));
-        server.runCommand(place.in("summon minecraft:arrow " + seam.at(s * (half - 3) + 0.5, y + 1, -1.5) + " {NoGravity:1b,Motion:" + seam.motion(1) + "}"));
+        server.runCommand(place.in("summon minecraft:armor_stand " + seam.at(half, 2.5, y, side) + " {NoGravity:1b}"));
+        server.runCommand(place.in("summon minecraft:arrow " + seam.at(half, -2.5, y + 1, mid - 2) + " {NoGravity:1b,Motion:" + seam.motion(1) + "}"));
         context.waitTicks(10);
         String outside = server.computeOnServer(sv -> {
             var level = place.level(sv);
@@ -315,13 +434,12 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             return null;
         });
         check(outside == null, where + ": entity left outside the torus: " + outside);
-        int boxStart = Math.min(s * (half - 4), s * (half + 4));
+        int boxX = (int) Math.floor(seam.x(half, 2.5, side)) - 4, boxZ = (int) Math.floor(seam.z(half, 2.5, side)) - 4;
         for (String selector : new String[] {
-                "@e[type=minecraft:armor_stand," + (seam.alongX() ? "x=" + boxStart + ",y=" + (y - 1) + ",z=1,dx=8,dy=3,dz=3"
-                        : "x=1,y=" + (y - 1) + ",z=" + boxStart + ",dx=3,dy=3,dz=8") + "]",
-                "@e[type=minecraft:armor_stand,distance=..4]"}) {
+                "@e[type=minecraft:armor_stand,x=" + boxX + ",y=" + (y - 1) + ",z=" + boxZ + ",dx=8,dy=3,dz=8]",
+                "@e[type=minecraft:armor_stand,distance=..5]"}) {
             int selected = server.computeOnServer(sv -> {
-                Vec3 at = Vec3.atLowerCornerOf(seam.pos(s * (half - 1), y, 2));
+                Vec3 at = new Vec3(seam.x(half, -0.5, side), y, seam.z(half, -0.5, side));
                 var source = sv.createCommandSourceStack().withSuppressedOutput().withLevel(place.level(sv)).withPosition(at);
                 try {
                     return EntityArgument.entities().parse(new StringReader(selector)).findEntities(source).size();
@@ -331,27 +449,41 @@ public final class TorusClientGameTest implements FabricClientGameTest {
             });
             check(selected == 1, where + ": " + selector + " selected " + selected + " armor stands across the seam");
         }
-        double standAlong = s * (clientAlong(context, seam, "armor_stand") - lap), arrowAlong = s * (clientAlong(context, seam, "arrow") - lap);
-        check(standAlong > half && standAlong < half + 4, where + ": the client sees the armor stand at " + s * standAlong);
-        check(arrowAlong > half + 2 && arrowAlong < half + 32, where + ": the client sees the arrow at " + s * arrowAlong);
+        String stand = seam.past(half, clientEntity(context, "armor_stand"), lap, 0, 5);
+        check(stand == null, where + ": the client sees the armor stand at " + stand);
+        String arrow = seam.past(half, clientEntity(context, "arrow"), lap, 2, 32);
+        check(arrow == null, where + ": the client sees the arrow at " + arrow);
         server.runCommand(place.clear(seam, y));
 
-        // Walk over the seam for real: the server folds the player, the client keeps going.
+        // Walk over the seam for real: the server folds the player, the client keeps going, and the map shows the
+        // world's own frame and coordinates.
         context.getInput().holdKeyFor(options -> options.keyUp, 60);
         context.waitTicks(10);
-        double serverAlong = server.computeOnServer(sv -> seam.along(sv.getPlayerList().getPlayers().getFirst()));
-        double clientAlong = s * (context.computeOnClient(mc -> seam.along(mc.player)) - lap);
-        check(Math.abs(serverAlong + s * half) < 32 && serverAlong >= -half && serverAlong < half,
-                where + ": the server did not fold the player: " + serverAlong);
-        check(clientAlong > half && clientAlong < half + 32, where + ": the client frame jumped at the seam: " + s * clientAlong);
+        String serverSide = seam.folded(half, server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().position()));
+        check(serverSide == null, where + ": the server did not fold the player: " + serverSide);
+        String clientSide = seam.past(half, context.computeOnClient(mc -> mc.player.position()), lap, 0, 32);
+        check(clientSide == null, where + ": the client frame jumped at the seam: " + clientSide);
+        context.waitTicks(20);
+        String frame = context.computeOnClient(mc -> AtlasProbe.frame());
+        check(("true " + -half + " " + -half + " " + 2 * half).equals(frame), where + ": the map frame is " + frame);
+        long outsideCells = context.computeOnClient(mc -> AtlasProbe.cellsOutside());
+        check(outsideCells == 0, where + ": " + outsideCells + " map cells lie outside the torus");
+        BlockPos real = server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().blockPosition());
+        String shown = context.computeOnClient(AtlasProbe::shownCoordinates);
+        check((real.getX() + " " + real.getZ()).equals(shown), where + ": the map shows " + shown + " for a player at " + real.toShortString());
         context.takeScreenshot("orbis-crossed-" + tag);
+
+        checkItemsAcrossSeam(context, server, place, seam, y, lap, where);
+        checkFluidsAcrossSeam(context, server, place, seam, y, lap, where, tag);
+        if (!corner) checkVehiclesAcrossSeam(context, server, place, seam, y, lap, where, tag);
+        checkSecondPlayer(context, server, place, seam, y, lap, where);
 
         // A husk three blocks before the seam notices a villager three blocks past it, walks over and hits it: the
         // entity search, the distance and the path all take the short way across.
         server.runCommand("difficulty normal");
-        server.runCommand(place.in("tp @a " + seam.at(s * (half - 10), y, 0.5) + " " + seam.facing(10)));
-        server.runCommand(place.in("summon minecraft:villager " + seam.at(s * (half + 3), y, 0.5) + " {NoAI:1b,PersistenceRequired:1b}"));
-        server.runCommand(place.in("summon minecraft:husk " + seam.at(s * (half - 3), y, 0.5) + " {PersistenceRequired:1b}"));
+        server.runCommand(place.in("tp @a " + seam.at(half, -9.5, y, mid) + " " + seam.facing(10)));
+        server.runCommand(place.in("summon minecraft:villager " + seam.at(half, 3.5, y, mid) + " {NoAI:1b,PersistenceRequired:1b}"));
+        server.runCommand(place.in("summon minecraft:husk " + seam.at(half, -2.5, y, mid) + " {PersistenceRequired:1b}"));
         boolean targeted = false, hunted = false;
         for (int tick = 0; tick < 400 && !hunted; tick += 10) {
             context.waitTicks(10);
@@ -372,15 +504,15 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         check(hunted, where + ": the husk never reached the villager across the seam");
         server.runCommand(place.clear(seam, y));
 
-        server.runCommand("difficulty normal");
-        server.runCommand(place.in("tp @a " + seam.at(s * (half - 1.5), y, 0.5) + " " + seam.facing(20)));
-        server.runCommand(place.in("summon minecraft:zombie " + seam.at(s * (half + 1), y, 0.5) + " {NoAI:1b,PersistenceRequired:1b,Silent:1b}"));
+        // The player's hit on a zombie just past the seam, aimed with the crosshair as a click would be.
+        double hitFrom = corner ? -0.5 : -1.5;
+        server.runCommand(place.in("tp @a " + seam.at(half, hitFrom, y, mid) + " " + seam.facing(20)));
+        server.runCommand(place.in("summon minecraft:zombie " + seam.at(half, 1.5, y, mid) + " {NoAI:1b,PersistenceRequired:1b,Silent:1b}"));
         server.runCommand(place.in("item replace entity @e[type=minecraft:zombie] armor.head with minecraft:leather_helmet"));
         context.waitTicks(10);
         world.getConnection().waitForChunksRender();
         String aimed = context.computeOnClient(mc -> mc.crosshairPickEntity == null ? "nothing" : typeName(mc.crosshairPickEntity));
         check(aimed.equals("zombie"), where + ": the crosshair is on " + aimed + ", not the zombie past the seam");
-        // The client attacks what its crosshair is on, as a click would; the server must accept the reach.
         context.runOnClient(mc -> mc.gameMode.attack(mc.player, mc.crosshairPickEntity));
         context.waitTicks(5);
         context.takeScreenshot("orbis-hit-" + tag);
@@ -396,8 +528,8 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
         // A zombie with its AI walks up across the seam and hits; the blow pushes the player back, away from it.
         server.runCommand("gamemode survival @a");
-        server.runCommand(place.in("summon minecraft:zombie " + seam.at(s * (half + 3), y, 0.5) + " {PersistenceRequired:1b,Silent:1b}"));
-        double start = context.computeOnClient(mc -> seam.along(mc.player));
+        server.runCommand(place.in("summon minecraft:zombie " + seam.at(half, 3.5, y, mid) + " {PersistenceRequired:1b,Silent:1b}"));
+        Vec3 start = context.computeOnClient(mc -> mc.player.position());
         double back = 0;
         boolean hurt = false;
         for (int tick = 0; tick < 200 && !hurt; tick += 2) {
@@ -407,17 +539,18 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         check(hurt, where + ": the zombie never hit the player across the seam");
         for (int tick = 0; tick < 8; tick++) {
             context.waitTick();
-            back = Math.max(back, -s * (context.computeOnClient(mc -> seam.along(mc.player)) - start));
+            Vec3 now = context.computeOnClient(mc -> mc.player.position());
+            back = Math.max(back, -seam.along(now.x - start.x, now.z - start.z));
         }
         check(back > 0.2, where + ": the zombie's blow did not push the player away from it: moved back " + back);
         server.runCommand(place.in("kill @e[type=minecraft:zombie]"));
         heal(server);
 
         // An arrow flying straight back over the seam hits the player before it.
-        server.runCommand(place.in("tp @a " + seam.at(s * (half - 4), y, 0.5) + " " + seam.facing(0)));
+        server.runCommand(place.in("tp @a " + seam.at(half, -3.5, y, mid) + " " + seam.facing(0)));
         context.waitTicks(5);
-        server.runCommand(place.in("summon minecraft:arrow " + seam.at(s * (half + 4) + 0.5, y + 1.2, 0.5)
-                + " {NoGravity:1b,Motion:" + new Seam(seam.name(), seam.alongX(), -s).motion(1.5) + "}"));
+        server.runCommand(place.in("summon minecraft:arrow " + seam.at(half, 4.5, y + 1.2, mid)
+                + " {NoGravity:1b,Motion:" + seam.motion(-1.5) + "}"));
         StringBuilder flight = new StringBuilder();
         boolean struck = false;
         for (int tick = 0; tick < 20 && !struck; tick++) {
@@ -433,11 +566,12 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         check(struck, where + ": an arrow flying over the seam never hit the player:" + flight);
         server.runCommand(place.in("kill @e[type=minecraft:arrow]"));
         heal(server);
-        context.waitTicks(20);
+        // The arrow stays the player's last damage for two seconds; let it lapse before the skeleton shoots.
+        context.waitTicks(50);
 
         // A skeleton past the seam shoots the player before it; on hard it aims well enough to hit within a few shots.
         server.runCommand("difficulty hard");
-        server.runCommand(place.in("summon minecraft:skeleton " + seam.at(s * (half + 8), y, 0.5) + " {PersistenceRequired:1b,Silent:1b}"));
+        server.runCommand(place.in("summon minecraft:skeleton " + seam.at(half, corner ? 5.5 : 8.5, y, mid) + " {PersistenceRequired:1b,Silent:1b}"));
         server.runCommand(place.in("item replace entity @e[type=minecraft:skeleton] weapon.mainhand with minecraft:bow"));
         server.runCommand(place.in("item replace entity @e[type=minecraft:skeleton] armor.head with minecraft:leather_helmet"));
         boolean shot = false;
@@ -455,10 +589,268 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         }
         context.takeScreenshot("orbis-skeleton-" + tag);
         check(shot, where + ": the skeleton's arrows never hit the player across the seam:" + seen);
-        server.runCommand(place.in("kill @e[type=minecraft:skeleton]"));
-        server.runCommand(place.in("kill @e[type=minecraft:arrow]"));
+        server.runCommand(place.clear(seam, y));
+        heal(server);
+        server.runCommand("difficulty normal");
+        server.runCommand("gamemode creative @a");
+    }
+
+    /** An item thrown over the seam lands past it, and one lying just past it is picked up from before it. */
+    private static void checkItemsAcrossSeam(ClientGameTestContext context, TestServerContext server, Place place, Seam seam,
+                                             int y, double[] lap, String where) {
+        int half = place.half();
+        double mid = seam.mid();
+        server.runCommand("gamemode survival @a");
+        server.runCommand("clear @a");
+        server.runCommand(place.in("tp @a " + seam.at(half, -1.5, y, mid) + " " + seam.facing(-10)));
+        server.runCommand(place.clear(seam, y));
+        server.runCommand("give @a minecraft:diamond");
+        context.waitTicks(5);
+        context.getInput().pressKey(options -> options.keyDrop);
+        context.waitTicks(30);
+        Vec3 thrown = server.computeOnServer(sv -> {
+            for (var item : place.level(sv).getEntities(EntityTypeTest.forClass(net.minecraft.world.entity.item.ItemEntity.class),
+                    e -> e.getItem().is(net.minecraft.world.item.Items.DIAMOND))) return item.position();
+            return null;
+        });
+        check(thrown != null, where + ": the thrown item is gone");
+        String landed = seam.folded(half, thrown);
+        check(landed == null, where + ": the item thrown over the seam is not past it on the server: " + landed);
+        Vec3 seen = context.computeOnClient(mc -> {
+            for (Entity entity : mc.level.entitiesForRendering()) {
+                if (entity instanceof net.minecraft.world.entity.item.ItemEntity item && item.getItem().is(net.minecraft.world.item.Items.DIAMOND)) return entity.position();
+            }
+            return new Vec3(Double.NaN, Double.NaN, Double.NaN);
+        });
+        String onClient = seam.past(half, seen, lap, 0, 12);
+        check(onClient == null, where + ": the client sees the thrown item at " + onClient);
+        server.runCommand(place.clear(seam, y));
+
+        server.runCommand(place.in("tp @a " + seam.at(half, -0.6, y, mid) + " " + seam.facing(10)));
+        server.runCommand(place.in("summon minecraft:item " + seam.at(half, 0.4, y, mid) + " {PickupDelay:0s,Item:{id:\"minecraft:emerald\",count:1}}"));
+        boolean picked = false;
+        for (int tick = 0; tick < 40 && !picked; tick += 2) {
+            context.waitTicks(2);
+            picked = server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().getInventory().countItem(net.minecraft.world.item.Items.EMERALD) > 0);
+        }
+        check(picked, where + ": the item lying just past the seam was not picked up");
+        server.runCommand("clear @a");
+        server.runCommand(place.clear(seam, y));
+        server.runCommand("gamemode creative @a");
+    }
+
+    /** Water and lava poured just before the seam flow over it, and the client sees them past it. */
+    private static void checkFluidsAcrossSeam(ClientGameTestContext context, TestServerContext server, Place place, Seam seam,
+                                              int y, double[] lap, String where, String tag) {
+        int half = place.half();
+        int lapX = (int) Math.rint(lap[0]), lapZ = (int) Math.rint(lap[1]);
+        server.runCommand(place.in("tp @a " + seam.at(half, -8.5, y, seam.mid()) + " " + seam.facing(30)));
+        Object[][] fluids = {{"water", -2, 1, Blocks.WATER}, {"lava", -1, 0, Blocks.LAVA}};
+        for (Object[] fluid : fluids) {
+            BlockPos source = seam.block(half, (int) fluid[1], y, 0), target = seam.block(half, (int) fluid[2], y, 0);
+            Block block = (Block) fluid[3];
+            server.runCommand(place.in("setblock " + Seam.text(source) + " minecraft:" + fluid[0]));
+            boolean flowed = false;
+            for (int tick = 0; tick < 300 && !flowed; tick += 5) {
+                context.waitTicks(5);
+                flowed = server.computeOnServer(sv -> place.level(sv).getBlockState(target).is(block));
+            }
+            check(flowed, where + ": " + fluid[0] + " did not flow over the seam");
+            context.waitTicks(5);
+            boolean seen = context.computeOnClient(mc -> mc.level.getBlockState(target.offset(lapX, 0, lapZ)).is(block));
+            check(seen, where + ": the client does not see the " + fluid[0] + " past the seam");
+            context.takeScreenshot("orbis-" + fluid[0] + "-" + tag);
+            server.runCommand(place.in("fill " + seam.box(half, -12, 18, y, y + 3, -2, 2) + " minecraft:air"));
+            server.runCommand(place.in("fill " + seam.box(half, -12, 18, y - 1, y - 1, -2, 2) + " minecraft:stone"));
+        }
+        server.runCommand(place.clear(seam, y));
+    }
+
+    /**
+     * The player rides over the seam: a minecart rolling on rails and a boat steered on ice. The server folds the
+     * vehicle and the player together; the client rides on without a jump.
+     */
+    private static void checkVehiclesAcrossSeam(ClientGameTestContext context, TestServerContext server, Place place, Seam seam,
+                                                int y, double[] lap, String where, String tag) {
+        int half = place.half();
+        double mid = seam.mid();
+        String[][] rides = {
+                {"minecart", "minecraft:rail", "minecraft:stone", "minecraft:minecart", "{Motion:" + seam.motion(1.2) + "}"},
+                {"boat", "minecraft:air", "minecraft:blue_ice", "minecraft:oak_boat", "{Rotation:[" + seam.facing(0).split(" ")[0] + "f,0f]}"}};
+        for (String[] ride : rides) {
+            int wide = ride[0].equals("boat") ? 1 : 0;
+            server.runCommand(place.in("fill " + seam.box(half, -10, 18, y - 1, y - 1, -wide, wide) + " " + ride[2]));
+            server.runCommand(place.in("fill " + seam.box(half, -10, 18, y, y, 0, 0) + " " + ride[1]));
+            server.runCommand(place.in("tp @a " + seam.at(half, -8.5, y + 0.1, mid) + " " + seam.facing(10)));
+            server.runCommand(place.in("summon " + ride[3] + " " + seam.at(half, -8.5, y + 0.1, mid) + " " + ride[4]));
+            server.runCommand(place.in("ride @p mount @e[type=" + ride[3] + ",limit=1,sort=nearest]"));
+            context.waitTicks(5);
+            boolean riding = server.computeOnServer(sv -> sv.getPlayerList().getPlayers().getFirst().isPassenger());
+            check(riding, where + ": the player is not in the " + ride[0]);
+            if (ride[0].equals("boat")) context.getInput().holdKeyFor(options -> options.keyUp, 80);
+            else context.waitTicks(60);
+            context.waitTicks(5);
+            Vec3[] server2 = server.computeOnServer(sv -> {
+                ServerPlayer player = sv.getPlayerList().getPlayers().getFirst();
+                return new Vec3[] {player.position(), player.getVehicle() == null ? null : player.getVehicle().position()};
+            });
+            check(server2[1] != null, where + ": the player fell out of the " + ride[0] + " at the seam");
+            String vehicle = seam.folded(half, server2[1]), rider = seam.folded(half, server2[0]);
+            check(vehicle == null && rider == null, where + ": the server did not fold the " + ride[0] + " and its rider: " + vehicle + " / " + rider);
+            String onClient = seam.past(half, context.computeOnClient(mc -> mc.player.position()), lap, 0, 64);
+            check(onClient == null, where + ": the client's ride jumped at the seam: " + onClient);
+            context.takeScreenshot("orbis-" + ride[0] + "-" + tag);
+            server.runCommand("ride @p dismount");
+            server.runCommand(place.clear(seam, y));
+        }
+        server.runCommand(place.in("fill " + seam.box(half, -10, 18, y - 1, y - 1, -1, 1) + " minecraft:stone"));
+        server.runCommand(place.in("fill " + seam.box(half, -10, 18, y, y, 0, 0) + " minecraft:air"));
+    }
+
+    /**
+     * A second player just past the seam: the client sees it there, hits it across the seam, and its blow, facing
+     * the client's player the short way, pushes the client's player away from it.
+     */
+    private static void checkSecondPlayer(ClientGameTestContext context, TestServerContext server, Place place, Seam seam,
+                                          int y, double[] lap, String where) {
+        int half = place.half();
+        double mid = seam.mid();
+        server.runCommand("gamemode survival @a");
+        server.runCommand(place.in("tp @a " + seam.at(half, seam.corner() ? -0.5 : -1.5, y, mid) + " " + seam.facing(15)));
+        Vec3 other = new Vec3(seam.x(half, 1.5, mid), y, seam.z(half, 1.5, mid));
+        UUID id = UUID.randomUUID();
+        server.runOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            var torus = Tori.of(level);
+            SecondPlayer second = new SecondPlayer(level, new com.mojang.authlib.GameProfile(id, "Orbis2"));
+            second.snapTo(torus.fold(other.x), other.y, torus.fold(other.z), 0, 0);
+            sv.getPlayerList().broadcastAll(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(second)));
+            level.addNewPlayer(second);
+        });
+        context.waitTicks(20);
+        String seen = seam.past(half, clientEntity(context, "player"), lap, 0, 4);
+        check(seen == null, where + ": the client sees the second player at " + seen);
+        String aimed = context.computeOnClient(mc -> mc.crosshairPickEntity == null ? "nothing" : typeName(mc.crosshairPickEntity));
+        check(aimed.equals("player"), where + ": the crosshair is on " + aimed + ", not the second player past the seam");
+        context.runOnClient(mc -> mc.gameMode.attack(mc.player, mc.crosshairPickEntity));
+        context.waitTicks(5);
+        float health = server.computeOnServer(sv -> place.level(sv).getPlayerByUUID(id).getHealth());
+        check(health < 20, where + ": the hit on the second player past the seam did not count");
+        Vec3 start = context.computeOnClient(mc -> mc.player.position());
+        server.runOnServer(sv -> {
+            ServerPlayer second = (ServerPlayer) place.level(sv).getPlayerByUUID(id);
+            ServerPlayer first = sv.getPlayerList().getPlayers().getFirst();
+            second.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, first.getEyePosition());
+            second.attack(first);
+        });
+        double back = 0;
+        for (int tick = 0; tick < 8; tick++) {
+            context.waitTick();
+            Vec3 now = context.computeOnClient(mc -> mc.player.position());
+            back = Math.max(back, -seam.along(now.x - start.x, now.z - start.z));
+        }
+        check(back > 0.2, where + ": the second player's blow did not push the player away: moved back " + back);
+        server.runOnServer(sv -> {
+            Player second = place.level(sv).getPlayerByUUID(id);
+            if (second instanceof ServerPlayer player) place.level(sv).removePlayerImmediately(player, Entity.RemovalReason.DISCARDED);
+            sv.getPlayerList().broadcastAll(new ClientboundPlayerInfoRemovePacket(List.of(id)));
+        });
         heal(server);
         server.runCommand("gamemode creative @a");
+    }
+
+    /**
+     * Terrain and caves run on over every seam of both dimensions: the two columns either side of a seam match each
+     * other about as well as two neighbouring columns inside the world do.
+     */
+    private static void checkTerrainAcrossSeams(TestServerContext server) {
+        String problem = server.computeOnServer(sv -> {
+            for (Place place : new Place[] {Place.OVERWORLD, Place.NETHER}) {
+                ServerLevel level = place.level(sv);
+                int half = place.half(), bottom = place == Place.NETHER ? 10 : 0, top = place == Place.NETHER ? 118 : 60;
+                for (boolean alongX : new boolean[] {true, false}) {
+                    double across = 0, inside = 0, inside2 = 0;
+                    int samples = 0;
+                    for (int c = -64; c < 64; c += 2) {
+                        for (int y = bottom; y < top; y++) {
+                            boolean last = solid(level, alongX, half - 1, y, c), first = solid(level, alongX, -half, y, c);
+                            across += last == first ? 1 : 0;
+                            inside += last == solid(level, alongX, half - 2, y, c) ? 1 : 0;
+                            inside2 += first == solid(level, alongX, -half + 1, y, c) ? 1 : 0;
+                            samples++;
+                        }
+                    }
+                    across /= samples;
+                    inside = Math.min(inside, inside2) / samples;
+                    System.out.println("Orbis test: " + place.name() + (alongX ? " east/west" : " north/south")
+                            + " columns alike across the seam " + across + ", inside " + inside);
+                    if (across < inside - 0.1) return place.name() + (alongX ? " east/west" : " north/south")
+                            + ": columns across the seam match " + across + ", neighbours inside " + inside;
+                }
+            }
+            return null;
+        });
+        check(problem == null, "Terrain breaks at the seam: " + problem);
+    }
+
+    private static boolean solid(ServerLevel level, boolean alongX, int a, int y, int c) {
+        return !level.getBlockState(alongX ? new BlockPos(a, y, c) : new BlockPos(c, y, a)).isAir();
+    }
+
+    /**
+     * A Nether fortress that generated across a seam: its start lies on one side, and a piece of it lies wholly on
+     * the other side, where its nether bricks stand at the folded place. The player looks at it in spectator mode.
+     */
+    private static void checkFortressAcrossSeam(ClientGameTestContext context, TestSingleplayerContext world, TestServerContext server) {
+        int half = Place.NETHER.half();
+        String found = server.computeOnServer(sv -> {
+            ServerLevel level = Place.NETHER.level(sv);
+            var torus = Tori.of(level);
+            var fortress = level.registryAccess().lookupOrThrow(Registries.STRUCTURE)
+                    .getValue(Identifier.withDefaultNamespace("fortress"));
+            int edge = half >> 4;
+            for (int a = -edge; a < edge; a++) {
+                for (int b : java.util.stream.IntStream.concat(java.util.stream.IntStream.range(edge - 8, edge),
+                        java.util.stream.IntStream.range(-edge, -edge + 8)).toArray()) {
+                    for (boolean alongX : new boolean[] {true, false}) {
+                        var chunk = level.getChunk(alongX ? b : a, alongX ? a : b, net.minecraft.world.level.chunk.status.ChunkStatus.STRUCTURE_STARTS);
+                        var start = chunk.getStartForStructure(fortress);
+                        if (start == null || !start.isValid()) continue;
+                        for (var piece : start.getPieces()) {
+                            var box = piece.getBoundingBox();
+                            int min = alongX ? box.minX() : box.minZ(), max = alongX ? box.maxX() : box.maxZ();
+                            if (min < half && max >= -half) continue;
+                            // Wholly past the seam: its blocks stand at the folded place.
+                            for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+                                BlockPos at = new BlockPos(torus.fold(pos.getX()), pos.getY(), torus.fold(pos.getZ()));
+                                if (level.getBlockState(at).is(Blocks.NETHER_BRICKS)) {
+                                    return at.getX() + " " + at.getY() + " " + at.getZ() + " " + (alongX ? "x" : "z");
+                                }
+                            }
+                            return "empty piece " + box;
+                        }
+                    }
+                }
+            }
+            return null;
+        });
+        check(found != null && !found.startsWith("empty"), "No Nether fortress generated across the seam: " + found);
+        System.out.println("Orbis test: Nether fortress across the seam at " + found);
+        String[] at = found.split(" ");
+        server.runCommand("gamemode spectator @a");
+        server.runCommand(Place.NETHER.in("tp @a " + at[0] + " " + (Integer.parseInt(at[1]) + 6) + " " + at[2] + " 0 60"));
+        context.waitTicks(40);
+        world.getConnection().waitForChunksRender();
+        context.takeScreenshot("orbis-nether-fortress-across-seam");
+        server.runCommand("gamemode creative @a");
+    }
+
+    /** A player on the server with no client behind it; unlike Fabric's fake player it can be hurt. */
+    private static final class SecondPlayer extends FakePlayer {
+        SecondPlayer(ServerLevel level, com.mojang.authlib.GameProfile profile) { super(level, profile); }
+
+        @Override
+        public boolean isInvulnerableTo(ServerLevel level, DamageSource source) { return false; }
     }
 
     /**
@@ -514,11 +906,13 @@ public final class TorusClientGameTest implements FabricClientGameTest {
         });
     }
 
-    /** Where along the seam's axis the client sees the first entity of a type, or NaN. */
-    private static double clientAlong(ClientGameTestContext context, Seam seam, String type) {
+    /** Where the client sees the first entity of a type, other than its own player; NaN when nowhere. */
+    private static Vec3 clientEntity(ClientGameTestContext context, String type) {
         return context.computeOnClient(mc -> {
-            for (Entity entity : mc.level.entitiesForRendering()) if (typeName(entity).equals(type)) return seam.along(entity);
-            return Double.NaN;
+            for (Entity entity : mc.level.entitiesForRendering()) {
+                if (entity != mc.player && typeName(entity).equals(type)) return entity.position();
+            }
+            return new Vec3(Double.NaN, Double.NaN, Double.NaN);
         });
     }
 
@@ -553,10 +947,10 @@ public final class TorusClientGameTest implements FabricClientGameTest {
 
     /** The corridor's floor height: the surface in the Overworld, a fixed level inside the Nether's rock. */
     private static int floor(ClientGameTestContext context, TestSingleplayerContext world, Place place, Seam seam) {
-        int a = seam.sign() * (place.half() - 6);
-        if (place.key() == Level.OVERWORLD) return seam.alongX() ? surface(context, world, a, 0) : surface(context, world, 0, a);
-        world.getServer().runCommand(place.in("tp @a " + seam.at(a, 70, 0.5)));
-        waitLoaded(context, world, place.key(), seam.pos(a, 0, 0));
+        BlockPos start = seam.block(place.half(), -6, 0, 0);
+        if (place.key() == Level.OVERWORLD) return surface(context, world, start.getX(), start.getZ());
+        world.getServer().runCommand(place.in("tp @a " + seam.at(place.half(), -5.5, 70, seam.mid())));
+        waitLoaded(context, world, place.key(), start);
         return 70;
     }
 

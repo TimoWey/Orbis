@@ -88,7 +88,8 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
             server.runCommand("gamemode creative @a");
 
             checkStructureAcrossSeam(context, world, server);
-            checkPortalRoundTrip(context, world, server);
+            checkPortalRoundTrip(context, world, server, true);
+            checkPortalRoundTrip(context, world, server, false);
             checkHoldersFolded(server, Level.OVERWORLD);
             checkHoldersFolded(server, Level.NETHER);
         }
@@ -137,22 +138,29 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
         server.runCommand("gamemode creative @a");
     }
 
-    /** A portal whose two columns sit on either side of the seam, into the 16 × 16 chunk Nether, over its seam and back. */
-    private static void checkPortalRoundTrip(ClientGameTestContext context, TestSingleplayerContext world, TestServerContext server) {
-        int y = surface(context, world, HALF, 8);
-        server.runCommand("fill " + (HALF - 6) + " " + (y - 1) + " 4 " + (HALF + 5) + " " + (y - 1) + " 12 minecraft:stone");
-        server.runCommand("fill " + (HALF - 6) + " " + y + " 4 " + (HALF + 5) + " " + (y + 5) + " 12 minecraft:air");
-        server.runCommand("fill " + (HALF - 2) + " " + (y - 1) + " 8 " + (HALF + 1) + " " + (y + 3) + " 8 minecraft:obsidian");
-        server.runCommand("fill " + (HALF - 1) + " " + y + " 8 " + HALF + " " + (y + 2) + " 8 minecraft:nether_portal[axis=x]");
-        server.runCommand("tp @a " + (HALF - 1) + " " + y + " 11.5 180 0");
+    /**
+     * A portal whose two columns sit on either side of the east seam (or the south seam), into the 16 × 16 chunk
+     * Nether, over its seam and back.
+     */
+    private static void checkPortalRoundTrip(ClientGameTestContext context, TestSingleplayerContext world, TestServerContext server,
+                                             boolean alongX) {
+        String side = alongX ? "" : "-south";
+        // a runs across the seam, b along it; positions are written as (a, b) and turned into (x, z).
+        java.util.function.BiFunction<Object, Object, String> at = (a, b) -> alongX ? a + " %Y% " + b : b + " %Y% " + a;
+        int y = alongX ? surface(context, world, HALF, 8) : surface(context, world, 8, HALF);
+        server.runCommand(fill(at, HALF - 6, 4, HALF + 5, 12, y - 1, y - 1, "minecraft:stone"));
+        server.runCommand(fill(at, HALF - 6, 4, HALF + 5, 12, y, y + 5, "minecraft:air"));
+        server.runCommand(fill(at, HALF - 2, 8, HALF + 1, 8, y - 1, y + 3, "minecraft:obsidian"));
+        server.runCommand(fill(at, HALF - 1, 8, HALF, 8, y, y + 2, "minecraft:nether_portal[axis=" + (alongX ? "x" : "z") + "]"));
+        server.runCommand("tp @a " + at.apply(HALF - 1, 11.5).replace("%Y%", Integer.toString(y)) + " " + (alongX ? "180" : "90") + " 0");
         context.waitTicks(20);
         waitRendered(context, world);
-        context.takeScreenshot("debug-portal-at-seam");
-        boolean whole = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(HALF - 1, y + 1, 8)).is(net.minecraft.world.level.block.Blocks.NETHER_PORTAL)
-                && s.overworld().getBlockState(new BlockPos(-HALF, y + 1, 8)).is(net.minecraft.world.level.block.Blocks.NETHER_PORTAL));
-        check(whole, "The portal across the seam broke");
+        context.takeScreenshot("debug-portal-at-seam" + side);
+        boolean whole = server.computeOnServer(s -> s.overworld().getBlockState(pos(alongX, HALF - 1, y + 1, 8)).is(net.minecraft.world.level.block.Blocks.NETHER_PORTAL)
+                && s.overworld().getBlockState(pos(alongX, -HALF, y + 1, 8)).is(net.minecraft.world.level.block.Blocks.NETHER_PORTAL));
+        check(whole, "The portal across the seam" + side + " broke");
 
-        server.runCommand("tp @a " + (HALF - 1) + ".5 " + y + " 8.5");
+        server.runCommand("tp @a " + at.apply((HALF - 1) + ".5", "8.5").replace("%Y%", Integer.toString(y)));
         waitForDimension(context, server, Level.NETHER);
         BlockPos arrival = server.computeOnServer(s -> player(s).blockPosition());
         Torus nether = server.computeOnServer(s -> Tori.of(s.getLevel(Level.NETHER)));
@@ -160,10 +168,41 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
         context.waitTicks(40);
         // The view is narrower than the client's render distance here, so there is no 'all chunks rendered' to wait for.
         context.waitTicks(40);
-        context.takeScreenshot("debug-nether-arrival");
+        context.takeScreenshot("debug-nether-arrival" + side);
         checkView(server, Math.min(6, server.computeOnServer(s -> s.getPlayerList().getViewDistance())));
+        if (alongX) walkNetherSeam(context, server, arrival);
+        else {
+            // Standing in a portal keeps renewing its cooldown, so the player waits on a ledge away from it.
+            int lx = arrival.getX() + 20, lz = arrival.getZ();
+            server.runCommand("execute in minecraft:the_nether run fill " + (lx - 1) + " 99 " + (lz - 1) + " " + (lx + 1) + " 99 " + (lz + 1) + " minecraft:netherrack");
+            server.runCommand("execute in minecraft:the_nether run fill " + (lx - 1) + " 100 " + (lz - 1) + " " + (lx + 1) + " 102 " + (lz + 1) + " minecraft:air");
+            server.runCommand("execute in minecraft:the_nether run tp @a " + (lx + 0.5) + " 100.0 " + (lz + 0.5));
+        }
 
-        // Over the Nether seam, 256 blocks round, on a cleared corridor away from the portal.
+        // Back through the portal the Nether side found or built; the cooldown after arriving runs out first.
+        context.waitTicks(320);
+        server.runCommand("execute in minecraft:the_nether run tp @a " + (arrival.getX() + 0.5) + " " + arrival.getY() + " " + (arrival.getZ() + 0.5));
+        waitForDimension(context, server, Level.OVERWORLD);
+        double distance = server.computeOnServer(s -> {
+            var torus = Tori.of(s.overworld());
+            ServerPlayer player = player(s);
+            double a = alongX ? player.getX() : player.getZ(), b = alongX ? player.getZ() : player.getX();
+            return Math.hypot(torus.delta(HALF - 0.5, a), torus.delta(8.5, b));
+        });
+        check(distance < 16, "Came back " + distance + " blocks from the portal across the seam" + side);
+        context.waitTicks(20);
+        waitRendered(context, world);
+        context.takeScreenshot("debug-portal-back" + side);
+    }
+
+    private static BlockPos pos(boolean alongX, int a, int y, int b) { return alongX ? new BlockPos(a, y, b) : new BlockPos(b, y, a); }
+
+    private static String fill(java.util.function.BiFunction<Object, Object, String> at, int a0, int b0, int a1, int b1, int y0, int y1, String block) {
+        return "fill " + at.apply(a0, b0).replace("%Y%", Integer.toString(y0)) + " " + at.apply(a1, b1).replace("%Y%", Integer.toString(y1)) + " " + block;
+    }
+
+    /** Over the Nether seam, 256 blocks round, on a cleared corridor away from the portal. */
+    private static void walkNetherSeam(ClientGameTestContext context, TestServerContext server, BlockPos arrival) {
         int ny = 100, z = arrival.getZ() + 12;
         server.runCommand("execute in minecraft:the_nether run fill " + (NETHER_HALF - 14) + " " + (ny - 1) + " " + (z - 2) + " "
                 + (NETHER_HALF + 14) + " " + (ny - 1) + " " + (z + 2) + " minecraft:netherrack");
@@ -193,20 +232,6 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
         context.waitTicks(20);
         context.takeScreenshot("debug-nether-seam-look-back");
         checkHoldersFolded(server, Level.NETHER);
-
-        // Back through the portal the Nether side found or built; the cooldown after arriving runs out first.
-        context.waitTicks(320);
-        server.runCommand("execute in minecraft:the_nether run tp @a " + (arrival.getX() + 0.5) + " " + arrival.getY() + " " + (arrival.getZ() + 0.5));
-        waitForDimension(context, server, Level.OVERWORLD);
-        double distance = server.computeOnServer(s -> {
-            var torus = Tori.of(s.overworld());
-            ServerPlayer player = player(s);
-            return Math.hypot(torus.delta(HALF - 0.5, player.getX()), torus.delta(8.5, player.getZ()));
-        });
-        check(distance < 16, "Came back " + distance + " blocks from the portal across the seam");
-        context.waitTicks(20);
-        waitRendered(context, world);
-        context.takeScreenshot("debug-portal-back");
     }
 
     private static void waitForDimension(ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension) {

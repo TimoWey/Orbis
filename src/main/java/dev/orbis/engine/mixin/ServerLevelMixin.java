@@ -6,6 +6,7 @@ import dev.orbis.engine.Tori;
 import dev.orbis.engine.TorusHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
@@ -39,6 +40,16 @@ public abstract class ServerLevelMixin {
     private void orbis$foldEntity(Entity entity, CallbackInfo callback) {
         if (!(entity instanceof Player) && !entity.isRemoved()) EntityFold.fold(Tori.of((ServerLevel) (Object) this), entity);
     }
+
+    /**
+     * Whether a chunk's entities are loaded is asked of the chunk, by any of its images: a player joining next to the
+     * seam waits for the chunks around it, some of them past the seam, and would otherwise wait forever.
+     */
+    @ModifyVariable(method = "areEntitiesLoaded", at = @At("HEAD"), argsOnly = true)
+    private long orbis$foldEntitiesLoaded(long chunk) { return Fold.chunk(Tori.of((ServerLevel) (Object) this), chunk); }
+
+    @ModifyVariable(method = "areEntitiesActuallyLoadedAndTicking", at = @At("HEAD"), argsOnly = true)
+    private ChunkPos orbis$foldEntitiesTicking(ChunkPos chunk) { return Fold.chunk(Tori.of((ServerLevel) (Object) this), chunk); }
 
     /** Block events are de-duplicated and replayed by position, so they name the folded block. */
     @ModifyVariable(method = "blockEvent", at = @At("HEAD"), argsOnly = true)
