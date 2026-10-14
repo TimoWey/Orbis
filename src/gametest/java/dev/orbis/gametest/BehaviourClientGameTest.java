@@ -18,6 +18,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RedstoneLampBlock;
 import net.minecraft.world.level.entity.EntityTypeTest;
@@ -27,7 +28,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * How the world behaves across the seam, at every seam and both corners of the Overworld and the Nether: a long
  * chase, a villager taking a bed and a workstation past the seam, an explosion on it, a redstone line over it,
- * cloning and spreading players over it, and an ender pearl thrown over it.
+ * cloning and spreading players over it, an ender pearl and a loyal trident thrown over it, despawning, spawners and
+ * natural spawning past it, a horse ridden and a creeper stalking over it, and a raid on a village across it.
  */
 public final class BehaviourClientGameTest implements FabricClientGameTest {
     /** The corridor runs this far before and past the seam. */
@@ -83,6 +85,8 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         checkTrident(context, server, place, seam, y, where, tag);
         checkHorse(context, server, place, seam, y, where, tag);
         checkCreeper(context, server, place, seam, y, where, tag);
+        if (place == Place.OVERWORLD) checkRaid(context, server, place, seam, y, where, tag);
+        checkNaturalSpawning(context, server, place, seam, y, where, tag);
         server.runCommand(place.clear(seam, y));
     }
 
@@ -509,6 +513,138 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
         context.takeScreenshot("stage3-creeper-" + tag);
         check(blown, where + ": the creeper past the seam never came over and blew up");
         creative(server);
+        corridor(server, place, seam, y);
+    }
+
+    /**
+     * A raid on a village whose homes lie on both sides of the seam: it is centred on the seam, a player past it is
+     * still in it, and its first wave keeps every raider wherever on either side it stands. Raids only come to the
+     * Overworld.
+     */
+    private static void checkRaid(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                  String where, String tag) {
+        int half = place.half();
+        BlockPos[] heads = new BlockPos[2];
+        int[] ks = {-6, 6};
+        for (int i = 0; i < 2; i++) {
+            BlockPos foot = seam.block(half, ks[i], y, 1);
+            heads[i] = foot.south();
+            server.runCommand(place.in("setblock " + Seam.text(foot) + " minecraft:red_bed[facing=south,part=foot]"));
+            server.runCommand(place.in("setblock " + Seam.text(heads[i]) + " minecraft:red_bed[facing=south,part=head]"));
+        }
+        server.runCommand(place.in("tp @a " + seam.at(half, -2.5, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand("effect give @a minecraft:raid_omen 600 0 true");
+        context.waitTicks(5);
+        // Both homes taken, as villagers would: together they make one village over the seam.
+        String claimed = server.computeOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            var torus = Tori.of(level);
+            for (BlockPos head : heads) {
+                BlockPos at = folded(torus, head);
+                if (level.getPoiManager().take(type -> type.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                        (type, pos) -> pos.equals(at), at, 1).isEmpty()) return "no free home at " + at.toShortString();
+            }
+            return null;
+        });
+        check(claimed == null, where + ": " + claimed);
+        Raid raid = server.computeOnServer(sv -> {
+            ServerPlayer player = sv.getPlayerList().getPlayers().getFirst();
+            return place.level(sv).getRaids().createOrExtendRaid(player, player.blockPosition());
+        });
+        check(raid != null, where + ": no raid started");
+        BlockPos seamPoint = seam.block(half, 0, y, 0), farSide = seam.block(half, 12, y, 0);
+        String placed = server.computeOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            var torus = Tori.of(level);
+            if (level.getRaidAt(folded(torus, seamPoint)) != raid) return "the seam is not in the raid at " + raid.getCenter().toShortString();
+            BlockPos center = raid.getCenter();
+            double dx = torus.delta(seamPoint.getX(), center.getX()), dz = torus.delta(seamPoint.getZ(), center.getZ());
+            // Homes of a village nearby count too, so the centre lies near the seam, not on it; a world away when wrong.
+            if (dx * dx + dz * dz > 48 * 48) return "the raid is centred at " + center.toShortString() + ", far from the seam";
+            if (level.getRaidAt(folded(torus, farSide)) != raid) return "12 blocks past the seam is not in the raid at " + center.toShortString();
+            return null;
+        });
+        check(placed == null, where + ": " + placed);
+        // Raiders arrive on solid ground near the centre; a deck over the corridor gives them some, ocean or not.
+        BlockPos center = server.computeOnServer(sv -> raid.getCenter());
+        String deck = (center.getX() - 14) + " " + (y + 5) + " " + (center.getZ() - 14) + " " + (center.getX() + 14) + " " + (y + 5) + " " + (center.getZ() + 14);
+        server.runCommand(place.in("fill " + deck + " minecraft:stone"));
+        int alive = 0;
+        for (int tick = 0; tick < 900 && alive == 0; tick += 10) {
+            context.waitTicks(10);
+            alive = server.computeOnServer(sv -> raid.isStopped() ? -1 : raid.getTotalRaidersAlive());
+            check(alive >= 0, where + ": the raid at " + raid.getCenter().toShortString() + " ended before its first wave, village there "
+                    + server.computeOnServer(sv -> place.level(sv).isVillage(raid.getCenter())));
+        }
+        check(alive > 0, where + ": the raid's first wave never came");
+        context.waitTicks(100);
+        String kept = server.computeOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            if (raid.isStopped()) return "the raid ended during its first wave";
+            int raiders = 0;
+            for (Entity e : level.getAllEntities()) {
+                if (e instanceof net.minecraft.world.entity.raid.Raider raider && raider.isAlive()) {
+                    raiders++;
+                    if (raider.getCurrentRaid() != raid) return typeName(e) + " at " + e.blockPosition().toShortString() + " fell out of the raid";
+                }
+            }
+            return raiders == 0 ? "no raider left" : null;
+        });
+        context.takeScreenshot("stage3-raid-" + tag);
+        check(kept == null, where + ": " + kept);
+        server.runOnServer(sv -> raid.stop());
+        server.runCommand(place.in("kill @e[type=#minecraft:raiders]"));
+        server.runCommand(place.in("fill " + deck + " minecraft:air"));
+        for (BlockPos head : heads) {
+            server.runCommand(place.in("setblock " + Seam.text(head) + " minecraft:air"));
+            server.runCommand(place.in("setblock " + Seam.text(head.north()) + " minecraft:air"));
+        }
+        creative(server);
+        corridor(server, place, seam, y);
+    }
+
+    /**
+     * Natural spawning in a dark room past the seam while the player waits 26 blocks before it: the room's chunk is
+     * one the server spawns in, and the spawn routine, measuring the player the short way, puts monsters into it.
+     * The routine is called directly; waiting for the world to pick the room by chance takes too long.
+     */
+    private static void checkNaturalSpawning(ClientGameTestContext context, TestServerContext server, Place place, Seam seam, int y,
+                                             String where, String tag) {
+        int half = place.half();
+        server.runCommand(place.in("fill " + seam.box(half, 5, PAST, y - 1, y + 4, -3, 3) + " minecraft:stone"));
+        server.runCommand(place.in("fill " + seam.box(half, 6, PAST - 1, y, y + 2, -2, 2) + " minecraft:air"));
+        server.runCommand(place.in("tp @a " + seam.at(half, -20.5, y, seam.mid()) + " " + seam.facing(10)));
+        context.waitTicks(5);
+        BlockPos room = seam.block(half, 14, y, 0);
+        String spawned = server.computeOnServer(sv -> {
+            ServerLevel level = place.level(sv);
+            var torus = Tori.of(level);
+            BlockPos centre = folded(torus, room);
+            var chunks = new java.util.ArrayList<net.minecraft.world.level.chunk.LevelChunk>();
+            level.getChunkSource().chunkMap.collectSpawningChunks(chunks);
+            if (chunks.stream().noneMatch(chunk -> chunk.getPos().equals(ChunkPos.containing(centre))))
+                return "the room's chunk is not among the " + chunks.size() + " chunks the server spawns in";
+            for (int attempt = 0; attempt < 50; attempt++) {
+                net.minecraft.world.level.NaturalSpawner.spawnCategoryForPosition(net.minecraft.world.entity.MobCategory.MONSTER, level, centre);
+                for (Entity e : level.getAllEntities()) {
+                    if (!(e instanceof net.minecraft.world.entity.monster.Enemy) || !e.isAlive()) continue;
+                    BlockPos at = e.blockPosition();
+                    double dx = torus.delta(centre.getX(), at.getX()), dz = torus.delta(centre.getZ(), at.getZ());
+                    if (dx * dx + dz * dz < 16 * 16 && at.getY() == y) return null;
+                }
+            }
+            return "no monster spawned in 50 tries";
+        });
+        // Seen from inside: the room is dark, so a look from its doorway shows what spawned.
+        server.runCommand(place.in("setblock " + Seam.text(seam.block(half, 5, y, 0)) + " minecraft:air"));
+        server.runCommand(place.in("setblock " + Seam.text(seam.block(half, 5, y + 1, 0)) + " minecraft:air"));
+        server.runCommand(place.in("tp @a " + seam.at(half, 2.5, y, seam.mid()) + " " + seam.facing(10)));
+        server.runCommand("effect give @a minecraft:night_vision 10 0 true");
+        context.waitTicks(10);
+        context.takeScreenshot("stage3-spawning-" + tag);
+        server.runCommand("effect clear @a");
+        check(spawned == null, where + ": natural spawning in the dark room past the seam: " + spawned);
+        server.runCommand(place.clear(seam, y));
         corridor(server, place, seam, y);
     }
 }
