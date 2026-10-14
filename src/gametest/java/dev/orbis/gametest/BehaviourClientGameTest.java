@@ -348,10 +348,31 @@ public final class BehaviourClientGameTest implements FabricClientGameTest {
                         .append(" holder ").append(holder == null ? "none" : holder.getTicketLevel() + "/" + holder.getFullStatus())
                         .append(" players ").append(distances.hasPlayersNearby(key))
                         .append(" tickets ").append(((ServerChunkCacheAccessor) level.getChunkSource()).orbisGametest$tickets()
-                                .getTicketDebugString(key, false)).append(';');
+                                .getTicketDebugString(key, false))
+                        .append(" view ").append(playerTicketView(distances, key)).append(';');
             }
+            var torus = Tori.of(level);
+            if (torus != null) out.append(" trace").append(SeamTrace.of(ChunkPos.unpack(ChunkPos.pack(spot)), torus.widthChunks()));
             return out.append(" throttle ").append(distances.getDebugStatus()).toString();
         });
+    }
+
+    /** The player ticket tracker's distance to the chunk, the level its queue last saw, and the view it hands tickets to. */
+    private static String playerTicketView(net.minecraft.server.level.DistanceManager distances, long key) {
+        try {
+            Object tracker = ((dev.orbis.engine.mixin.DistanceManagerAccessor) distances).orbis$playerTickets();
+            Class<?> fixed = tracker.getClass().getSuperclass();
+            var chunks = fixed.getDeclaredField("chunks");
+            chunks.setAccessible(true);
+            var queue = tracker.getClass().getDeclaredField("queueLevels");
+            queue.setAccessible(true);
+            var view = tracker.getClass().getDeclaredField("viewDistance");
+            view.setAccessible(true);
+            return ((it.unimi.dsi.fastutil.longs.Long2ByteMap) chunks.get(tracker)).get(key) + "/"
+                    + ((it.unimi.dsi.fastutil.longs.Long2IntMap) queue.get(tracker)).get(key) + " of " + view.getInt(tracker);
+        } catch (ReflectiveOperationException e) {
+            return e.toString();
+        }
     }
 
     private static @Nullable Vec3 zombie(TestServerContext server, Place place) {
