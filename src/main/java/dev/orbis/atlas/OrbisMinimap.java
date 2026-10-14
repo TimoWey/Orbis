@@ -48,9 +48,15 @@ final class OrbisMinimap implements AutoCloseable {
         label(g, net.minecraft.network.chat.Component.translatable("orbis.atlas.east").getString(), left + size + 8, top + size / 2 - 4);
         label(g, "S", left + size / 2, top + size + 4);
         label(g, "W", left - 9, top + size / 2 - 4);
-        label(g, "X: " + client.player.getBlockX(), left + size / 2, top + size + 16);
+        // The client keeps walking past the seam in one continuous frame; the label shows the world's own coordinates.
+        double shownX = client.player.getX(), shownZ = client.player.getZ();
+        if (data.wrapped()) {
+            shownX = AtlasMapMath.canonical(shownX, data.minX(), data.span());
+            shownZ = AtlasMapMath.canonical(shownZ, data.minZ(), data.span());
+        }
+        label(g, "X: " + (int) Math.floor(shownX), left + size / 2, top + size + 16);
         label(g, "Y: " + client.player.getBlockY(), left + size / 2, top + size + 26);
-        label(g, "Z: " + client.player.getBlockZ(), left + size / 2, top + size + 36);
+        label(g, "Z: " + (int) Math.floor(shownZ), left + size / 2, top + size + 36);
     }
 
     static int fittedSize(int width, int height, int requested) {
