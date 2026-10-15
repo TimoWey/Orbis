@@ -18,6 +18,9 @@ public abstract class CreateWorldScreenMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void orbis$startShape(CallbackInfo info, @Local(argsOnly = true) WorldCreationContext context) {
         OrbisWorldShape.reset(context.selectedDimensions());
+        var state = ((CreateWorldScreen) (Object) this).getUiState();
+        OrbisWorldShape.follow(state);
+        state.addListener(OrbisWorldShape::follow);
     }
 
     @WrapOperation(method = "onCreate", at = @At(value = "INVOKE",

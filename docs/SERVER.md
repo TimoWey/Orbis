@@ -8,7 +8,7 @@ The normal build `orbis-0.1.0-alpha.12.jar` contains the world engine, the minim
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
 - Server: put Fabric API and `orbis-0.1.0-alpha.12.jar` into the Fabric server's `mods/` folder.
 - Players: install the same Fabric Loader, Fabric API and Orbis versions in their own Minecraft profile.
-- Do not install Toroidal World or Exotic Worlds as well. Move older Orbis JARs out of `mods/` first. Never install the normal and debug builds together; `-sources.jar` does not belong in `mods/`.
+- Move older Orbis JARs out of `mods/` first. Never install the normal and debug builds together; `-sources.jar` does not belong in `mods/`.
 
 Every player needs Orbis. A game without it is turned away while connecting, with the message "This world needs the Orbis mod. Install Orbis *version* for Fabric (Minecraft 26.3) to join." A player whose Orbis cannot play with the server's leaves with both versions named. Servers whose world is not an Orbis world let anyone in. Other mods may have their own client requirements.
 
@@ -61,7 +61,7 @@ simulation-distance=6
 
 4. Start with Java 25, for example `java -Xms2G -Xmx4G -jar fabric-server-launch.jar nogui` (the file name depends on the Fabric installer). 4 GB is a starting point, not a capacity guarantee.
 5. With the whitelist enabled, add players from the console with `whitelist add <name>`.
-6. Check the `World shape:` lines in the log. `/orbis` shows the stored size and must recognise the world as Orbis. Both X/Z axes must read `TORUS` in the Overworld and Nether, and the End `not wrapped`.
+6. Run `/orbis`. On an Orbis world it shows `Orbis | Overworld: W × W chunks | Nether: W/8 × W/8 | End: unwrapped`; otherwise it reports "This is not an Orbis world".
 
 | `level-type` | Overworld width, blocks | Nether width, blocks |
 | --- | ---: | ---: |
@@ -73,7 +73,7 @@ simulation-distance=6
 
 Tiny is the easiest size for a first shared test. Nothing is pregenerated. No preset guarantees every biome and structure.
 
-`level-type` only applies when a **new** world is created. It does not convert or shrink an existing world. For a custom size, create a new Orbis world in singleplayer, quit cleanly and copy the whole save into the server's world folder. Back up existing worlds first.
+`level-type` only applies when a **new** world is created. It does not convert or shrink an existing world. Worlds created by earlier alpha builds with the old engine no longer load. For a custom size, create a new Orbis world in singleplayer, quit cleanly and copy the whole save into the server's world folder. Back up existing worlds first.
 
 ## Build
 

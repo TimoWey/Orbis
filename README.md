@@ -94,7 +94,7 @@ Choose a preset or use the size slider and exact chunk input. New selections ran
 | Large | 625,008 | 10,000,128 | 100,002,560 |
 | Earth | 1,448,160 | 23,170,560 | 536,874,851 |
 
-These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Existing smaller alpha saves remain readable.
+These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Worlds created by earlier alpha builds with the old world engine no longer load.
 
 ## Not in this alpha
 
@@ -107,15 +107,13 @@ Orbis deliberately stays focused on the wrapping world, its sizes, the fixed 1:8
 ## Try the alpha
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft **26.3** (Java 25).
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.12.jar` in your `mods` folder. Do not install Toroidal World or Exotic Worlds alongside it.
-3. Create a **new** world, set **World Shape: Orbis**, then **Customize** to choose the size.
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.12.jar` in your `mods` folder.
+3. Create a **new** world, set **World shape** to **Orbis** on the World tab, then **Customize** to choose the size.
 
 Back up anything you care about; this is an alpha. Building from source, known limitations and the test records are in the [project guide](docs/IMPLEMENTATION.md). Server setup is in the [server and player guide](docs/SERVER.md); changes per version are in the [changelog](CHANGELOG.md).
 
-## Inspiration and license
+## License
 
-Orbis takes inspiration from [Toroidal World](https://modrinth.com/mod/toroidal-world) and [Circumnavigate](https://modrinth.com/mod/circumnavigate). Its world engine is compiled from a pinned Toroidal World source snapshot (commit `0600806`, MIT License). It ships as a standalone mod; no separate engine mod is needed.
+Orbis is released under the [MIT License](LICENSE). See [Sources and licensing](docs/SOURCES_AND_LICENSE.md).
 
-Toroidal World has since been renamed Exotic Worlds and, from 9 October 2026, is published under the PolyForm Shield license. Orbis keeps using the MIT snapshot and does not copy code from the relicensed versions. Details are in [Sources and licensing](docs/SOURCES_AND_LICENSE.md).
-
-Orbis is released under the [MIT License](LICENSE).
+Inspired by [Toroidal World](https://modrinth.com/mod/toroidal-world) and [Circumnavigate](https://modrinth.com/mod/circumnavigate).
