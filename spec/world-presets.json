@@ -3,7 +3,7 @@
   "status": "provisional_alpha_presets_not_biome_validated",
   "nether_scale": 8,
   "end_wrapping": false,
-  "minimum_overworld_width_chunks_from_upstream": 128,
+  "minimum_debug_overworld_width_chunks": 128,
   "minimum_selectable_overworld_width_chunks": 1024,
   "maximum_selectable_overworld_width_chunks": 1448160,
   "width_step_chunks": 16,

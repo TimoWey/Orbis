@@ -1,6 +1,9 @@
 {
-  "gui.orbis.world_shape.finite": "Orbis",
-  "gui.orbis.world_shape.finite.hint": "Endliche Oberwelt und endlicher Nether. Exaktes Verhältnis 1:8. Unverändertes End. Biomabdeckung nicht garantiert.",
+  "gui.orbis.world_shape": "Weltform",
+  "gui.orbis.world_shape.normal": "Minecraft-Standard",
+  "gui.orbis.world_shape.normal.hint": "Normale Minecraft-Generierung und Weltgrenzen.",
+  "gui.orbis.world_shape.orbis": "Orbis",
+  "gui.orbis.world_shape.orbis.hint": "Endliche Oberwelt und endlicher Nether. Exaktes Verhältnis 1:8. Unverändertes End. Biomabdeckung nicht garantiert.",
   "advancements.orbis.bearings.title": "Orbis: Orientierung finden",
   "advancements.orbis.bearings.description": "Nimm einen Kompass für deine nächste Expedition mit.",
   "advancements.orbis.world_on_paper.title": "Eine Welt auf Papier",
