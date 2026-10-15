@@ -54,6 +54,7 @@ public abstract class WorldTabMixin {
             OrbisWorldShape.orbis(false);
             orbis$shape.setValue(false);
         }
+        orbis$shape.setValue(OrbisWorldShape.orbis());
         orbis$shape.active = fits;
         orbis$refresh();
     }

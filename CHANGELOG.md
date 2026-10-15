@@ -2,6 +2,20 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## Unreleased
+
+- Orbis runs on its own world engine only. The old engine is removed; worlds created with it by earlier alpha builds no longer load. Start a new world.
+- New **World shape** row on the World tab of Create World (Normal / Orbis), with **Customize** for the size.
+- Server `level-type` presets `orbis:tiny` to `orbis:earth` create worlds on the new engine.
+- The map continues across the seam.
+- The globe is lit in 3D, on the map screen and in the corner minimap.
+- Chunky no longer leaves half-generated chunks at the world edge.
+- Server maps keep the terrain you explored.
+- The map key (**M**) can be rebound; the map zooms.
+- One-line join message.
+- `/orbis check` in English and German.
+- Every player needs Orbis on an Orbis world; players without it, or with an incompatible version, are turned away with a clear message naming the version.
+
 ## 0.1.0-alpha.12 — 2026-10-12
 
 - Server maps remember what you explored: terrain is saved on your computer per server world and shown again after reconnecting. Before, the map only showed the area around you after a new login. Server and players need alpha.12.
@@ -47,9 +61,9 @@ All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API
 
 ## 0.1.0-alpha.2 — 2026-10-05
 
-- Standalone: the MIT engine source is compiled into the Orbis JAR; Toroidal World is no longer installed separately.
+- Standalone: the world engine is compiled into the Orbis JAR; no separate engine mod is installed.
 - World sizes Tiny, Small, Normal, Large and Earth with a logarithmic slider and exact input.
 
 ## 0.1.0-alpha.1 — 2026-10-05
 
-- First Orbis world shape on top of a separately installed Toroidal World engine.
+- First Orbis world shape on top of a separately installed engine mod.
