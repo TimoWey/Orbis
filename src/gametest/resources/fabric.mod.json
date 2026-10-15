@@ -6,6 +6,7 @@
   "environment": "*",
   "entrypoints": {
     "fabric-client-gametest": [
+      "dev.orbis.gametest.WorldShapeClientGameTest",
       "dev.orbis.gametest.TorusClientGameTest",
       "dev.orbis.gametest.DebugWorldClientGameTest",
       "dev.orbis.gametest.BehaviourClientGameTest",
