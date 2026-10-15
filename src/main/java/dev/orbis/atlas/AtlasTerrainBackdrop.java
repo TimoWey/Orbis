@@ -79,8 +79,11 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
                     } else {
                         x = view.centerX() + ((px + .5) / ratioX - view.width() * .5) / view.scale();
                         z = view.centerZ() + ((py + .5) / ratioY - view.height() * .5) / view.scale();
-                        if (data.wrapped() && (x < data.minX() || z < data.minZ()
-                                || x >= (double) data.minX() + data.span() || z >= (double) data.minZ() + data.span())) continue;
+                        // Past a seam the archive is read at the same place in the world.
+                        if (data.wrapped()) {
+                            x = AtlasMapMath.canonical(x, data.minX(), data.span());
+                            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+                        }
                     }
                     int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
                     var tile = reader.get(bx >> 4, bz >> 4);

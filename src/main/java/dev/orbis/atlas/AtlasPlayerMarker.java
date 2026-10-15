@@ -33,8 +33,8 @@ final class AtlasPlayerMarker {
             return new double[]{view.width() * .5 + point[0] * radius, view.height() * .5 - point[1] * radius};
         }
         if (data.wrapped()) {
-            x = AtlasMapMath.canonical(x, data.minX(), data.span());
-            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+            x = AtlasMapMath.nearest(x, view.centerX(), data.span());
+            z = AtlasMapMath.nearest(z, view.centerZ(), data.span());
         }
         return new double[]{view.width() * .5 + (x - view.centerX()) * view.scale(),
                 view.height() * .5 + (z - view.centerZ()) * view.scale()};

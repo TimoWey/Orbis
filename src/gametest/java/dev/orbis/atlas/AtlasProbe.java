@@ -30,4 +30,49 @@ public final class AtlasProbe {
     }
 
     public static void openMap(Minecraft client) { client.gui.setScreen(new PlayerAtlasScreen()); }
+
+    /** The map's dimension and every chunk it has a picture of, as packed chunk positions, or null before the first snapshot. */
+    public static java.util.Map.Entry<String, java.util.Set<Long>> cells() {
+        var data = PlayerAtlasClient.snapshot;
+        if (data == null) return null;
+        var keys = new java.util.HashSet<Long>();
+        for (var cell : data.chunks()) keys.add(net.minecraft.world.level.ChunkPos.pack(cell.x(), cell.z()));
+        return java.util.Map.entry(data.dimension(), keys);
+    }
+
+    /**
+     * The chunks out of {@code keys} the map has no picture of, neither in memory nor in its tile archive on disk, or
+     * null before the first snapshot of {@code dimension}.
+     */
+    public static java.util.Set<Long> unknown(String dimension, java.util.Collection<Long> keys) throws java.io.IOException {
+        var data = PlayerAtlasClient.snapshot;
+        if (data == null || !data.dimension().equals(dimension)) return null;
+        var known = new java.util.HashSet<Long>();
+        for (var cell : data.chunks()) known.add(net.minecraft.world.level.ChunkPos.pack(cell.x(), cell.z()));
+        var missing = new java.util.TreeSet<Long>();
+        var archive = data.terrainArchive();
+        try (var reader = archive == null ? null : archive.reader()) {
+            for (long key : keys) {
+                if (known.contains(key)) continue;
+                int x = net.minecraft.world.level.ChunkPos.getX(key), z = net.minecraft.world.level.ChunkPos.getZ(key);
+                if (reader == null || reader.get(x, z) == null) missing.add(key);
+            }
+        }
+        return missing;
+    }
+
+    /** How many blocks across the flat map shows in a dimension. */
+    public static double zoom(String dimension) { return AtlasPreferences.zoom(dimension, false); }
+
+    /** Sets what the map shows when next opened in a dimension: the globe or the flat map, {@code blocks} across. */
+    public static void prepare(String dimension, boolean globe, double blocks) {
+        AtlasPreferences.setGlobe(dimension, globe);
+        if (!globe) AtlasPreferences.zoom(dimension, false, blocks);
+    }
+
+    /** Whether the map is the screen shown now. */
+    public static boolean mapOpen(Minecraft client) { return client.gui.screen() instanceof PlayerAtlasScreen; }
+
+    /** The key that opens the map, as the player bound it. */
+    public static net.minecraft.client.KeyMapping mapKey() { return PlayerAtlasClient.mapKey; }
 }

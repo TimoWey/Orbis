@@ -1,8 +1,5 @@
 package dev.orbis;
 
-import com.toroidalworld.platform.FabricPlatform;
-import com.toroidalworld.settings.SettingsService;
-import com.toroidalworld.shape.WorldShapes;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -15,24 +12,18 @@ class StandaloneEngineTest {
         new Orbis().onInitialize();
     }
 
-    @Test void loadsWithoutASeparateToroidalWorldMod() {
+    @Test void loadsOnItsOwn() {
         assertTrue(FabricLoader.getInstance().isModLoaded("orbis"));
         assertFalse(FabricLoader.getInstance().isModLoaded("toroidal_world"));
-        assertEquals(System.getProperty("orbis.expectedVersion"), new FabricPlatform().modVersion());
+        assertEquals(System.getProperty("orbis.expectedVersion"), OrbisRequired.version());
     }
 
-    @Test void registersEngineCodecsUnderTheExistingSaveNamespace() {
-        assertTrue(BuiltInRegistries.CHUNK_GENERATOR.containsKey(
-                Identifier.fromNamespaceAndPath("toroidal_world", "toroidal")));
+    @Test void registersOnlyTheOrbisGenerator() {
+        assertTrue(BuiltInRegistries.CHUNK_GENERATOR.containsKey(Identifier.fromNamespaceAndPath("orbis", "torus")));
+        assertTrue(BuiltInRegistries.CHUNK_GENERATOR.keySet().stream().noneMatch(id -> id.getNamespace().equals("toroidal_world")));
     }
 
-    @Test void exposesOnlyNormalAndOrbisWorldCreationShapes() {
-        assertEquals(2, WorldShapes.shapes().size());
-        assertTrue(WorldShapes.shapes().stream().anyMatch(shape -> shape.id().equals(OrbisShape.MODULE.id())));
-        assertEquals("orbis-engine.json", SettingsService.FILE_NAME);
-    }
-
-    @Test void dedicatedServerPresetsDecodeAndPreserveOrbisOnSaveReload() throws Exception {
+    @Test void dedicatedServerPresetsDecodeAndKeepTheirSizeOnSaveReload() throws Exception {
         var registries = net.minecraft.data.registries.VanillaRegistries.createWorldLookup();
         var ops = registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
         var codec = net.minecraft.world.level.levelgen.presets.WorldPreset.DIRECT_CODEC;

@@ -1,9 +1,9 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.api.v1.option.WorldOptions;
-import com.toroidalworld.engine.gen.LoopedChunkGenerator;
-import com.toroidalworld.engine.noise.GenerationTransformerContext;
 import dev.orbis.OrbisShape;
+import dev.orbis.engine.Tori;
+import dev.orbis.engine.TorusChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import dev.orbis.WorldSize;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class AtlasBiomeSamplerTest {
     static HolderLookup.Provider registries;
     @BeforeAll static void setup() {
-        if (!WorldOptions.all().contains(OrbisShape.ENABLED)) WorldOptions.register(OrbisShape.ENABLED);
         registries = VanillaRegistries.createWorldLookup();
     }
 
@@ -37,11 +36,10 @@ class AtlasBiomeSamplerTest {
         assertEquals(AtlasMapMath.biomeColor(first.id()), first.color());
     }
     @Test void cachedSamplerExactlyMatchesAllUncachedTinySamplesInEveryDimension() {
-        var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
+        var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
         for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER, LevelStem.END)) {
-            var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
-            var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),
-                    () -> RandomState.create(registries.lookupOrThrow(Registries.NOISE), 8172231L, generator.generatorSettings().value()));
+            var generator = (NoiseBasedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
+            var random = randomState(registries, generator, 8172231L);
             int span = dimension.equals(LevelStem.NETHER) ? WorldSize.Preset.TINY.size.netherBlocks()
                     : WorldSize.Preset.TINY.size.overworldBlocks();
             int[] heights = dimension.equals(LevelStem.NETHER) ? new int[] {32, 16, 32, 128}
@@ -64,11 +62,10 @@ class AtlasBiomeSamplerTest {
 
     @Test void nativeQuickChecksShareFindsWithMapAndStopWithinSmallBudgetForTinyAndLarge() {
         for (var preset : List.of(WorldSize.Preset.TINY, WorldSize.Preset.LARGE)) {
-            var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), preset.size);
+            var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), preset.size);
             for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
-                var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
-                var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),
-                        () -> RandomState.create(registries.lookupOrThrow(Registries.NOISE), 8172231L, generator.generatorSettings().value()));
+                var generator = (NoiseBasedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
+                var random = randomState(registries, generator, 8172231L);
                 boolean nether = dimension.equals(LevelStem.NETHER);
                 int span = nether ? preset.size.netherBlocks() : preset.size.overworldBlocks();
                 int[] heights = nether ? new int[]{32, 16, 32, 128} : new int[]{63, -48, 32, 128};
@@ -96,5 +93,12 @@ class AtlasBiomeSamplerTest {
                 }
             }
         }
+    }
+
+    /** The seeded noise of a generator, periodic for an Orbis torus. */
+    static RandomState randomState(HolderLookup.Provider registries, NoiseBasedChunkGenerator generator, long seed) {
+        java.util.function.Supplier<RandomState> create = () -> RandomState.create(registries.lookupOrThrow(Registries.NOISE), seed,
+                generator.generatorSettings().value());
+        return generator instanceof TorusChunkGenerator torus ? Tori.creatingRandomState(torus.torus(), create) : create.get();
     }
 }

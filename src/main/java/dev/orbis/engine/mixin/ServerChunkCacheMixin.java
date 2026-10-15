@@ -22,12 +22,17 @@ public abstract class ServerChunkCacheMixin {
 
     @Unique private Torus orbis$torus() { return Tori.of(level); }
 
+    // getChunkFutureMainThread too: pregenerators such as Chunky call it directly, also for the row just past the
+    // world. Unfolded, that request found no chunk, finished at once and dropped the shared folded ticket while the
+    // real chunk was still generating, which left it half done.
     @ModifyVariable(method = {"getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
-            "getChunkNow", "getChunkFuture", "hasChunk", "getChunkForLighting"}, at = @At("HEAD"), argsOnly = true, ordinal = 0)
+            "getChunkNow", "getChunkFuture", "getChunkFutureMainThread", "hasChunk", "getChunkForLighting"},
+            at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private int orbis$foldX(int x) { return Fold.chunkCoord(orbis$torus(), x); }
 
     @ModifyVariable(method = {"getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
-            "getChunkNow", "getChunkFuture", "hasChunk", "getChunkForLighting"}, at = @At("HEAD"), argsOnly = true, ordinal = 1)
+            "getChunkNow", "getChunkFuture", "getChunkFutureMainThread", "hasChunk", "getChunkForLighting"},
+            at = @At("HEAD"), argsOnly = true, ordinal = 1)
     private int orbis$foldZ(int z) { return Fold.chunkCoord(orbis$torus(), z); }
 
     @ModifyVariable(method = "blockChanged", at = @At("HEAD"), argsOnly = true)
