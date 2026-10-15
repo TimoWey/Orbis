@@ -8,6 +8,8 @@ Four quiet diagrams for the README: one folding overview and three independent w
 | `orbis-torus.mp4` | Video version of the folding overview | 24 seconds |
 | `orbis-walk-x.gif` | One east–west lap, followed by a short pause | 12 seconds |
 | `orbis-walk-z.gif` | One north–south lap, followed by a short pause | 12 seconds |
+| `orbis-atlas.gif` | Screen recording of the Atlas from an automated in-game run: map, globe, turning the globe | 8 seconds |
+| `atlas-map.jpg`, `atlas-globe.jpg`, `atlas-minimap.jpg` | Stills from the same run | – |
 | `orbis-walk-diagonal.gif` | One offset diagonal lap, followed by a short pause | 14 seconds |
 
 ## Reproduce
