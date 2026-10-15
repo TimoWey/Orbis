@@ -1,8 +1,7 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.engine.gen.LoopedChunkGenerator;
-import com.toroidalworld.engine.noise.GenerationTransformerContext;
 import dev.orbis.OrbisShape;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import dev.orbis.WorldSize;
 import java.util.*;
 import net.minecraft.core.registries.Registries;
@@ -24,11 +23,10 @@ class AtlasBiomeSamplerBenchmark {
     @Test void compareIdenticalTinySurveysWithNativeWrappedResolvers() {
         AtlasBiomeSamplerTest.setup();
         var registries = AtlasBiomeSamplerTest.registries;
-        var dimensions = OrbisShape.applyLegacy(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
+        var dimensions = OrbisShape.apply(WorldPresets.createNormalWorldDimensions(registries), WorldSize.Preset.TINY.size);
         for (var dimension : List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
-            var generator = (LoopedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
-            var random = GenerationTransformerContext.withRouterBuild(generator.transformer(),
-                    () -> RandomState.create(registries.lookupOrThrow(Registries.NOISE), 8172231L, generator.generatorSettings().value()));
+            var generator = (NoiseBasedChunkGenerator) dimensions.get(dimension).orElseThrow().generator();
+            var random = AtlasBiomeSamplerTest.randomState(registries, generator, 8172231L);
             int span = dimension.equals(LevelStem.NETHER) ? WorldSize.Preset.TINY.size.netherBlocks()
                     : WorldSize.Preset.TINY.size.overworldBlocks();
             int[] heights = dimension.equals(LevelStem.NETHER) ? new int[] {32, 16, 32, 128} : new int[] {63, -48, 32, 128};

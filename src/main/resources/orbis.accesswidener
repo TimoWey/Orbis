@@ -1,14 +1,10 @@
 accessWidener v2 official
 
-# Mirror of common/src/main/resources/META-INF/accesstransformer.cfg — keep the two in sync.
+# What the Orbis engine reaches inside Minecraft.
 accessible class net/minecraft/server/level/DistanceManager$FixedPlayerDistanceChunkTracker
 accessible class net/minecraft/server/level/DistanceManager$PlayerTicketTracker
-accessible class net/minecraft/server/commands/SpreadPlayersCommand$Position
 extendable class net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator
-extendable method net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator iterateNoiseColumn (Lnet/minecraft/world/level/LevelHeightAccessor;Lnet/minecraft/world/level/levelgen/RandomState;IILorg/apache/commons/lang3/mutable/MutableObject;Ljava/util/function/Predicate;)Ljava/util/OptionalInt;
 accessible class net/minecraft/server/level/ChunkMap$TrackedEntity
-accessible field net/minecraft/server/level/ChunkMap entityMap Lit/unimi/dsi/fastutil/ints/Int2ObjectMap;
-accessible field net/minecraft/server/level/ChunkMap$TrackedEntity seenBy Ljava/util/Set;
 accessible field net/minecraft/world/level/levelgen/synth/GradientNoise perms [B
 accessible field net/minecraft/world/level/levelgen/synth/GradientNoise offsetX D
 accessible field net/minecraft/world/level/levelgen/synth/GradientNoise offsetY D
@@ -19,8 +15,4 @@ accessible class net/minecraft/world/level/levelgen/synth/NoiseStack$Layer
 accessible field net/minecraft/world/level/levelgen/synth/SmearedPerlinNoise fudgeYScale D
 accessible method net/minecraft/world/level/levelgen/synth/BlendedNoise xzMultiplier ()D
 accessible method net/minecraft/world/level/levelgen/synth/BlendedNoise yMultiplier ()D
-accessible field net/minecraft/world/level/levelgen/synth/NormalNoise parameters Lnet/minecraft/world/level/levelgen/synth/NormalNoise$Parameters;
-accessible class net/minecraft/world/level/levelgen/synth/NormalNoise$Parameters
 accessible field net/minecraft/world/level/levelgen/RandomState router Lnet/minecraft/world/level/levelgen/NoiseRouter;
-accessible class net/minecraft/world/level/PotentialCalculator$PointCharge
-accessible field net/minecraft/world/level/PotentialCalculator$PointCharge pos Lnet/minecraft/core/BlockPos;

@@ -10,7 +10,7 @@ def debugVariant = providers.gradleProperty('orbisDebug').map { it.toBoolean() }
 def commitId = providers.gradleProperty('orbisCommit').orElse(providers.environmentVariable('GITHUB_SHA')).orElse('unknown')
 def provenanceDirectory = layout.buildDirectory.dir('generated/provenance')
 def provenanceInputs = fileTree(projectDir) {
-    include 'src/**', 'vendor/**', 'licenses/**', 'spec/**', 'tools/**'
+    include 'src/**', 'spec/**', 'tools/**'
     include '*.gradle', 'gradle.properties', 'gradle/wrapper/**', 'LICENSE'
     exclude '**/__pycache__/**'
 }
@@ -51,7 +51,7 @@ tasks.register('verifyPresets') {
             assert sizeClass.getField('MIN_CHUNKS').getInt(null) == spec.minimum_selectable_overworld_width_chunks
             assert sizeClass.getField('EARTH_CHUNKS').getInt(null) == spec.maximum_selectable_overworld_width_chunks
             assert sizeClass.getField('STEP_CHUNKS').getInt(null) == spec.width_step_chunks
-            assert sizeClass.getField('LEGACY_MIN_CHUNKS').getInt(null) == spec.minimum_overworld_width_chunks_from_upstream
+            assert sizeClass.getField('DEBUG_MIN_CHUNKS').getInt(null) == spec.minimum_debug_overworld_width_chunks
             def actual = presetClass.enumConstants.collect { preset ->
                 def size = presetClass.getField('size').get(preset)
                 [id: preset.name().toLowerCase(Locale.ROOT), label_en: presetClass.getField('label').get(preset),
@@ -95,20 +95,15 @@ tasks.register('verifyDistribution') {
             assert names.any { it.startsWith('assets/orbis_debug/') } == debugVariant
             assert !meta.depends.containsKey('toroidal_world') && !(meta.provides ?: []).contains('toroidal_world')
             assert meta.breaks.toroidal_world == '*'
-            assert !names.any { it.startsWith('data/toroidal_world/advancement/') || it.startsWith('data/toroidal_world/worldgen/world_preset/') }
-            ['dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'com/toroidalworld/ToroidalWorldFabric.class',
-             'com/toroidalworld/engine/gen/LoopedChunkGenerator.class', 'LICENSE-orbis',
-             'META-INF/licenses/Toroidal-World-MIT.txt', meta.accessWidener, meta.icon].each { requireEntry(jar, it) }
+            // Orbis carries its own engine and nothing of another mod: no classes, assets or data under their names.
+            assert !names.any { it.startsWith('com/toroidalworld/') || it.contains('toroidal_world') }
+            ['dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'dev/orbis/engine/TorusChunkGenerator.class',
+             'LICENSE-orbis', meta.accessWidener, meta.icon].each { requireEntry(jar, it) }
             if (debugVariant) ['DeveloperScreen', 'DeveloperSurvey', 'AtlasCache'].each { requireEntry(jar, "dev/orbis/atlas/${it}.class") }
             ['tiny', 'small', 'normal', 'large', 'earth'].each {
                 requireEntry(jar, "data/orbis/worldgen/world_preset/${it}.json")
             }
-            assert (names.findAll { it.startsWith('assets/toroidal_world/lang/') && it.endsWith('.json') } as Set) ==
-                    (['assets/toroidal_world/lang/en_us.json', 'assets/toroidal_world/lang/de_de.json'] as Set)
             ['en_us', 'de_de'].each { locale ->
-                def wording = readJson(jar, "assets/toroidal_world/lang/${locale}.json")
-                assert !wording.keySet().any { it.startsWith('advancements.toroidal_world.') }
-                assert wording['gui.toroidal_world.settings.title'].contains('Orbis')
                 def own = readJson(jar, "assets/orbis/lang/${locale}.json")
                 ['bearings', 'world_on_paper', 'field_kit'].each { name ->
                     def advancement = readJson(jar, "data/orbis/advancement/exploration/${name}.json")

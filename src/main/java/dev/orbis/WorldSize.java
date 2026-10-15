@@ -3,14 +3,13 @@ package dev.orbis;
 /** Immutable square bounds. Widths are multiples of 16 chunks so both centred
  * edges map exactly to chunk edges in the Nether at 1:8. */
 public record WorldSize(int overworldChunks) {
-    // Keep old alpha saves readable; presets and the slider start at Tiny.
-    public static final int LEGACY_MIN_CHUNKS = 128;
+    /** Presets and the slider start at Tiny. */
     public static final int MIN_CHUNKS = 1_024;
     /**
      * Typed side lengths may go below Tiny for testing the seams up close, down to a 16 × 16 chunk Nether: chunk
      * generation reaches eight chunks around the chunk it generates, so a narrower world would overlap itself.
      */
-    public static final int DEBUG_MIN_CHUNKS = LEGACY_MIN_CHUNKS;
+    public static final int DEBUG_MIN_CHUNKS = 128;
     public static final int STEP_CHUNKS = 16;
     public static final int EARTH_CHUNKS = 1_448_160;
     public static final WorldSize DEFAULT = new WorldSize(76_544);
@@ -23,7 +22,6 @@ public record WorldSize(int overworldChunks) {
         }
     }
 
-    /** Policy for new choices, separate from legacy save decoding. */
     public static WorldSize select(int chunks) {
         if (chunks < DEBUG_MIN_CHUNKS) throw new IllegalArgumentException("Choose " + DEBUG_MIN_CHUNKS + " chunks or more.");
         return new WorldSize(chunks);

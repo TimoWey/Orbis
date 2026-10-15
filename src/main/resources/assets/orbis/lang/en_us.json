@@ -1,6 +1,9 @@
 {
-  "gui.orbis.world_shape.finite": "Orbis",
-  "gui.orbis.world_shape.finite.hint": "Finite Overworld and Nether. Exact 1:8 scaling. Unwrapped End. Biome coverage not guaranteed.",
+  "gui.orbis.world_shape": "World shape",
+  "gui.orbis.world_shape.normal": "Minecraft default",
+  "gui.orbis.world_shape.normal.hint": "Standard Minecraft terrain and world borders.",
+  "gui.orbis.world_shape.orbis": "Orbis",
+  "gui.orbis.world_shape.orbis.hint": "Finite Overworld and Nether. Exact 1:8 scaling. Unwrapped End. Biome coverage not guaranteed.",
   "advancements.orbis.bearings.title": "Orbis: Find Your Bearings",
   "advancements.orbis.bearings.description": "Carry a compass to prepare for your next expedition.",
   "advancements.orbis.world_on_paper.title": "A World on Paper",

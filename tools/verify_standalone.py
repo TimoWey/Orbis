@@ -1,4 +1,4 @@
-"""Fail CI if the distributable needs or embeds the separate Toroidal World mod."""
+"""Fail CI unless the distributable is Orbis alone: its own engine, nothing of another mod, matching sources."""
 import io
 import argparse
 import json
@@ -45,32 +45,22 @@ with zipfile.ZipFile(jars[0]) as jar:
         assert 'assets/orbis_debug/lang/de_de.json' in names
     else:
         assert not any(name.startswith('assets/orbis_debug/') for name in names), 'Debug resources leaked'
-    assert not any(name.startswith('data/toroidal_world/advancement/') and name.endswith('.json')
-                   for name in names), 'Inherited player progression was bundled'
-    assert not any(name.startswith('data/toroidal_world/worldgen/world_preset/') and name.endswith('.json')
-                   for name in names), 'Inherited world presets were bundled'
+    assert not any(name.startswith('com/toroidalworld/') or 'toroidal_world' in name for name in names), \
+        'Classes, assets or data of another mod were bundled'
     for locale in ('en_us', 'de_de'):
-        wording = json.loads(jar.read(f'assets/toroidal_world/lang/{locale}.json'))
-        assert not any(key.startswith('advancements.toroidal_world.') for key in wording)
-        assert 'Orbis' in wording['gui.toroidal_world.settings.title']
         own_wording = json.loads(jar.read(f'assets/orbis/lang/{locale}.json'))
         for advancement in ('bearings', 'world_on_paper', 'field_kit'):
             data = json.loads(jar.read(f'data/orbis/advancement/exploration/{advancement}.json'))
             assert data['criteria']['prepared']['trigger'] == 'minecraft:inventory_changed'
             assert data['display']['title']['translate'] in own_wording
             assert data['display']['description']['translate'] in own_wording
-    engine_locales = {name for name in names if name.startswith('assets/toroidal_world/lang/')
-                      and name.endswith('.json')}
-    assert engine_locales == {'assets/toroidal_world/lang/en_us.json',
-                              'assets/toroidal_world/lang/de_de.json'}, 'Inherited translations leaked'
     assert 'toroidal_world' not in meta['depends']
     assert 'toroidal_world' not in meta.get('provides', [])
     assert meta['breaks']['toroidal_world'] == '*'
     for preset in ('tiny', 'small', 'normal', 'large', 'earth'):
         assert f'data/orbis/worldgen/world_preset/{preset}.json' in names
-    for name in ('dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'com/toroidalworld/ToroidalWorldFabric.class',
-                 'com/toroidalworld/engine/gen/LoopedChunkGenerator.class',
-                 'LICENSE-orbis', 'META-INF/licenses/Toroidal-World-MIT.txt', meta['accessWidener']):
+    for name in ('dev/orbis/Orbis.class', 'dev/orbis/atlas/PlayerAtlasClient.class', 'dev/orbis/engine/TorusChunkGenerator.class',
+                 'LICENSE-orbis', meta['accessWidener']):
         assert name in names, f'Missing {name}'
     for config_name in meta['mixins']:
         config = json.loads(jar.read(config_name))
@@ -82,5 +72,5 @@ with zipfile.ZipFile(jars[0]) as jar:
     for nested in meta.get('jars', []):
         with zipfile.ZipFile(io.BytesIO(jar.read(nested['file']))) as lib:
             nested_meta = json.loads(lib.read('fabric.mod.json'))
-            assert nested_meta['id'] != 'toroidal_world', 'Separate engine mod was nested'
+            assert nested_meta['id'] != 'toroidal_world', 'Another torus mod was nested'
 print(f'{jars[0].name}: standalone packaging and matching provenance verified; debug={debug_expected}.')
