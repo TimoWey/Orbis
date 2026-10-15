@@ -1,10 +1,10 @@
 # Requirements
 
-Updated: 2026-10-12. Requirements are the target; current source and validation status are tracked in [Implementation](IMPLEMENTATION.md). **Parked** rows are out of scope since the [2026-10-12 focus decision](DECISIONS.md#focus-2026-10-12).
+Updated: 2026-10-15. Requirements are the target; current source and validation status are tracked in [Implementation](IMPLEMENTATION.md). **Parked** rows are out of scope since the [2026-10-12 focus decision](DECISIONS.md#focus-2026-10-12).
 
 | ID | Priority | Requirement | Acceptance |
 | --- | --- | --- | --- |
-| R01 | Required | Standalone Orbis; integrate MIT-licensed Toroidal World source | One Orbis JAR; no separate or embedded Toroidal World mod; retain attribution |
+| R01 | Required | Standalone Orbis with its own world engine | One Orbis JAR; no separate or embedded engine mod |
 | R02 | Required | Fabric; latest stable Java Edition at project start | Pin exact tool and game versions |
 | R03 | Required | Singleplayer and dedicated server | Create, play, save and reload; every player has Orbis, a game without it is turned away with an install message ([decision](DECISIONS.md#orbis-required-2026-10-12)) |
 | R04 | Required | Seamless Overworld/Nether wrapping in X and Z | All edges and corners correct; Y unchanged |
