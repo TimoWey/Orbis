@@ -64,7 +64,11 @@ final class AtlasMinimapCache implements AutoCloseable {
         }
         Target target = wanted;
         Window window = target.window;
-        long revision = session.archive == null ? 0 : session.archive.revision(window.x, window.z, window.size);
+        // A window past a seam shows regions from the far side, which the archive keys by their own coordinates.
+        boolean acrossSeam = session.wrapped && (window.x < session.x || window.z < session.z
+                || window.x + window.size > session.x + session.span || window.z + window.size > session.z + session.span);
+        long revision = session.archive == null ? 0 : acrossSeam ? session.archive.revision()
+                : session.archive.revision(window.x, window.z, window.size);
         var key = new Key(target, data.layers().terrain(), data.layers().loaded(), revision);
         if (pending == null && (ready == null || !ready.key.equals(key)) && System.nanoTime() >= retryAt) {
             Result previous = ready;

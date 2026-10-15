@@ -1,0 +1,5 @@
+# Requests for tools/api_probe.py; CI prints the answers in the build log.
+net.minecraft.world.entity.LivingEntity hasLineOfSight|getEyePosition
+net.minecraft.world.entity.Entity hasLineOfSight|getEyePosition
+-c net.minecraft.world.entity.LivingEntity hasLineOfSight
+-c net.minecraft.world.entity.Entity hasLineOfSight

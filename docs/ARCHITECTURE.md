@@ -1,10 +1,10 @@
 # Architecture
 
-Orbis is standalone. The MIT-licensed engine source is compiled into the Orbis JAR. See [Implementation](IMPLEMENTATION.md). Rows marked *parked* are not being built.
+Orbis is standalone and runs on its own world engine (`dev.orbis.engine`, generator `orbis:torus`). See [Implementation](IMPLEMENTATION.md). Rows marked *parked* are not being built.
 
 | Component | Responsibility |
 | --- | --- |
-| Upstream foundation | Compile the pinned MIT source snapshot into Orbis; retain attribution; no separate engine mod |
+| World engine | Orbis's own periodic generator and seam handling; no separate engine mod |
 | World configuration | Persist bounds, size profile, generator version and schema version |
 | Coordinates | Unique canonical chunks; correct normalization of negative coordinates |
 | Rendering | Periodic views of the same data, without duplicate simulation |

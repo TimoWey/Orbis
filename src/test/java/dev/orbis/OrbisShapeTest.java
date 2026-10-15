@@ -1,23 +1,11 @@
 package dev.orbis;
 
 import java.util.HashMap;
+import dev.orbis.engine.TorusChunkGenerator;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
-import com.toroidalworld.api.v1.option.WorldOptions;
-import com.toroidalworld.api.v1.shape.LoopSpans;
-import com.toroidalworld.api.v1.shape.ShapeDimensions;
-import com.toroidalworld.core.ShapedChunkGenerator;
-import com.toroidalworld.core.ToroidalShapeView;
-import com.toroidalworld.engine.gen.LoopedChunkGenerator;
-import com.toroidalworld.shape.WorldShapes;
-import com.mojang.serialization.Lifecycle;
-import net.minecraft.core.MappedRegistry;
-import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.RegistrationInfo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.registries.VanillaRegistries;
@@ -30,7 +18,6 @@ import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.WorldDimensions;
-import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,103 +25,99 @@ import static org.junit.jupiter.api.Assertions.*;
 class OrbisShapeTest {
     private static HolderLookup.Provider registries;
     @BeforeAll static void setup() {
-        if (!WorldOptions.all().contains(OrbisShape.ENABLED)) WorldOptions.register(OrbisShape.ENABLED);
         registries = VanillaRegistries.createWorldLookup();
     }
 
-    @Test void dimensionsUseExactBoundsAndAnUnwrappedEnd() {
-        for (WorldSize.Preset preset : WorldSize.Preset.values()) {
-            WorldDimensions result = OrbisShape.apply(vanilla(), preset.size);
-            assertEquals(preset.size, OrbisShape.read(result));
-            assertEquals(LoopSpans.ofWidth(preset.size.netherChunks()), ShapeDimensions.spansOf(result, LevelStem.NETHER));
-            // The public reader hides non-wrapping shapes; inspect the actual
-            // generator below to ensure its explicit identity survives.
-            assertNull(ShapeDimensions.spansOf(result, LevelStem.END));
-            var end = (ShapedChunkGenerator) result.get(LevelStem.END).orElseThrow().generator();
-            assertFalse(end.carriedShape().fold().isWrapped());
-            var shape = new ToroidalShapeView(end.transformer());
-            assertFalse(shape.loops(Direction.Axis.X));
-            assertFalse(shape.loops(Direction.Axis.Z));
-            var pos = new Vec3(8_000_000, 70, -9_000_000);
-            assertSame(pos, shape.fold(pos));
+    @Test void newWorldsRunOnTheOrbisEngineAtEverySizeIncludingDebug() {
+        var sizes = new java.util.ArrayList<WorldSize>();
+        for (WorldSize.Preset preset : WorldSize.Preset.values()) sizes.add(preset.size);
+        sizes.add(WorldSize.select(WorldSize.DEBUG_MIN_CHUNKS));
+        sizes.add(WorldSize.select(144));
+        for (WorldSize size : sizes) {
+            WorldDimensions result = OrbisShape.apply(vanilla(), size);
+            var overworld = (TorusChunkGenerator) result.get(LevelStem.OVERWORLD).orElseThrow().generator();
+            var nether = (TorusChunkGenerator) result.get(LevelStem.NETHER).orElseThrow().generator();
+            assertEquals(size.overworldChunks(), overworld.torus().widthChunks());
+            assertEquals(size.netherChunks(), nether.torus().widthChunks());
+            assertEquals(overworld.torus().nether(), nether.torus());
+            assertFalse(result.get(LevelStem.END).orElseThrow().generator() instanceof TorusChunkGenerator);
+            assertEquals(size, OrbisShape.read(result));
         }
+        var debug = (TorusChunkGenerator) OrbisShape.apply(vanilla(), WorldSize.select(128)).get(LevelStem.NETHER).orElseThrow().generator();
+        assertEquals(16, debug.torus().widthChunks());
+        assertEquals(-128, debug.torus().minBlock());
     }
 
-    @Test void engineWrapsXAndZAndOffsetDiagonalsWithoutChangingHeight() {
-        var result = OrbisShape.apply(vanilla(), new WorldSize(128));
-        var generator = (ShapedChunkGenerator) result.get(LevelStem.OVERWORLD).orElseThrow().generator();
-        var shape = new ToroidalShapeView(generator.transformer());
-        var start = new Vec3(512, 73.25, 819.2);
-        assertEquals(start, shape.fold(start.add(2048, 0, 0)));
-        assertEquals(start.z, shape.fold(start.add(0, 0, 2048)).z, 1e-8);
-        assertEquals(start.x, shape.fold(start.add(-4096, 0, -4096)).x, 1e-8);
-        assertEquals(start.z, shape.fold(start.add(-4096, 0, -4096)).z, 1e-8);
-        assertEquals(start.y, shape.fold(start.add(2048, 0, 2048)).y);
-        assertEquals(-1024.0, shape.foldCoord(Direction.Axis.X, 1024.0));
-        assertEquals(1023.5, shape.foldCoord(Direction.Axis.Z, -1024.5));
-    }
-
-    @Test void optionsAndBoundsSurviveGeneratorCodecRoundTrip() {
-        var created = OrbisShape.apply(vanilla(), WorldSize.DEFAULT);
+    @Test void engineWorldSurvivesGeneratorCodecRoundTripAndRestoresAsOrbis() {
+        var created = OrbisShape.apply(vanilla(), WorldSize.select(128));
         var ops = registries.createSerializationContext(JsonOps.INSTANCE);
         var stems = new HashMap<>(created.dimensions());
-        for (var key : java.util.List.of(LevelStem.OVERWORLD, LevelStem.NETHER, LevelStem.END)) {
+        for (var key : java.util.List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
             var stem = created.get(key).orElseThrow();
-            JsonElement encoded = LoopedChunkGenerator.CODEC.codec()
-                    .encodeStart(ops, (LoopedChunkGenerator) stem.generator()).getOrThrow();
-            var decoded = LoopedChunkGenerator.CODEC.codec().parse(ops, encoded).getOrThrow();
-            stems.put(key, new LevelStem(stem.type(), decoded));
+            JsonElement encoded = TorusChunkGenerator.CODEC.codec().encodeStart(ops, (TorusChunkGenerator) stem.generator()).getOrThrow();
+            stems.put(key, new LevelStem(stem.type(), TorusChunkGenerator.CODEC.codec().parse(ops, encoded).getOrThrow()));
         }
-        assertEquals(WorldSize.DEFAULT, OrbisShape.read(new WorldDimensions(stems)));
+        assertEquals(WorldSize.select(128), OrbisShape.read(new WorldDimensions(stems)));
     }
 
-    @Test void ordinaryWorldIsNeverClaimedOrChangedByReading() {
+    @Test void ordinaryWorldIsNeverClaimedAndStripsToItself() {
         var ordinary = vanilla();
         assertNull(OrbisShape.read(ordinary));
-        assertFalse(OrbisShape.owns(ordinary));
-        var baked = ordinary.bake(stemRegistry(ordinary));
-        ordinary.dimensions().forEach((key, stem) -> {
-            var restored = baked.dimensions().getOptional(key).orElseThrow();
-            assertSame(stem.generator(), restored.generator());
-            assertNull(ShapedChunkGenerator.carriedShapeOf(restored.generator()));
-        });
+        assertTrue(OrbisShape.fits(ordinary));
+        assertEquals(ordinary.dimensions(), OrbisShape.strip(ordinary).dimensions());
     }
 
-    @Test void recreateKeepsOrbisOwnershipInsteadOfGenericTorus() {
-        var created = OrbisShape.apply(vanilla(), WorldSize.DEFAULT);
-        OrbisShape.MODULE.register();
-        WorldShapes.resetToDefault();
+    @Test void strippingAnOrbisWorldGivesBackItsNoiseGenerators() {
+        var stripped = OrbisShape.strip(OrbisShape.apply(vanilla(), WorldSize.DEFAULT));
+        assertNull(OrbisShape.read(stripped));
+        for (var key : java.util.List.of(LevelStem.OVERWORLD, LevelStem.NETHER)) {
+            var generator = stripped.get(key).orElseThrow().generator();
+            assertEquals(NoiseBasedChunkGenerator.class, generator.getClass());
+            var original = (NoiseBasedChunkGenerator) vanilla().get(key).orElseThrow().generator();
+            assertEquals(original.generatorSettings(), ((NoiseBasedChunkGenerator) generator).generatorSettings());
+        }
+        // Re-created at another size, the world is still exactly one Orbis world.
+        assertEquals(WorldSize.select(256), OrbisShape.read(OrbisShape.apply(stripped, WorldSize.select(256))));
+    }
+
+    @Test void worldShapeFollowsTheWorldBeingRecreated() {
         try {
-            WorldShapes.restoreFromExisting(RegistryAccess.EMPTY, created);
-            assertEquals(OrbisShape.MODULE.id(), WorldShapes.selected().id());
-            assertEquals(WorldSize.DEFAULT, OrbisShape.MODULE.settings());
+            OrbisWorldShape.reset(OrbisShape.apply(vanilla(), WorldSize.select(128)));
+            assertTrue(OrbisWorldShape.orbis());
+            assertEquals(WorldSize.select(128), OrbisWorldShape.size());
+            OrbisWorldShape.orbis(false);
+            assertNull(OrbisShape.read(OrbisWorldShape.apply(OrbisShape.apply(vanilla(), WorldSize.select(128)))));
+            OrbisWorldShape.reset(vanilla());
+            assertFalse(OrbisWorldShape.orbis());
+            assertEquals(WorldSize.DEFAULT, OrbisWorldShape.size());
+            OrbisWorldShape.orbis(true);
+            assertEquals(WorldSize.DEFAULT, OrbisShape.read(OrbisWorldShape.apply(vanilla())));
         } finally {
-            WorldShapes.resetToDefault();
+            OrbisWorldShape.reset(vanilla());
         }
     }
 
-    @Test void bakePreservesAnUnwrappedCustomDimensionAndEnd() {
+    @Test void customDimensionsStayAsTheyAre() {
         var customKey = ResourceKey.create(Registries.LEVEL_STEM, Identifier.fromNamespaceAndPath("test", "moon"));
         var custom = stem(BuiltinDimensionTypes.OVERWORLD, NoiseGeneratorSettings.OVERWORLD);
         var entries = new HashMap<>(vanilla().dimensions());
         entries.put(customKey, custom);
-        var original = new WorldDimensions(entries);
-        var baked = OrbisShape.apply(original, WorldSize.DEFAULT).bake(stemRegistry(original));
-        var moon = baked.dimensions().getOptional(customKey).orElseThrow();
-        assertSame(custom.generator(), moon.generator());
-        assertNull(ShapedChunkGenerator.carriedShapeOf(moon.generator()));
-        assertEquals(WorldSize.DEFAULT, OrbisShape.read(new WorldDimensions(baked.dimensions())));
-        var end = baked.dimensions().getOptional(LevelStem.END).orElseThrow();
-        // Bake may retain the unshaped datapack End; both representations must stay unwrapped.
-        var endShape = ShapedChunkGenerator.carriedShapeOf(end.generator());
-        assertTrue(endShape == null || !endShape.fold().isWrapped());
+        var created = OrbisShape.apply(new WorldDimensions(entries), WorldSize.DEFAULT);
+        assertSame(custom, created.get(customKey).orElseThrow());
+        assertSame(vanilla().get(LevelStem.END).orElseThrow().generator().getClass(),
+                created.get(LevelStem.END).orElseThrow().generator().getClass());
     }
 
-    @Test void bakeRejectsDatapackChangingStoredNetherCoordinateScale() {
-        var saved = OrbisShape.apply(vanilla(), WorldSize.DEFAULT);
-        var replacement = new HashMap<>(vanilla().dimensions());
-        replacement.put(LevelStem.NETHER, stem(BuiltinDimensionTypes.OVERWORLD, NoiseGeneratorSettings.NETHER));
-        assertThrows(IllegalArgumentException.class, () -> saved.bake(stemRegistry(new WorldDimensions(replacement))));
+    @Test void superflatCannotBecomeOrbis() {
+        var flat = new HashMap<>(vanilla().dimensions());
+        var overworld = flat.get(LevelStem.OVERWORLD);
+        flat.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new net.minecraft.world.level.levelgen.FlatLevelSource(
+                net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings.getDefault(
+                        registries.lookupOrThrow(Registries.BIOME), registries.lookupOrThrow(Registries.STRUCTURE_SET),
+                        registries.lookupOrThrow(Registries.PLACED_FEATURE)))));
+        var dimensions = new WorldDimensions(flat);
+        assertFalse(OrbisShape.fits(dimensions));
+        assertThrows(IllegalArgumentException.class, () -> OrbisShape.apply(dimensions, WorldSize.DEFAULT));
     }
 
     @Test void readerRejectsIncorrectNetherCoordinateScale() {
@@ -143,12 +126,6 @@ class OrbisShapeTest {
         entries.put(LevelStem.NETHER, new LevelStem(created.get(LevelStem.OVERWORLD).orElseThrow().type(),
                 created.get(LevelStem.NETHER).orElseThrow().generator()));
         assertNull(OrbisShape.read(new WorldDimensions(entries)));
-    }
-
-    private static Registry<LevelStem> stemRegistry(WorldDimensions dimensions) {
-        var registry = new MappedRegistry<LevelStem>(Registries.LEVEL_STEM, Lifecycle.stable());
-        dimensions.dimensions().forEach((key, value) -> registry.register(key, value, RegistrationInfo.BUILT_IN));
-        return registry.freeze();
     }
 
     private static WorldDimensions vanilla() {

@@ -3,25 +3,32 @@ package dev.orbis;
 /** Immutable square bounds. Widths are multiples of 16 chunks so both centred
  * edges map exactly to chunk edges in the Nether at 1:8. */
 public record WorldSize(int overworldChunks) {
-    // Keep old alpha saves readable; new selections start at Tiny.
-    public static final int LEGACY_MIN_CHUNKS = 128;
+    /** Presets and the slider start at Tiny. */
     public static final int MIN_CHUNKS = 1_024;
+    /**
+     * Typed side lengths may go below Tiny for testing the seams up close, down to a 16 × 16 chunk Nether: chunk
+     * generation reaches eight chunks around the chunk it generates, so a narrower world would overlap itself.
+     */
+    public static final int DEBUG_MIN_CHUNKS = 128;
     public static final int STEP_CHUNKS = 16;
     public static final int EARTH_CHUNKS = 1_448_160;
     public static final WorldSize DEFAULT = new WorldSize(76_544);
 
     public WorldSize {
-        if (overworldChunks < LEGACY_MIN_CHUNKS || overworldChunks > EARTH_CHUNKS
+        if (overworldChunks < DEBUG_MIN_CHUNKS || overworldChunks > EARTH_CHUNKS
                 || overworldChunks % STEP_CHUNKS != 0) {
-            throw new IllegalArgumentException("Stored width must be a multiple of 16 between 128 and " + EARTH_CHUNKS + " chunks.");
+            throw new IllegalArgumentException("Stored width must be a multiple of 16 between " + DEBUG_MIN_CHUNKS
+                    + " and " + EARTH_CHUNKS + " chunks.");
         }
     }
 
-    /** Policy for new choices, separate from legacy save decoding. */
     public static WorldSize select(int chunks) {
-        if (chunks < MIN_CHUNKS) throw new IllegalArgumentException("Choose Tiny or larger.");
+        if (chunks < DEBUG_MIN_CHUNKS) throw new IllegalArgumentException("Choose " + DEBUG_MIN_CHUNKS + " chunks or more.");
         return new WorldSize(chunks);
     }
+
+    /** Below Tiny: only reachable by typing a side length, meant for testing. */
+    public boolean debug() { return overworldChunks < MIN_CHUNKS; }
 
     /** Logarithmic travel preserves useful precision near Tiny. */
     public static WorldSize fromSlider(double position) {
@@ -47,7 +54,7 @@ public record WorldSize(int overworldChunks) {
 
     public String label() {
         for (Preset preset : Preset.values()) if (equals(preset.size)) return preset.label;
-        return "Custom";
+        return debug() ? "Debug" : "Custom";
     }
 
     public enum Preset {
