@@ -1,5 +1,7 @@
 package dev.orbis.atlas;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.util.Arrays;
 import net.minecraft.world.level.ChunkPos;
 
@@ -18,7 +20,10 @@ final class AtlasMapRaster {
     private AtlasSnapshot data;
     private int[] archived;
     private java.util.List<AtlasSnapshot.Cell> indexedChunks;
-    private final java.util.Map<Long, AtlasSnapshot.Cell> terrain = new java.util.HashMap<>();
+    private java.util.Set<Long> indexedLoaded;
+    // Primitive keys: the globe looks up every pixel, and boxed keys there are garbage at frame rate.
+    private final Long2ObjectOpenHashMap<AtlasSnapshot.Cell> terrain = new Long2ObjectOpenHashMap<>();
+    private final LongOpenHashSet loaded = new LongOpenHashSet();
     private double[] globeU, globeV;
     // Per pixel lighting of the globe: brightness, highlight and haze inside the disk, halo alpha outside it.
     private float[] globeShade, globeShine, globeHaze;
@@ -40,6 +45,8 @@ final class AtlasMapRaster {
         this.height = height;
         pixels = new int[width * height];
     }
+    int width() { return width; }
+    int height() { return height; }
     int[] render(AtlasSnapshot data, View view) {
         return render(data, view, null);
     }
@@ -53,6 +60,11 @@ final class AtlasMapRaster {
             indexedChunks = data.chunks();
             terrain.clear();
             for (var cell : indexedChunks) terrain.put(ChunkPos.pack(cell.x(), cell.z()), cell);
+        }
+        if (indexedLoaded != data.loaded()) {
+            indexedLoaded = data.loaded();
+            loaded.clear();
+            for (long key : indexedLoaded) loaded.add(key);
         }
         ratioX = width / (double) view.width;
         ratioY = height / (double) view.height;
@@ -101,7 +113,7 @@ final class AtlasMapRaster {
             int right = Math.clamp((int) Math.ceil((cx + 16 - leftWorld) * densityX - .5), 0, width);
             int top = Math.clamp((int) Math.ceil((cz - topWorld) * densityY - .5), 0, height);
             int bottom = Math.clamp((int) Math.ceil((cz + 16 - topWorld) * densityY - .5), 0, height);
-            boolean live = data.loaded().contains(ChunkPos.pack(cell.x(), cell.z()));
+            boolean live = loaded.contains(ChunkPos.pack(cell.x(), cell.z()));
             for (int py = top; py < bottom; py++) {
                 int tz = Math.clamp((int) Math.floor(topWorld + (py + .5) / densityY - cz), 0, 15);
                 for (int px = left; px < right; px++) {
@@ -127,6 +139,9 @@ final class AtlasMapRaster {
         cacheProjection(radius);
         double originU = .5 - view.yaw / (2 * Math.PI), originV = .5 - view.pitch / Math.PI;
         int fogLevel = AtlasUnknownTerrain.level(fogScale * data.span() / (2 * Math.PI * radius * Math.min(ratioX, ratioY)));
+        long lastKey = Long.MIN_VALUE;
+        AtlasSnapshot.Cell lastCell = null;
+        boolean lastLive = false;
         for (int py = 0; py < height; py++) {
             for (int px = 0; px < width; px++) {
                 int index = py * width + px;
@@ -138,14 +153,11 @@ final class AtlasMapRaster {
                 if (archived != null && archived[index] != 0) color = archived[index];
                 int bx = (int) Math.floor(data.minX() + u * data.span());
                 int bz = (int) Math.floor(data.minZ() + v * data.span());
-                var cell = terrain.get(ChunkPos.pack(bx >> 4, bz >> 4));
-                if (cell != null && (archived == null || archived[index] == 0
-                        || data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4)))) color = cell.colorAt(bx, bz);
-                if (view.chunks) {
-                    if (data.loaded().contains(ChunkPos.pack(bx >> 4, bz >> 4))) {
-                        color = blend(color, LOADED);
-                    }
-                }
+                // Neighbouring pixels mostly fall in the same chunk.
+                long key = ChunkPos.pack(bx >> 4, bz >> 4);
+                if (key != lastKey) { lastKey = key; lastCell = terrain.get(key); lastLive = loaded.contains(key); }
+                if (lastCell != null && (archived == null || archived[index] == 0 || lastLive)) color = lastCell.colorAt(bx, bz);
+                if (view.chunks && lastLive) color = blend(color, LOADED);
                 pixels[index] = lit ? light(color, globeShade[index], globeShine[index], globeHaze[index]) : color;
             }
         }

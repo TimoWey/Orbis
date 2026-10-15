@@ -75,4 +75,18 @@ public final class AtlasProbe {
 
     /** The key that opens the map, as the player bound it. */
     public static net.minecraft.client.KeyMapping mapKey() { return PlayerAtlasClient.mapKey; }
+
+    public static void setMinimap(boolean visible, boolean globe, String dimension) {
+        if (AtlasPreferences.visible() != visible) AtlasPreferences.toggleVisible();
+        AtlasPreferences.setGlobe(dimension, globe);
+    }
+
+    /** Presses on the middle of the open map and drags it by (dx, dy) GUI pixels, as the mouse would. */
+    public static void drag(Minecraft client, double dx, double dy, boolean press) {
+        if (!(client.gui.screen() instanceof PlayerAtlasScreen screen)) return;
+        double x = screen.width / 2.0, y = screen.height / 2.0;
+        var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+        if (press) screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y, info), false);
+        screen.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(x + dx, y + dy, info), dx, dy);
+    }
 }
