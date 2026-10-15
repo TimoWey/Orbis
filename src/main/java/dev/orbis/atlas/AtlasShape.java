@@ -1,9 +1,7 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.api.v1.ToroidalWorldApi;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import org.jspecify.annotations.Nullable;
@@ -17,13 +15,7 @@ record AtlasShape(boolean wrapped, int minX, int minZ, int span) {
     }
 
     static AtlasShape server(ServerLevel level) {
-        Torus torus = Tori.of(level);
-        if (torus != null) return of(torus);
-        // Worlds created on the old engine, until it is removed.
-        var shape = ToroidalWorldApi.shapeOf(level).orElse(null);
-        if (shape == null || !shape.loops(Direction.Axis.X) || !shape.loops(Direction.Axis.Z)) return OPEN;
-        return new AtlasShape(true, shape.minBlock(Direction.Axis.X), shape.minBlock(Direction.Axis.Z),
-                shape.widthBlocks(Direction.Axis.X));
+        return of(Tori.of(level));
     }
 
     int foldChunkX(int chunk) { return wrapped ? (minX >> 4) + Math.floorMod(chunk - (minX >> 4), span >> 4) : chunk; }

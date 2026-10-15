@@ -26,7 +26,7 @@ final class SeamWorld {
     private SeamWorld() {}
 
     static final ResourceKey<net.minecraft.world.level.levelgen.presets.WorldPreset> TINY =
-            ResourceKey.create(Registries.WORLD_PRESET, Identifier.fromNamespaceAndPath("orbis", "torus_tiny"));
+            ResourceKey.create(Registries.WORLD_PRESET, Identifier.fromNamespaceAndPath("orbis", "tiny"));
     static final int HALF = 8_192;
 
     /** A Tiny world on the new engine with structures, fixed seed, noon and clear weather, the player in creative. */

@@ -1,12 +1,10 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.api.v1.ToroidalWorldApi;
 import dev.orbis.Orbis;
 import java.util.*;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -448,14 +446,13 @@ final class DeveloperSurvey {
             this.level = level;
             importer = new AtlasTerrainImport(level);
             invalidateLayers();
-            var overworld = ToroidalWorldApi.shapeOf(level.getServer().overworld()).orElse(null);
-            preset = BiomeOverview.preset(overworld != null && overworld.loops(Direction.Axis.X)
-                    ? overworld.widthChunks(Direction.Axis.X) : 0);
-            var shape = ToroidalWorldApi.shapeOf(level).orElse(null);
-            wrapped = shape != null && shape.loops(Direction.Axis.X) && shape.loops(Direction.Axis.Z);
-            minX = wrapped ? shape.minBlock(Direction.Axis.X) : -2048;
-            minZ = wrapped ? shape.minBlock(Direction.Axis.Z) : -2048;
-            span = wrapped ? shape.widthBlocks(Direction.Axis.X) : 4096;
+            var overworld = dev.orbis.engine.Tori.of(level.getServer().overworld());
+            preset = BiomeOverview.preset(overworld != null ? overworld.widthChunks() : 0);
+            var shape = AtlasShape.server(level);
+            wrapped = shape.wrapped();
+            minX = shape.minX();
+            minZ = shape.minZ();
+            span = shape.span();
             heights = new int[] {level.dimensionType().hasCeiling() ? AtlasTerrain.CEILING_SLICE_Y : level.getSeaLevel(),
                     level.getMinY() + 16, 32, 128};
             search = new AtlasSearch(minX, minZ, span, level.getMinY(), level.getMaxY(), heights, wrapped);

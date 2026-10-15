@@ -3,60 +3,35 @@
     "minecraft:overworld": {
       "type": "minecraft:overworld",
       "generator": {
-        "type": "toroidal_world:toroidal",
+        "type": "orbis:torus",
         "biome_source": {
           "type": "minecraft:multi_noise",
           "preset": "minecraft:overworld"
         },
         "settings": "minecraft:overworld",
-        "wrapping": {
-          "x": {
-            "min_chunk": -724080,
-            "max_chunk": 724080
-          },
-          "z": {
-            "min_chunk": -724080,
-            "max_chunk": 724080
-          }
-        },
-        "orbis_enabled": true
+        "width_chunks": 1448160
       }
     },
     "minecraft:the_nether": {
       "type": "minecraft:the_nether",
       "generator": {
-        "type": "toroidal_world:toroidal",
+        "type": "orbis:torus",
         "biome_source": {
           "type": "minecraft:multi_noise",
           "preset": "minecraft:nether"
         },
         "settings": "minecraft:nether",
-        "wrapping": {
-          "x": {
-            "min_chunk": -90510,
-            "max_chunk": 90510
-          },
-          "z": {
-            "min_chunk": -90510,
-            "max_chunk": 90510
-          }
-        },
-        "orbis_enabled": true
+        "width_chunks": 181020
       }
     },
     "minecraft:the_end": {
       "type": "minecraft:the_end",
       "generator": {
-        "type": "toroidal_world:toroidal",
+        "type": "minecraft:noise",
         "biome_source": {
           "type": "minecraft:the_end"
         },
-        "settings": "minecraft:end",
-        "wrapping": {
-          "x": {},
-          "z": {}
-        },
-        "orbis_enabled": true
+        "settings": "minecraft:end"
       }
     }
   }

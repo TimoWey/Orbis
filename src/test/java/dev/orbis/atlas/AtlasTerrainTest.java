@@ -94,14 +94,35 @@ class AtlasTerrainTest {
         assertEquals(0, pixels[0]);
     }
 
-    @Test void flatNeverDrawsCopiesBeyondTheCanonicalWorld() {
+    @Test void flatContinuesPastTheSeam() {
         var data = fixture(List.of(new AtlasSnapshot.Cell(-64, 0, 0xffabcdef)));
         var raster = new AtlasMapRaster(64, 64);
+        // Block 1028 lies past the east seam, in the world's westernmost chunk.
         var edge = new AtlasMapRaster.View(64, 64, 1024, 8, 1, false, 0, 0, false, false);
-        assertEquals(AtlasMapRaster.BACKGROUND, raster.render(data, edge)[32 * 64 + 36]);
-        var far = new AtlasMapRaster.View(64, 64, 1024 + 2048 * 3, 8, 1, false, 0, 0, false, false);
-        assertTrue(Arrays.stream(raster.render(data, far)).allMatch(p -> p == AtlasMapRaster.BACKGROUND));
+        assertEquals(0xffabcdef, raster.render(data, edge)[32 * 64 + 36]);
     }
+
+    @Test void litGlobeIsBrightTowardTheLightDarkAwayFromItAndHasAnAtmosphere() {
+        var data = fixture(List.of());
+        var view = new AtlasMapRaster.View(64, 64, 0, 0, 1, true, 0, 0, false, false);
+        int[] plain = new AtlasMapRaster(64, 64).render(data, view);
+        int[] lit = new AtlasMapRaster(64, 64, true).render(data, view).clone();
+        // Upper left of the ball faces the light, lower right faces away.
+        int bright = 20 * 64 + 20, dark = 44 * 64 + 44;
+        assertTrue(luma(lit[bright]) > luma(plain[bright]), "lit side brighter");
+        assertTrue(luma(lit[dark]) < luma(plain[dark]), "far side darker");
+        // Just outside the disk a translucent haze, far outside nothing.
+        int haze = 32 * 64 + 61, outside = 0;
+        assertEquals(0, plain[haze]);
+        int alpha = lit[haze] >>> 24;
+        assertTrue(alpha > 0 && alpha < 255, "haze alpha " + alpha);
+        assertEquals(0, lit[outside]);
+        // The flat map is never shaded.
+        var flat = new AtlasMapRaster.View(64, 64, 0, 0, 1, false, 0, 0, false, false);
+        assertArrayEquals(new AtlasMapRaster(64, 64).render(data, flat), new AtlasMapRaster(64, 64, true).render(data, flat));
+    }
+
+    private static int luma(int color) { return (color >> 16 & 255) + (color >> 8 & 255) + (color & 255); }
 
     private static AtlasSnapshot fixture(List<AtlasSnapshot.Cell> chunks) {
         return AtlasFixtures.world(Map.of(), chunks, Set.of());

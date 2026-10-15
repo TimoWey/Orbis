@@ -23,8 +23,9 @@ final class OrbisMinimap implements AutoCloseable {
         double pitch = (.5 - (z - data.minZ()) / data.span()) * Math.PI;
         double scale = size / (double) Math.min(256 / AtlasPreferences.minimapZoom(), data.span());
         if (!globe && data.wrapped()) {
-            x = AtlasMapMath.clampCenter(AtlasMapMath.canonical(x, data.minX(), data.span()), data.minX(), data.span(), size / scale);
-            z = AtlasMapMath.clampCenter(AtlasMapMath.canonical(z, data.minZ(), data.span()), data.minZ(), data.span(), size / scale);
+            // Centred on the player even beside a seam: the map continues with the other side of the world.
+            x = AtlasMapMath.canonical(x, data.minX(), data.span());
+            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
         }
         if (!globe) {
             g.fill(left - 3, top - 3, left + size + 3, top + size + 3, 0xff202020);

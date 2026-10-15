@@ -1,8 +1,5 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.core.ShapedChunkGenerator;
-import com.toroidalworld.engine.gen.AddedStructureStarts;
-import com.toroidalworld.mixin.StructureManagerAccessor;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.registries.Registries;
@@ -47,7 +44,6 @@ final class StructureAudit {
     private boolean initialized, running;
     private StructureSearchPolicy policy = StructureSearchPolicy.quick(0);
     private int nextTask, nextInitialization;
-    private AddedStructureStarts added;
     private PalettedContainerFactory palettes;
     private long checks, revision;
     private String error = "";
@@ -122,12 +118,13 @@ final class StructureAudit {
         }).toList();
     }
 
+    /** {@code extraCursor} is kept for saved checks; nothing reads it anymore. */
     record Progress(long cursor, int extraCursor, int ringCursor, boolean done) {}
     record Saved(Map<String, AtlasSnapshot.Place> found, Set<String> observed,
                  List<Progress> tasks, long checks, int nextTask, boolean running, StructureCounts.Saved counts, StructureSearchPolicy policy) {}
     Saved save() {
         return new Saved(Map.copyOf(found), Set.copyOf(observed), tasks.stream()
-                .map(t -> new Progress(t.cursor, t.extraCursor, t.ringCursor, t.done)).toList(), checks, nextTask, running, counts.save(), policy);
+                .map(t -> new Progress(t.cursor, 0, t.ringCursor, t.done)).toList(), checks, nextTask, running, counts.save(), policy);
     }
     void restore(Saved saved) {
         if (saved.tasks().size() != tasks.size()) return;
@@ -136,7 +133,7 @@ final class StructureAudit {
         checks = saved.checks(); nextTask = Math.floorMod(saved.nextTask(), Math.max(1, tasks.size()));
         for (int i = 0; i < tasks.size(); i++) {
             var p = saved.tasks().get(i); var t = tasks.get(i);
-            t.cursor = p.cursor(); t.extraCursor = p.extraCursor(); t.ringCursor = p.ringCursor(); t.done = p.done();
+            t.cursor = p.cursor(); t.ringCursor = p.ringCursor(); t.done = p.done();
         }
         policy = saved.policy();
         running = saved.running() && finite && !complete() && policy.allows(checks, allExpectedFound());
@@ -146,7 +143,7 @@ final class StructureAudit {
         found.keySet().removeIf(id -> !observed.contains(id));
         counts.clearPredictions();
         recentLayouts.clear();
-        for (var t : tasks) { t.cursor = 0; t.extraCursor = 0; t.ringCursor = 0; t.done = false; }
+        for (var t : tasks) { t.cursor = 0; t.ringCursor = 0; t.done = false; }
         checks = 0; nextTask = 0; error = ""; policy = StructureSearchPolicy.quick(0); running = finite; revision++;
     }
 
@@ -159,15 +156,10 @@ final class StructureAudit {
             var state = source.getGeneratorState();
             if (complete() || quickComplete() || counts.limited() || !policy.allows(checks, allExpectedFound())) { running = false; return; }
             if (!initialized) {
-                if (added == null) {
-                    var carried = ShapedChunkGenerator.carriedShapeOf(source.getGenerator());
-                    added = carried == null ? AddedStructureStarts.NONE : AddedStructureStarts.of(state,
-                            ((StructureManagerAccessor) level.structureManager()).toroidal$structureCheck(), carried);
-                }
                 // Ring preparation may be expensive. Spread initialization across ticks as well
                 // as candidate checks, and leave the remaining tasks untouched when paused.
                 if (nextInitialization < tasks.size()) {
-                    tasks.get(nextInitialization++).init(state, added);
+                    tasks.get(nextInitialization++).init(state);
                     return;
                 }
                 initialized = true;
@@ -184,7 +176,7 @@ final class StructureAudit {
                 if (!inside(pos) || recentLayouts.contains(pos.pack())) continue;
                 checks++;
                 var scratch = new ProtoChunk(pos, UpgradeData.EMPTY, level, palettes, null);
-                // Use Minecraft's weighted selection, biome/height checks and Orbis added starts.
+                // Use Minecraft's weighted selection and biome/height checks.
                 source.getGenerator().createStructures(level.registryAccess(), state, level.structureManager(),
                         scratch, level.getStructureTemplateManager(), level.dimension());
                 scratch.getAllStarts().forEach((structure, start) -> {
@@ -273,15 +265,13 @@ final class StructureAudit {
     private final class Task {
         final StructureSet set;
         final Set<String> ids;
-        List<ChunkPos> extra = List.of();
-        int extraCursor, ringCursor;
+        int ringCursor;
         List<ChunkPos> rings;
         Grid grid;
         long cursor;
         boolean done;
         Task(StructureSet set, Set<String> ids) { this.set = set; this.ids = ids; }
-        void init(ChunkGeneratorStructureState state, AddedStructureStarts added) {
-            extra = added.of(set.placement()).stream().map(a -> a.chunk()).toList();
+        void init(ChunkGeneratorStructureState state) {
             if (set.placement() instanceof ConcentricRingsStructurePlacement ring) {
                 var positions = state.getRingPositionsFor(ring);
                 if (positions == null) throw new IllegalStateException("Ring positions unavailable");
@@ -292,7 +282,6 @@ final class StructureAudit {
             }
         }
         ChunkPos next(ChunkGeneratorStructureState state) {
-            if (extraCursor < extra.size()) return extra.get(extraCursor++);
             if (rings != null) return ringCursor < rings.size() ? rings.get(ringCursor++) : null;
             if (cursor >= grid.total) return null;
             ChunkPos origin = grid.at(cursor++);
