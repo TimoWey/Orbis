@@ -1,8 +1,7 @@
 package dev.orbis.gametest;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.toroidalworld.shape.WorldShapes;
-import dev.orbis.OrbisShape;
+import dev.orbis.OrbisWorldShape;
 import dev.orbis.WorldSize;
 import dev.orbis.atlas.AtlasProbe;
 import java.util.ArrayList;
@@ -167,9 +166,8 @@ public final class MapClientGameTest implements FabricClientGameTest {
                     var normal = settings.getSettings().worldgenLoadContext().lookupOrThrow(Registries.WORLD_PRESET)
                             .getOrThrow(WorldPresets.NORMAL);
                     settings.setWorldType(new WorldCreationUiState.WorldTypeEntry(normal));
-                    WorldShapes.select(WorldShapes.shapes().stream().filter(shape -> shape.id().equals(OrbisShape.MODULE.id()))
-                            .findFirst().orElseThrow());
-                    OrbisShape.MODULE.settings(DEBUG);
+                    OrbisWorldShape.orbis(true);
+                    OrbisWorldShape.size(DEBUG);
                     settings.setSeed("8675309");
                     settings.setGenerateStructures(true);
                     // /orbis check is for operators; in singleplayer that means cheats on.

@@ -2,6 +2,12 @@
   "required": true,
   "package": "dev.orbis.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["DimensionPolicyMixin"],
-  "injectors": {"defaultRequire": 1}
+  "mixins": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "client.CreateWorldScreenMixin",
+    "client.WorldTabMixin"
+  ]
 }

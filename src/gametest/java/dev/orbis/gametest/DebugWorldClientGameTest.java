@@ -1,7 +1,6 @@
 package dev.orbis.gametest;
 
-import com.toroidalworld.shape.WorldShapes;
-import dev.orbis.OrbisShape;
+import dev.orbis.OrbisWorldShape;
 import dev.orbis.WorldSize;
 import dev.orbis.engine.Tori;
 import dev.orbis.engine.Torus;
@@ -39,9 +38,8 @@ public final class DebugWorldClientGameTest implements FabricClientGameTest {
                     var normal = settings.getSettings().worldgenLoadContext().lookupOrThrow(Registries.WORLD_PRESET)
                             .getOrThrow(WorldPresets.NORMAL);
                     settings.setWorldType(new WorldCreationUiState.WorldTypeEntry(normal));
-                    WorldShapes.select(WorldShapes.shapes().stream().filter(shape -> shape.id().equals(OrbisShape.MODULE.id()))
-                            .findFirst().orElseThrow());
-                    OrbisShape.MODULE.settings(DEBUG);
+                    OrbisWorldShape.orbis(true);
+                    OrbisWorldShape.size(DEBUG);
                     settings.setSeed("8675309");
                     settings.setGenerateStructures(true);
                 })

@@ -1,7 +1,6 @@
 package dev.orbis.atlas;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.toroidalworld.api.v1.ToroidalWorldClientApi;
 import java.util.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.*;
@@ -13,7 +12,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.*;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -73,13 +71,7 @@ public final class PlayerAtlasClient implements ClientModInitializer {
                 Identifier.fromNamespaceAndPath("orbis", "minimap"), (g, delta) -> minimap.draw(g, snapshot));
     }
     private AtlasShape shape(ClientLevel world) {
-        var announced = shapes.get(world.dimension().identifier().toString());
-        if (announced != null) return announced;
-        // Servers on the old engine announce nothing; its client API knows their wrap.
-        var shape = ToroidalWorldClientApi.shapeOf(world).orElse(null);
-        if (shape == null || !shape.loops(Direction.Axis.X) || !shape.loops(Direction.Axis.Z)) return AtlasShape.OPEN;
-        return new AtlasShape(true, shape.minBlock(Direction.Axis.X), shape.minBlock(Direction.Axis.Z),
-                shape.widthBlocks(Direction.Axis.X));
+        return shapes.getOrDefault(world.dimension().identifier().toString(), AtlasShape.OPEN);
     }
     private void reload(ClientLevel world, ChunkPos centre, int radius) {
         var cells = terrain(world);

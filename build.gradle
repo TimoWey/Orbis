@@ -62,10 +62,14 @@ test {
 }
 jar {
     from('LICENSE') { rename { 'LICENSE-orbis' } }
-    from('licenses') { into 'META-INF/licenses' }
 }
 
-apply from: "engine.gradle"
+loom { accessWidenerPath = file('src/main/resources/orbis.accesswidener') }
+dependencies {
+    compileOnly 'io.github.llamalad7:mixinextras-fabric:0.5.5'
+    // The atlas reads Distant Horizons' terrain when it is installed; Orbis never requires it.
+    compileOnly 'maven.modrinth:distanthorizons:3.3.0-26.3'
+}
 apply from: "tools/distribution.gradle"
 
 // The regular suite also verifies the optional importer with no DH classes installed.
