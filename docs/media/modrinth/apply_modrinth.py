@@ -36,7 +36,6 @@ order = [
     ('anim-walk-z.gif', 'URL_WALK_Z', 'North and south', 'The gold edges connect the same way.', False),
     ('anim-walk-diagonal.gif', 'URL_WALK_DIAGONAL', 'Diagonal', 'Both directions wrap independently.', False),
     ('gui-atlas-map.png', 'URL_ATLAS_MAP', 'Atlas map', 'The explored world in the atlas (press M).', False),
-    ('gui-atlas-globe.png', 'URL_ATLAS_GLOBE', 'Atlas globe', 'The same world as a globe.', False),
     ('gui-minimap.png', 'URL_MINIMAP', 'Minimap', 'The corner minimap in game.', False),
 ]
 for n, (name, _, title, text, featured) in enumerate(order):
