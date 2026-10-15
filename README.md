@@ -14,6 +14,10 @@ Imagine a square map. Join its top and bottom edges to make a cylinder, then con
 
 ![A square Minecraft-style landscape folds into a cylinder and then a torus. The map on the right stays unchanged.](docs/media/orbis-torus.gif)
 
+Orbis comes with its own map, the **Atlas**: a flat map and a globe that show how the edges connect.
+
+![The Orbis Atlas: switch between the flat map and the globe, then turn the globe.](docs/media/orbis-atlas.gif)
+
 The shape explains how the edges connect. In Minecraft, the ground and gravity stay normal. Only the two horizontal directions wrap.
 
 ### East and west
@@ -36,27 +40,27 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha (current version **0.1.0-alpha.12**). The features below are implemented. Real Minecraft sessions on a local dedicated server covered all X/Z/corner seam crossings, save and restart, the unwrapped End, the player map and joins from both Orbis and vanilla clients ([test records](docs/IMPLEMENTATION.md#validation)). Broader gameplay and mod compatibility testing remains open. The animations above are illustrations.
+Orbis is an early development alpha (the next build after **0.1.0-alpha.12**). It runs on its own world engine. Real Minecraft sessions check every seam, in both dimensions and through the corners: terrain, light, mobs and combat, villages and raids, redstone, portals, saving and reloading ([test records](docs/IMPLEMENTATION.md#validation)). Sodium, Lithium and Distant Horizons were included in these tests. Worlds created by earlier alpha builds no longer load; start a new world.
 
-- **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges.
+- **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges. Mobs, villages, projectiles, redstone and portals work across the seam.
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
 - **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
-- **A small player map.** A corner minimap and a map/globe view (press **M**) show the terrain you have seen and the other players in your dimension. Settings are saved. It works in singleplayer and on servers.
-- **Server ready.** One JAR for server and players; players without Orbis are told which version to install. Operators can run `/orbis check` to look for the expected biomes and structures. See the [server and player guide](docs/SERVER.md).
+- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world; yellow lines mark the seams. The Atlas has a flat map and a 3D globe, zooms, and shows the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
+- **Server ready.** One JAR for server and players. Every player needs Orbis on an Orbis world; anyone without it is turned away with a message naming the version to install. Joining shows one line: world size, that the edges connect, and the map key. Operators can run `/orbis check` (English or German) to look for the expected biomes and structures. Pre-generating with Chunky works. See the [server and player guide](docs/SERVER.md).
 - **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
 | Map | Globe | Minimap |
 | --- | --- | --- |
-| ![The Orbis atlas in map view, showing explored terrain, a river and two player markers.](docs/verification/alpha10/nearby-atlas.png) | ![The Orbis atlas in globe view, with unexplored terrain shown in two shades of gray.](docs/verification/alpha9/server-globe.png) | ![The round Orbis minimap in the top-left corner of a Minecraft landscape.](docs/verification/alpha9/server-minimap.png) |
+| ![The Atlas in map view, showing the fully explored smallest world.](docs/media/atlas-map.jpg) | ![The Atlas in globe view.](docs/media/atlas-globe.jpg) | ![The round minimap in the top-right corner of the screen.](docs/media/atlas-minimap.jpg) |
 
-Screenshots from the in-game verification runs (German client language).
+The smallest world (128 chunks per side) after exploring it completely, in an automated in-game run.
 
 ## Compatibility
 
 Orbis currently targets **Fabric**. Install Fabric Loader, Fabric API and the Orbis JAR. The current alpha targets Minecraft 26.3 and Java 25.
 
-The following mods are priorities for compatibility testing. Their support in Orbis has **not yet been verified**.
+Orbis ships no integration code for other mods. **Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. The other mods below are priorities for compatibility testing and have **not yet been verified**.
 
 <table>
   <tr>
@@ -107,7 +111,7 @@ Orbis deliberately stays focused on the wrapping world, its sizes, the fixed 1:8
 ## Try the alpha
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft **26.3** (Java 25).
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `orbis-0.1.0-alpha.12.jar` in your `mods` folder.
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and the Orbis JAR (`orbis-<version>.jar`) in your `mods` folder.
 3. Create a **new** world, set **World shape** to **Orbis** on the World tab, then **Customize** to choose the size.
 
 Back up anything you care about; this is an alpha. Building from source, known limitations and the test records are in the [project guide](docs/IMPLEMENTATION.md). Server setup is in the [server and player guide](docs/SERVER.md); changes per version are in the [changelog](CHANGELOG.md).
