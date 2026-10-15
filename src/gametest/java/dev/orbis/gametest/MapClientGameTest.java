@@ -109,6 +109,9 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("globe");
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the globe");
+            // The corner minimap in globe mode carries the same light.
+            context.waitTicks(40);
+            context.takeScreenshot("minimap-globe");
             context.runOnClient(mc -> AtlasProbe.prepare(OVERWORLD, false, DEBUG.overworldBlocks()));
             world.getServer().runCommand("execute in minecraft:the_nether run tp @a 0 100 0");
             waitForDimension(context, Level.NETHER);
