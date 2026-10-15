@@ -88,6 +88,7 @@ public final class ServerMapClientGameTest implements FabricClientGameTest {
                 openMap(context, "server-map-after-rejoin-zoomed-out");
                 server.runCommand("execute in minecraft:the_nether run tp @a 0 100 0");
                 waitForDimension(context, Level.NETHER);
+                connection.waitForChunksRender();
                 checkKnown(context, NETHER, netherExplored, "in the Nether after rejoining the server");
                 openMap(context, "server-map-nether-after-rejoin");
             }
