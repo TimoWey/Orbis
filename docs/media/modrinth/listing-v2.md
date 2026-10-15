@@ -55,8 +55,8 @@ Orbis does not paint a wall at the edge or teleport you. The world on both sides
 - **A size that suits your world.** Pick Tiny, Small, Normal, Large or Earth, use the slider, or enter an exact width.
 - **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale, so portals line up.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
-- **A small player map.** A corner minimap and a map/globe view (press **M**) show the terrain you have seen and the other players in your dimension. Works in singleplayer and on servers, and remembers explored terrain.
-- **Server ready.** One JAR for server and players. Operators can run `/orbis check` to look for the expected biomes and structures.
+- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world; yellow lines mark the seams. The Atlas has a flat map and a lit 3D globe, zooms, and shows the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
+- **Server ready.** One JAR for server and players. Every player needs Orbis on an Orbis world; anyone without it is turned away with a message naming the version to install. Joining shows one line: world size, that the edges connect, and the map key. Operators can run `/orbis check` (English or German) to look for the expected biomes and structures. Pre-generating with Chunky works.
 
 ## The map
 
@@ -90,13 +90,13 @@ Smaller worlds may miss biomes or structures; no preset currently guarantees the
 
 1. Install Fabric Loader 0.19.5+ for Minecraft 26.3 (Java 25) and [Fabric API](https://modrinth.com/mod/fabric-api).
 2. Put the Orbis JAR in your `mods` folder.
-3. Create a **new** world, set **World Shape: Orbis**, then **Customize** to choose the size.
+3. Create a **new** world, set **World shape** to **Orbis** on the World tab, then **Customize** to choose the size.
 
-Orbis does not convert existing worlds.
+Orbis does not convert existing worlds, and worlds from earlier alpha builds no longer load.
 
 ## Alpha status
 
-Orbis is an early alpha. The seam behaviour above is checked automatically in real Minecraft sessions at all four edges and both corners, in the Overworld and the Nether. Mod compatibility (Sodium, Lithium, Distant Horizons and others) is still being tested, so expect rough edges and back up anything you care about.
+Orbis is an early alpha. The seam behaviour above is checked automatically in real Minecraft sessions at all four edges and both corners, in the Overworld and the Nether, and Sodium, Lithium and Distant Horizons were part of those runs. Other mods are untested. Expect rough edges and back up anything you care about.
 
 ## Credits and license
 
