@@ -77,14 +77,14 @@ def dhTestJar = configurations.compileClasspath.filter {
     it.name.startsWith('distanthorizons-') && it.name.endsWith('.jar')
 }
 dependencies { testCompileOnly files(dhTestJar) }
-test { exclude '**/AtlasDistantTerrainTest.class' }
+test { exclude '**/AtlasDistantTerrainTest.class', '**/DhTorusTest.class' }
 tasks.register('testDistantTerrain', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath + (providers.gradleProperty('orbisDhTestJar').isPresent()
             ? files(providers.gradleProperty('orbisDhTestJar').get()) : dhTestJar)
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
-    include '**/AtlasDistantTerrainTest.class'
+    include '**/AtlasDistantTerrainTest.class', '**/DhTorusTest.class'
     workingDir = layout.buildDirectory.dir('dh-test-run').get().asFile
     doFirst { workingDir.mkdirs() }
     shouldRunAfter test

@@ -4,6 +4,9 @@ All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API
 
 ## Unreleased
 
+- Distant Horizons: far terrain continues past the world's edges, like the world itself. Before, past a seam the far view was empty and the world floated in the distance as a block.
+- Map and globe follow the mouse exactly when dragged; the picture is drawn in the background, so the game no longer stutters while the map is open or the minimap is on.
+- The globe turns freely in every direction.
 - Orbis runs on its own world engine only. The old engine is removed; worlds created with it by earlier alpha builds no longer load. Start a new world.
 - New **World shape** row on the World tab of Create World (Normal / Orbis), with **Customize** for the size.
 - Server `level-type` presets `orbis:tiny` to `orbis:earth` create worlds on the new engine.
