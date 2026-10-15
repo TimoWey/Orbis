@@ -9,7 +9,7 @@ Status: **draft only, do not submit for review.** Changes against `../listing.md
 | Name | Orbis |
 | Slug | `orbis-worlds` (unchanged) |
 | Summary (changed) | Finite Minecraft worlds with no wall: walk off one edge and arrive on the opposite side. Terrain, mobs, structures, portals and light all continue across the seam. |
-| Gallery order (changed) | 1 `anim-torus.gif` (featured), 2 `anim-walk-x.gif`, 3 `anim-walk-z.gif`, 4 `anim-walk-diagonal.gif`, 5 `gui-atlas-map.png`, 6 `gui-atlas-globe.png`, 7 `gui-minimap.png` (landscape shots are optional, in `extra-landscapes/`) |
+| Gallery order (changed) | 1 `anim-torus.gif` (featured), 2 `anim-walk-x.gif`, 3 `anim-walk-z.gif`, 4 `anim-walk-diagonal.gif`, 5 `gui-atlas-map.png`, 6 `gui-minimap.png` (landscape shots are optional, in `extra-landscapes/`) |
 | Everything else | unchanged (categories Worldgen + Adventure, MIT, client optional, server required, links stay empty while the repo is private) |
 
 ## Description (paste into the Modrinth description editor)
@@ -72,7 +72,6 @@ The Atlas has two views. Switch between them with the **Map** and **Globe** butt
 ![Switching between map and globe, and turning the globe.](URL_ATLAS_GIF)
 
 ![The atlas in map view.](URL_ATLAS_MAP)
-![The atlas in globe view: the world as a sphere.](URL_ATLAS_GLOBE)
 
 ## World sizes
 
