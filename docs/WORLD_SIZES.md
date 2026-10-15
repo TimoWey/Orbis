@@ -4,7 +4,7 @@
 
 The alpha uses four one-word tiers: **Tiny, Small, Normal, Large**, plus **Earth**. All widths below are full side lengths, not radii. Normal is the default. New selections use a logarithmic size slider, preset buttons or exact chunk input, bounded by Tiny and Earth. Biome and gameplay validation remain open.
 
-The engine's historical minimum is 128 Overworld chunks (16 Nether chunks). Those existing alpha saves remain readable, but new menu selections require **at least 1,024 chunks per side (Tiny)** and at most **1,448,160 (Earth)**. Widths remain multiples of 16 for exact centred Nether mapping.
+New menu selections require **at least 1,024 chunks per side (Tiny)** and at most **1,448,160 (Earth)**; typed values go down to 128 Overworld chunks (16 Nether chunks) for testing. Worlds created with the old engine of earlier alpha builds no longer load. Widths remain multiples of 16 for exact centred Nether mapping.
 
 ## Current presets — no measured biome success rates
 
@@ -26,18 +26,18 @@ Tiny extends ±8,192 blocks (±512 chunks) from the origin, making its full side
 
 Small, Normal, Large and Earth contain all eight nominal rings (the outermost reaches roughly 24,320 blocks / 1,520 chunks in radius). Larger presets add area but no additional vanilla Stronghold rings. The rings are centred on X=0, Z=0, not necessarily the player spawn.
 
-The integrated engine retains in-bounds Stronghold positions and folds the first position into the world when none remain. This source-level fallback does not replace gameplay validation of complete, reachable portal rooms. See the [pinned engine placement code](https://github.com/anyttng/toroidal_world/blob/060080683bdc0e198da1fc32502dd3f62875413c/common/src/main/java/com/toroidalworld/mixin/ChunkGeneratorStructureStateMixin.java) and [Cubiomes' ring placement logic](https://github.com/Cubitect/cubiomes/blob/master/finders.c#L793).
+Complete, reachable portal rooms still require gameplay validation. See [Cubiomes' ring placement logic](https://github.com/Cubitect/cubiomes/blob/master/finders.c#L793).
 
 ## Choosing a suitable Normal size
 
-- Use the actual Toroidal/Orbis generator; vanilla seed maps are insufficient.
-- Explicitly fix Minecraft/mod versions and biome compression. Upstream provides off/auto/strong/custom; its shipped presets use off.
+- Use the actual Orbis generator; vanilla seed maps are insufficient.
+- Explicitly fix Minecraft and mod versions.
 - Include every naturally generating biome in the selected version, including variants and caves. Define minimum usable biome area separately.
 - Sample random seeds; success requires complete evidence in **both** dimensions.
 - Coarse scans speed up searches but missing samples do not prove absence. Confirm locations against terrain/caves.
 - Check each new world individually too; preserve existing-world seeds.
 
-**No seed simulation has been performed.** Rare, correlated biomes prevent a credible 99%-coverage size from being calculated from chunk count alone. Biome compression improves climate diversity but does not guarantee every biome.
+**No seed simulation has been performed.** Rare, correlated biomes prevent a credible 99%-coverage size from being calculated from chunk count alone.
 
 ## Calculated validation effort
 
@@ -69,4 +69,4 @@ This is an approximate Earth-scale area, not a geographic Earth map. Generate on
 
 The alpha offers widths of 1,024, 8,832, 76,544, 625,008 and 1,448,160 chunks. Nether widths are always divided by 8. These presets are not a result of biome measurements; Normal also carries a coverage warning. Cancelling the menu leaves the original selection untouched; invalid text cannot be applied with Done.
 
-In world creation, select **World Shape: Orbis → Customize**. The size controls and live world overview sit side by side on wide windows and stack on smaller windows. The active preset is underlined; custom widths are labelled Custom. Exact input stays visible, with validation beside the field. The overview displays actual square kilometres, both dimension widths and the unchanged End. Done and Cancel stay in the footer while long content scrolls. Resizing preserves the entered value. Native Minecraft controls provide keyboard navigation and narration; visual and interaction testing in game is still required.
+In world creation, set **World shape** to **Orbis**, then **Customize**. The size controls and live world overview sit side by side on wide windows and stack on smaller windows. The active preset is underlined; custom widths are labelled Custom. Exact input stays visible, with validation beside the field. The overview displays actual square kilometres, both dimension widths and the unchanged End. Done and Cancel stay in the footer while long content scrolls. Resizing preserves the entered value. Native Minecraft controls provide keyboard navigation and narration; visual and interaction testing in game is still required.

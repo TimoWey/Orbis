@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "orbis-gametest",
+  "version": "1.0.0",
+  "name": "Orbis engine game tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "dev.orbis.gametest.WorldShapeClientGameTest",
+      "dev.orbis.gametest.TorusClientGameTest",
+      "dev.orbis.gametest.DebugWorldClientGameTest",
+      "dev.orbis.gametest.BehaviourClientGameTest",
+      "dev.orbis.gametest.ParcoursClientGameTest",
+      "dev.orbis.gametest.MapClientGameTest",
+      "dev.orbis.gametest.ChunkyClientGameTest",
+      "dev.orbis.gametest.ModRequiredClientGameTest",
+      "dev.orbis.gametest.ServerMapClientGameTest"
+    ]
+  },
+  "depends": {
+    "orbis": "*"
+  },
+  "mixins": [
+    "orbis-gametest.mixins.json"
+  ]
+}

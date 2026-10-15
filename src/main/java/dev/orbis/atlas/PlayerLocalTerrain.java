@@ -1,11 +1,9 @@
 package dev.orbis.atlas;
 
-import com.toroidalworld.api.v1.ToroidalWorldApi;
 import dev.orbis.Orbis;
 import java.util.*;
 import java.util.concurrent.*;
 import net.fabricmc.fabric.api.event.lifecycle.v1.*;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -106,11 +104,8 @@ final class PlayerLocalTerrain {
         int ticks;
         State(ServerLevel level) {
             this.level = level;
-            var shape = ToroidalWorldApi.shapeOf(level).orElse(null);
-            wrapped = shape != null && shape.loops(Direction.Axis.X) && shape.loops(Direction.Axis.Z);
-            minX = wrapped ? shape.minBlock(Direction.Axis.X) : -2048;
-            minZ = wrapped ? shape.minBlock(Direction.Axis.Z) : -2048;
-            span = wrapped ? shape.widthBlocks(Direction.Axis.X) : 4096;
+            var shape = AtlasShape.server(level);
+            wrapped = shape.wrapped(); minX = shape.minX(); minZ = shape.minZ(); span = shape.span();
             importer = new AtlasTerrainImport(level);
             loading = AtlasCache.load(level, minX, minZ, span);
         }

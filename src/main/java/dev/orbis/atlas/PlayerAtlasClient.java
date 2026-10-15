@@ -1,7 +1,6 @@
 package dev.orbis.atlas;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.toroidalworld.api.v1.ToroidalWorldClientApi;
 import java.util.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.*;
@@ -13,7 +12,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.*;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -27,6 +25,8 @@ public final class PlayerAtlasClient implements ClientModInitializer {
     // Remote servers with Orbis publish an opaque world id; without it terrain stays in memory only.
     private final Map<String, AtlasRemoteTerrain> archives = new HashMap<>();
     private String remoteWorld;
+    // Wraps the server announced per dimension; chunks arrive in the client's own continuous frame.
+    private final Map<String, AtlasShape> shapes = new HashMap<>();
     private ClientLevel level;
 
     @Override public void onInitializeClient() {
@@ -35,21 +35,31 @@ public final class PlayerAtlasClient implements ClientModInitializer {
             if (payload.world().equals(remoteWorld)) return;
             closeArchives(); remoteWorld = payload.world();
         });
+        ClientPlayNetworking.registerGlobalReceiver(AtlasShapePayload.TYPE, (payload, context) -> {
+            var dimension = payload.dimension().toString();
+            if (payload.shape().equals(shapes.put(dimension, payload.shape()))) return;
+            // Chunks taken before the shape was known are keyed in the wrong frame; collect them again.
+            dimensions.remove(dimension);
+            var world = context.client().level;
+            if (world != null && context.client().player != null && world.dimension().identifier().toString().equals(dimension))
+                reload(world, context.client().player.chunkPosition(), context.client().options.getEffectiveRenderDistance());
+        });
         mapKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.orbis.atlas",
                 InputConstants.Type.KEYBOARD, InputConstants.KEY_M,
                 KeyMapping.Category.register(Identifier.fromNamespaceAndPath("orbis", "atlas"))));
         ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
-            if (Minecraft.getInstance().getSingleplayerServer() == null) terrain(world).load(chunk.getPos().pack());
+            if (Minecraft.getInstance().getSingleplayerServer() == null) terrain(world).load(shape(world).foldChunk(chunk.getPos().pack()));
         });
         ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) -> {
             var data = dimensions.get(world.dimension().identifier().toString());
-            if (data != null) data.unload(chunk.getPos().pack(), key -> AtlasTerrain.sample(chunk, 0xff283039),
+            var shape = shape(world);
+            if (data != null) data.unload(shape.foldChunk(chunk.getPos().pack()), key -> shape.fold(AtlasTerrain.sample(chunk, 0xff283039)),
                     tile -> { var archive = archives.get(world.dimension().identifier().toString()); if (archive != null) archive.capture(tile); });
         });
         // Disconnect may arrive on Netty's local transport thread. Texture lifetime and
         // the collector maps belong to the client thread, just like chunk callbacks.
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
-            dimensions.clear(); closeArchives(); remoteWorld = null;
+            dimensions.clear(); shapes.clear(); closeArchives(); remoteWorld = null;
             snapshot = null; minimap.close(); level = null; PlayerLocalTerrain.clearView();
         }));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -59,6 +69,17 @@ public final class PlayerAtlasClient implements ClientModInitializer {
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
                 Identifier.fromNamespaceAndPath("orbis", "minimap"), (g, delta) -> minimap.draw(g, snapshot));
+    }
+    private AtlasShape shape(ClientLevel world) {
+        return shapes.getOrDefault(world.dimension().identifier().toString(), AtlasShape.OPEN);
+    }
+    private void reload(ClientLevel world, ChunkPos centre, int radius) {
+        var cells = terrain(world);
+        var shape = shape(world);
+        for (int x = centre.x() - radius; x <= centre.x() + radius; x++)
+            for (int z = centre.z() - radius; z <= centre.z() + radius; z++)
+                if (world.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) != null)
+                    cells.load(shape.foldChunk(ChunkPos.pack(x, z)));
     }
     private AtlasTerrainCollector terrain(ClientLevel world) {
         return dimensions.computeIfAbsent(world.dimension().identifier().toString(), key -> new AtlasTerrainCollector());
@@ -76,15 +97,16 @@ public final class PlayerAtlasClient implements ClientModInitializer {
         }
         var dimension = level.dimension().identifier().toString();
         var cells = terrain(level);
-        var shape = ToroidalWorldClientApi.shapeOf(level).orElse(null);
-        boolean wrapped = shape != null && shape.loops(Direction.Axis.X) && shape.loops(Direction.Axis.Z);
-        int span = wrapped ? shape.widthBlocks(Direction.Axis.X) : 4096;
-        int minX = wrapped ? shape.minBlock(Direction.Axis.X) : -2048;
-        int minZ = wrapped ? shape.minBlock(Direction.Axis.Z) : -2048;
+        var shape = shape(level);
+        boolean wrapped = shape.wrapped();
+        int span = shape.span(), minX = shape.minX(), minZ = shape.minZ();
         var archive = archive(dimension, cells, minX, minZ, span);
-        cells.tick(client.player.getBlockX() >> 4, client.player.getBlockZ() >> 4, key -> {
-            var chunk = level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), ChunkStatus.FULL, false);
-            return chunk == null ? null : AtlasTerrain.sample(chunk, 0xff283039);
+        int playerX = client.player.getBlockX() >> 4, playerZ = client.player.getBlockZ() >> 4;
+        // Keys are folded; each is read from the client's image of that chunk nearest to the player.
+        cells.tick(shape.foldChunkX(playerX), shape.foldChunkZ(playerZ), key -> {
+            int x = shape.nearestChunk(ChunkPos.getX(key), playerX), z = shape.nearestChunk(ChunkPos.getZ(key), playerZ);
+            var chunk = level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false);
+            return chunk == null ? null : shape.fold(AtlasTerrain.sample(chunk, 0xff283039));
         }, archive == null ? tile -> {} : archive::capture);
         if (archive != null) archive.tick();
         snapshot = new AtlasSnapshot(dimension, 0, "", cells.revision(), minX, minZ, span, wrapped,

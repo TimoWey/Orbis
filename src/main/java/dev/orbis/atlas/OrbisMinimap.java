@@ -23,8 +23,9 @@ final class OrbisMinimap implements AutoCloseable {
         double pitch = (.5 - (z - data.minZ()) / data.span()) * Math.PI;
         double scale = size / (double) Math.min(256 / AtlasPreferences.minimapZoom(), data.span());
         if (!globe && data.wrapped()) {
-            x = AtlasMapMath.clampCenter(AtlasMapMath.canonical(x, data.minX(), data.span()), data.minX(), data.span(), size / scale);
-            z = AtlasMapMath.clampCenter(AtlasMapMath.canonical(z, data.minZ(), data.span()), data.minZ(), data.span(), size / scale);
+            // Centred on the player even beside a seam: the map continues with the other side of the world.
+            x = AtlasMapMath.canonical(x, data.minX(), data.span());
+            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
         }
         if (!globe) {
             g.fill(left - 3, top - 3, left + size + 3, top + size + 3, 0xff202020);
@@ -48,9 +49,22 @@ final class OrbisMinimap implements AutoCloseable {
         label(g, net.minecraft.network.chat.Component.translatable("orbis.atlas.east").getString(), left + size + 8, top + size / 2 - 4);
         label(g, "S", left + size / 2, top + size + 4);
         label(g, "W", left - 9, top + size / 2 - 4);
-        label(g, "X: " + client.player.getBlockX(), left + size / 2, top + size + 16);
+        int[] label = shownBlock(data, client.player.getX(), client.player.getZ());
+        label(g, "X: " + label[0], left + size / 2, top + size + 16);
         label(g, "Y: " + client.player.getBlockY(), left + size / 2, top + size + 26);
-        label(g, "Z: " + client.player.getBlockZ(), left + size / 2, top + size + 36);
+        label(g, "Z: " + label[1], left + size / 2, top + size + 36);
+    }
+
+    /**
+     * The block coordinates the label shows. The client keeps walking past the seam in one continuous frame; the
+     * label shows the world's own coordinates.
+     */
+    static int[] shownBlock(AtlasSnapshot data, double x, double z) {
+        if (data.wrapped()) {
+            x = AtlasMapMath.canonical(x, data.minX(), data.span());
+            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+        }
+        return new int[] {(int) Math.floor(x), (int) Math.floor(z)};
     }
 
     static int fittedSize(int width, int height, int requested) {
