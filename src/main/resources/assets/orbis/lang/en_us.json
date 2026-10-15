@@ -1,6 +1,6 @@
 {
   "gui.orbis.world_shape": "World shape",
-  "gui.orbis.world_shape.normal": "Minecraft default",
+  "gui.orbis.world_shape.normal": "Normal",
   "gui.orbis.world_shape.normal.hint": "Standard Minecraft terrain and world borders.",
   "gui.orbis.world_shape.orbis": "Orbis",
   "gui.orbis.world_shape.orbis.hint": "Finite Overworld and Nether. Exact 1:8 scaling. Unwrapped End. Biome coverage not guaranteed.",
