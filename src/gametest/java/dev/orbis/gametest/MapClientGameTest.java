@@ -184,11 +184,11 @@ public final class MapClientGameTest implements FabricClientGameTest {
 
     /** Zoom keys and the mouse wheel change how many blocks the open map shows, and the scale is kept. */
     private static void checkZoom(ClientGameTestContext context) {
-        double before = AtlasProbe.zoom(OVERWORLD);
+        double before = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         context.getInput().pressKey(InputConstants.KEY_EQUALS);
         context.getInput().pressKey(InputConstants.KEY_EQUALS);
         context.waitTicks(5);
-        double in = AtlasProbe.zoom(OVERWORLD);
+        double in = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         SeamWorld.check(in < before, "Zooming in with = left the map at " + in + " blocks (was " + before + ")");
         context.takeScreenshot("map-zoomed-in");
         int[] centre = context.computeOnClient(mc -> new int[]{mc.getWindow().getScreenWidth() / 2, mc.getWindow().getScreenHeight() / 2});
@@ -196,13 +196,13 @@ public final class MapClientGameTest implements FabricClientGameTest {
         context.getInput().scroll(-4);
         context.getInput().scroll(-4);
         context.waitTicks(5);
-        double out = AtlasProbe.zoom(OVERWORLD);
+        double out = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         SeamWorld.check(out > in, "Scrolling down did not zoom out: " + out + " blocks (was " + in + ")");
         context.getInput().pressKey(InputConstants.KEY_MINUS);
         context.waitTicks(5);
-        SeamWorld.check(AtlasProbe.zoom(OVERWORLD) >= out, "- zoomed in instead of out");
+        SeamWorld.check(context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) >= out, "- zoomed in instead of out");
         context.takeScreenshot("map-zoomed-out");
-        while (AtlasProbe.zoom(OVERWORLD) > before * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
+        while (context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) > before * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
     }
 
     /** The map key sits under Controls and works under the key the player chose there. */
