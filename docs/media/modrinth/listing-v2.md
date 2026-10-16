@@ -55,8 +55,9 @@ Orbis does not paint a wall at the edge or teleport you. The world on both sides
 - **A size that suits your world.** Pick Tiny, Small, Normal, Large or Earth, use the slider, or enter an exact width.
 - **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale, so portals line up.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
-- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world; yellow lines mark the seams. The Atlas has a flat map and a lit 3D globe, zooms, and shows the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
+- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world. The Atlas has a flat map and a smooth 3D globe, zooms, shows relief, and keeps the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
 - **Server ready.** One JAR for server and players. Every player needs Orbis on an Orbis world; anyone without it is turned away with a message naming the version to install. Joining shows one line: world size, that the edges connect, and the map key. Operators can run `/orbis check` (English or German) to look for the expected biomes and structures. Pre-generating with Chunky works.
+- **Works with the big performance mods.** Sodium, Lithium, Distant Horizons and C2ME are tested with Orbis, and Distant Horizons' far terrain continues past the world's edges. See Compatibility below.
 
 ## The map
 
@@ -64,10 +65,12 @@ Orbis ships with its own map, the **Atlas**. A small **minimap** sits in the cor
 
 ![Minimap in the corner of the screen.](URL_MINIMAP)
 
-The Atlas has two views. Switch between them with the **Map** and **Globe** buttons at the top:
+The Atlas fills the screen, with a few controls on it. Switch between the two views with the **Map** and **Globe** buttons at the top left:
 
-- **Map:** the flat overview. Drag to move, scroll to zoom.
-- **Globe:** the same world as a sphere, which shows best that the edges connect. Drag to turn the globe, scroll to zoom, and press **Center** to come back to your position.
+- **Map:** the flat overview, shaded with relief and water depth. Drag to move and scroll to zoom. In the gear panel, **Map: continued** shows the world going on past its edges, and **Map: one square** shows the world once.
+- **Globe:** the same world as a sphere, which shows best that the edges connect. Drag to turn the globe and scroll to zoom. **Centre** brings you back to your position.
+
+The atlas shows the block coordinates under the mouse, or your position. The gear also opens the minimap settings. The map key can be changed under Controls.
 
 ![Switching between map and globe, and turning the globe.](URL_ATLAS_GIF)
 
@@ -91,11 +94,25 @@ Smaller worlds may miss biomes or structures; no preset currently guarantees the
 2. Put the Orbis JAR in your `mods` folder.
 3. Create a **new** world, set **World shape** to **Orbis** on the World tab, then **Customize** to choose the size.
 
-Orbis does not convert existing worlds, and worlds from earlier alpha builds no longer load.
+Worlds from earlier Orbis alphas (such as alpha.11) open again; their saved terrain, seed and size stay as they are, and newly generated chunks come from the new engine and may not line up with old terrain next to them. Orbis does not convert or resize other existing worlds.
+
+## Compatibility
+
+Orbis is a **Fabric** mod for Minecraft 26.3 (Java 25). Fabric API is required. The mods below were tested together with Orbis in real game sessions, and all seam tests pass with each of them.
+
+| Mod | Tested version | Notes |
+| --- | --- | --- |
+| Sodium | 0.9.2 | Rendering across the seams |
+| Lithium | 0.26.2 | Orbis turns off one Lithium optimization, its own point-of-interest search, which cannot see beds and workstations past the seam |
+| Distant Horizons | 3.3.4 | Far terrain continues past the world's edges (Orbis ships support for DH 3.3.x) |
+| C2ME | 0.4.2 | Chunks are generated in parallel across the seams |
+| Chunky | – | Pre-generating a whole world works |
+
+**Do not combine Distant Horizons and Chunky:** the game then hangs while creating a world, even a vanilla one (Distant Horizons warns about this itself). Other mods, such as Iris, FerriteCore, Entity Culling, Litematica, MiniHUD, Tweakeroo and Mod Menu, are not tested yet.
 
 ## Alpha status
 
-Orbis is an early alpha. The seam behaviour above is checked automatically in real Minecraft sessions at all four edges and both corners, in the Overworld and the Nether, and Sodium, Lithium and Distant Horizons were part of those runs. Other mods are untested. Expect rough edges and back up anything you care about.
+Orbis is an early alpha. The seam behaviour above is checked automatically in real Minecraft sessions at all four edges and both corners, in the Overworld and the Nether. Expect rough edges and back up anything you care about.
 
 ## Credits and license
 
@@ -104,5 +121,5 @@ Orbis is inspired by [Toroidal World](https://modrinth.com/mod/toroidal-world) a
 
 ## Notes for Timo
 
-- The seam list reflects the new engine on branch `claude/orbis-engine` (PR #5, not merged yet). Publish this text only together with a JAR that contains that engine; until then the old text in `../listing.md` is the accurate one.
-- No claim about Sodium/Lithium/DH support: that block is still in progress.
+- Matches alpha.21 (engine on main, C2ME, new atlas layout, old alpha worlds open again). Compatibility versions: Sodium 0.9.2, Lithium 0.26.2, Distant Horizons 3.3.4, C2ME 0.4.2.
+- Draft only: do not submit for review and do not upload a version without Timo's word.
