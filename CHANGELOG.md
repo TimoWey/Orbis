@@ -4,7 +4,7 @@ All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API
 
 ## 0.1.0-alpha.19 — 2026-10-16
 
-- The flat map zooms out a little past the whole world, so with **Map: one square** its edge shows on every side.
+- The flat map zooms out a little past the whole world, so with **Map: one square** its edge shows on every side. The square map stays on the world: it fills the view where it can and sits in the middle when it fits whole.
 
 ## 0.1.0-alpha.18 — 2026-10-16
 

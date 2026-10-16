@@ -137,6 +137,8 @@ final class PlayerAtlasScreen extends Screen {
                 yaw = -((x - data.minX()) / data.span() - .5) * Math.PI * 2;
                 pitch = (.5 - (z - data.minZ()) / data.span()) * Math.PI;
             }
+            // Every frame, as zooming changes how much of the square fits.
+            if (!globe && square()) keep();
             var view = new AtlasMapRaster.View(mapWidth, mapHeight, x, z, globe ? globeZoom : side() / blocks, globe, yaw, pitch, false, false);
             g.enableScissor(left, top, left + mapWidth, top + mapHeight);
             texture.draw(g, data, view, left, top);
@@ -194,10 +196,18 @@ final class PlayerAtlasScreen extends Screen {
         g.fill(Math.min(right, x1), Math.max(top, z0), right, Math.min(bottom, z1), outside);
         g.outline(x0 - 1, z0 - 1, x1 - x0 + 2, z1 - z0 + 2, 0xff70dfbd);
     }
+    /**
+     * The centre of a square map along one axis showing {@code shown} blocks: the world fills the view where it can,
+     * and a view wider than the world keeps it in the middle.
+     */
+    private double fit(double centre, int min, double shown) {
+        if (shown >= data.span()) return min + data.span() * .5;
+        return Math.clamp(centre, min + shown * .5, min + data.span() - shown * .5);
+    }
     /** Keeps the centre of a square map on the world, where wrapping would jump it to the other side. */
     private void keep() {
         if (square()) {
-            x = Math.clamp(x, data.minX(), data.minX() + data.span()); z = Math.clamp(z, data.minZ(), data.minZ() + data.span());
+            x = fit(x, data.minX(), mapWidth * blocks / side()); z = fit(z, data.minZ(), mapHeight * blocks / side());
         } else if (data.wrapped()) {
             x = AtlasMapMath.canonical(x, data.minX(), data.span()); z = AtlasMapMath.canonical(z, data.minZ(), data.span());
         }
