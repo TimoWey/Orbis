@@ -2,7 +2,17 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
-## Unreleased
+## 0.1.0-alpha.16 — 2026-10-16
+
+- The map shows relief: slopes and water depth are shaded like vanilla maps (softer). Areas mapped before keep their flat look until they are seen again.
+- Unexplored areas on the map are dark slate instead of light grey, so they no longer look like stone.
+- The explored singleplayer map survives mod and data pack updates. Before, updating any mod started an empty map; old copies are cleaned up.
+- The open map only redraws when the part you look at changes; zoom is saved when the map closes.
+- Zoom keys work on German and other keyboard layouts, including numpad minus.
+- Pick block (middle click) and other block actions work after walking once around the world.
+- A memory leak in the End and in normal worlds is fixed.
+- A broken world size in a save reports an error instead of crashing.
+- German texts use ß consistently.
 
 - Distant Horizons: far terrain continues past the world's edges, like the world itself. Before, past a seam the far view was empty and the world floated in the distance as a block.
 - Map and globe follow the mouse exactly when dragged; the picture is drawn in the background, so the game no longer stutters while the map is open or the minimap is on.
