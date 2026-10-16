@@ -46,7 +46,8 @@ final class AtlasSavedSurface implements BlockGetter {
 
     AtlasSnapshot.Cell sample(ChunkPos position, boolean ceiling) {
         var pos = new BlockPos.MutableBlockPos();
-        int[] colors = new int[256];
+        int[] colors = new int[256], heights = new int[256], depths = new int[256];
+        Arrays.fill(heights, AtlasShading.FLAT);
         for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
             int color = AtlasTerrain.EMPTY_SLICE_COLOR;
             // Saved heights store first air above the top non-air block, relative to minY.
@@ -65,10 +66,16 @@ final class AtlasSavedSurface implements BlockGetter {
                 }
                 remaining--;
                 var map = state.getMapColor(this, pos);
-                if (map != MapColor.NONE) { color = 0xff000000 | map.col; break; }
+                if (map != MapColor.NONE) {
+                    color = 0xff000000 | map.col;
+                    heights[z * 16 + x] = y;
+                    if (map == MapColor.WATER) depths[z * 16 + x] = AtlasTerrain.waterDepth(this, pos, getMinY());
+                    break;
+                }
             }
             colors[z * 16 + x] = color;
         }
+        if (!ceiling) AtlasShading.shadeTile(colors, heights, depths, position.getMinBlockX(), position.getMinBlockZ());
         return new AtlasSnapshot.Cell(position.x(), position.z(), AtlasTerrain.EMPTY_SLICE_COLOR, colors);
     }
 

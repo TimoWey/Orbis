@@ -78,9 +78,10 @@ final class AtlasDistantTerrain implements AutoCloseable {
         if (source.getDataDetailLevel() != 0) return;
         int originX = DhSectionPos.getX(source.getPos()) * FullDataSourceV2.WIDTH;
         int originZ = DhSectionPos.getZ(source.getPos()) * FullDataSourceV2.WIDTH;
-        var mapColors = new HashMap<Integer, Integer>();
+        var surfaces = new HashMap<Integer, Surface>();
         for (int cz = 0; cz < FullDataSourceV2.WIDTH; cz += 16) for (int cx = 0; cx < FullDataSourceV2.WIDTH; cx += 16) {
-            int[] colors = new int[256];
+            int[] colors = new int[256], heights = new int[256], depths = new int[256];
+            Arrays.fill(heights, AtlasShading.FLAT);
             boolean complete = true;
             for (int z = 0; z < 16 && complete; z++) for (int x = 0; x < 16; x++) {
                 var column = source.tryGetColumnAtRelPos(cx + x, cz + z);
@@ -95,22 +96,39 @@ final class AtlasDistantTerrain implements AutoCloseable {
                     int bottom = minY + FullDataPointUtil.getBottomY(point);
                     int top = bottom + FullDataPointUtil.getHeight(point);
                     if (ceiling && (slice < bottom || slice >= top)) continue;
-                    int id = FullDataPointUtil.getId(point);
-                    int mapped = mapColors.computeIfAbsent(id, key -> {
-                        Object block = source.mapping.getBlockStateWrapper(key).getWrappedMcObject();
-                        if (!(block instanceof BlockState state)) return 0;
-                        MapColor map = state.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-                        return map == MapColor.NONE ? 0 : 0xff000000 | map.col;
-                    });
-                    if (mapped != 0) { color = mapped; break; }
+                    var surface = surfaces.computeIfAbsent(FullDataPointUtil.getId(point), key -> Surface.of(source, key));
+                    if (surface.color != 0) {
+                        color = surface.color;
+                        heights[z * 16 + x] = top - 1;
+                        // Merged runs: the water point and any fluid points beneath it give the depth.
+                        if (surface.water) for (int j = i, depth = 0; j < column.size(); j++) {
+                            long below = column.getLong(j);
+                            if (!surfaces.computeIfAbsent(FullDataPointUtil.getId(below), key -> Surface.of(source, key)).fluid) break;
+                            depth += FullDataPointUtil.getHeight(below);
+                            depths[z * 16 + x] = Math.min(depth, AtlasShading.WATER_DEPTH_LIMIT);
+                            if (depth >= AtlasShading.WATER_DEPTH_LIMIT) break;
+                        }
+                        break;
+                    }
                     if (ceiling) break;
                 }
                 colors[z * 16 + x] = color;
             }
+            if (complete && !ceiling) AtlasShading.shadeTile(colors, heights, depths, originX + cx, originZ + cz);
             if (complete) accept.accept(new AtlasSnapshot.Cell((originX + cx) >> 4, (originZ + cz) >> 4,
                     AtlasTerrain.EMPTY_SLICE_COLOR, colors));
         }
 
+    }
+
+    private record Surface(int color, boolean water, boolean fluid) {
+        static Surface of(FullDataSourceV2 source, int id) {
+            Object block = source.mapping.getBlockStateWrapper(id).getWrappedMcObject();
+            if (!(block instanceof BlockState state)) return new Surface(0, false, false);
+            MapColor map = state.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+            return new Surface(map == MapColor.NONE ? 0 : 0xff000000 | map.col, map == MapColor.WATER,
+                    !state.getFluidState().isEmpty());
+        }
     }
 
     public void close() { provider.removeDataSourceUpdateListener(listener); synchronized (changed) { changed.clear(); } }
