@@ -15,7 +15,8 @@ import org.spongepowered.asm.mixin.injection.At;
  * block-periodic noise does not repeat; folding the cell index makes the choice repeat with the world.
  * A torus aquifer is recognised by its folded randomness, whose period is the width in 16-block cells.
  */
-@Mixin(targets = "net.minecraft.world.level.levelgen.Aquifer$NoiseBasedAquifer")
+// Above C2ME's 1100: its aquifer rewrite replaces computeFluidType, and only a later mixin may wrap the replacement.
+@Mixin(targets = "net.minecraft.world.level.levelgen.Aquifer$NoiseBasedAquifer", priority = 1200)
 public abstract class NoiseBasedAquiferMixin {
     @Shadow @Final private PositionalRandomFactory positionalRandomFactory;
 

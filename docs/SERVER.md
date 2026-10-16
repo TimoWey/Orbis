@@ -1,12 +1,12 @@
-# Server and player guide — 0.1.0-alpha.19
+# Server and player guide — 0.1.0-alpha.20
 
-The normal build `orbis-0.1.0-alpha.19.jar` contains the world engine, the minimap and the map/globe atlas. Server and players use the same JAR; map rendering only runs on clients. The developer interface and its automatic singleplayer surveys stay in the separate [debug build](DEBUG_ATLAS.md).
+The normal build `orbis-0.1.0-alpha.20.jar` contains the world engine, the minimap and the map/globe atlas. Server and players use the same JAR; map rendering only runs on clients. The developer interface and its automatic singleplayer surveys stay in the separate [debug build](DEBUG_ATLAS.md).
 
 ## Versions and installation
 
 - Minecraft Java **26.3**, **Java 25**.
 - Fabric Loader **0.19.5**, Fabric API **0.161.0+26.3**.
-- Server: put Fabric API and `orbis-0.1.0-alpha.19.jar` into the Fabric server's `mods/` folder.
+- Server: put Fabric API and `orbis-0.1.0-alpha.20.jar` into the Fabric server's `mods/` folder.
 - Players: install the same Fabric Loader, Fabric API and Orbis versions in their own Minecraft profile.
 - Move older Orbis JARs out of `mods/` first. Never install the normal and debug builds together; `-sources.jar` does not belong in `mods/`.
 
@@ -79,7 +79,7 @@ Tiny is the easiest size for a first shared test. Nothing is pregenerated. No pr
 
 ```sh
 bash gradlew build
-python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.19.jar
+python3 tools/verify_standalone.py build/libs/orbis-0.1.0-alpha.20.jar
 ```
 
 The build checks both archives, missing or forbidden debug content, the server preset codecs and the stored dimension policy. For developers only: `bash gradlew build -PorbisDebug=true`, output in `build/debug/libs/`.
