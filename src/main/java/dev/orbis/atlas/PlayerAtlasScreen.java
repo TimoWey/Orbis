@@ -4,19 +4,22 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /** Quiet player interface: a centred map and one row of settings on each side. */
 final class PlayerAtlasScreen extends Screen {
+    // SDL scancode of numpad minus; InputConstants names numpad plus (KEY_ADD) but not this one.
+    private static final int KEY_SUBTRACT = 86;
     // Kept between openings, so the map is there at once when the screen opens again.
     private static final AtlasMapTexture texture = new AtlasMapTexture();
     private AtlasSnapshot data;
     private Button globeButton;
     private String dimension;
     private int left, top, size;
-    private boolean globe, follow = true, dragging;
+    private boolean globe, follow = true, dragging, zoomed, zoomKeyHandled;
     private double x, z, yaw, pitch, blocks = 512, globeZoom = 1;
     PlayerAtlasScreen() { super(Component.literal("Orbis Atlas")); }
     private String tr(String key) { return Component.translatable("orbis.player." + key).getString(); }
@@ -48,6 +51,7 @@ final class PlayerAtlasScreen extends Screen {
         data = PlayerAtlasClient.snapshot;
         globeButton.active = data != null && data.wrapped();
         if (data != null && !data.dimension().equals(dimension)) {
+            saveZoom();
             dimension = data.dimension(); globe = AtlasPreferences.globe(dimension) && data.wrapped();
             blocks = AtlasPreferences.zoom(dimension, false); globeZoom = AtlasPreferences.zoom(dimension, true); follow = true;
         }
@@ -57,11 +61,21 @@ final class PlayerAtlasScreen extends Screen {
         globe = value; follow = true; AtlasPreferences.setGlobe(dimension, globe);
     }
     private void zoom(double factor) {
+        // Before the first snapshot the stored zoom has not been read yet; it would replace this one.
+        if (dimension == null) return;
         if (globe) globeZoom = Math.clamp(globeZoom * factor, .5, 12);
         else blocks = Math.clamp(blocks / factor, 32, data != null && data.wrapped() ? data.span() : 30000000);
-        AtlasPreferences.zoom(dimension, globe, globe ? globeZoom : blocks);
+        zoomed = true;
     }
+    private void saveZoom() {
+        if (zoomed && dimension != null) AtlasPreferences.saveZoom(dimension, blocks, globeZoom);
+        zoomed = false;
+    }
+    /** Flat-map blocks across while open; preferences only catch up when the screen closes. */
+    double flatZoom(String dimension) { return dimension.equals(this.dimension) ? blocks : AtlasPreferences.zoom(dimension, false); }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+        // Key and text events of one press are delivered before the frame that follows them.
+        zoomKeyHandled = false;
         g.fill(0, 0, width, height, 0xd9182028);
         g.text(font, "ORBIS · " + tr("atlas"), (width - font.width("ORBIS · " + tr("atlas"))) / 2, top - 42, 0xff70dfbd, false);
         if (data != null && minecraft.player != null) {
@@ -140,14 +154,29 @@ final class PlayerAtlasScreen extends Screen {
         return super.mouseScrolled(x,y,dx,dy);
     }
     @Override public boolean keyPressed(KeyEvent event) {
+        zoomKeyHandled = false;
         if (PlayerAtlasClient.mapKey.matches(event)) { onClose(); return true; }
-        if (event.key() == InputConstants.KEY_EQUALS || event.key() == InputConstants.KEY_ADD) { zoom(1.25); return true; }
-        if (event.key() == InputConstants.KEY_MINUS) { zoom(1/1.25); return true; }
+        // Layout keycodes for the main row (QWERTZ has '+' and '-' elsewhere), physical keys for the numpad.
+        if (event.keycode() == '+' || event.keycode() == '=' || event.key() == InputConstants.KEY_ADD) {
+            zoom(1.25); zoomKeyHandled = true; return true;
+        }
+        if (event.keycode() == '-' || event.key() == KEY_SUBTRACT) { zoom(1/1.25); zoomKeyHandled = true; return true; }
         if (event.key() == InputConstants.KEY_HOME) { follow = true; return true; }
         return super.keyPressed(event);
     }
+    /** Layouts that need a modifier for '+' or '-' only report the character; the matching key press zooms once. */
+    @Override public boolean charTyped(CharacterEvent event) {
+        int c = event.codepoint();
+        if (c == '+' || c == '=' || c == '-') {
+            if (!zoomKeyHandled) zoom(c == '-' ? 1/1.25 : 1.25);
+            zoomKeyHandled = false;
+            return true;
+        }
+        return super.charTyped(event);
+    }
     @Override public boolean isPauseScreen() { return false; }
     @Override public void extractBackground(GuiGraphicsExtractor g, int x, int y, float delta) {}
+    @Override public void removed() { saveZoom(); super.removed(); }
     /** The world changed or was left: the kept picture belongs to it. */
     static void forget() { texture.close(); }
 }

@@ -114,7 +114,7 @@ final class PlayerLocalTerrain {
             ready = true;
             var cache = loading.join(); loading = null;
             if (cache.file() != null) {
-                archive = new AtlasTileArchive(cache.file().resolveSibling(cache.file().getFileName() + ".tiles").resolve(cache.fingerprint()));
+                archive = new AtlasTileArchive(AtlasTileArchive.localDirectory(cache.file(), minX, minZ, span));
                 importer.archive(archive);
                 Orbis.LOGGER.info("Player atlas persistent terrain ready for {}", level.dimension().identifier());
             }

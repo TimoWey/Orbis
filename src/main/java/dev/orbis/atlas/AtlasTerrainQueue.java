@@ -18,14 +18,22 @@ final class AtlasTerrainQueue {
         this.x = x; this.z = z;
         queue.clear(); queue.addAll(present);
     }
-    void add(long key) { if (present.add(key)) queue.add(key); }
+    void add(long key) {
+        if (!present.add(key)) return;
+        queue.add(key);
+        // Lazy removal leaves stale entries behind; rebuild before they outnumber the live ones.
+        if (queue.size() > 2 * present.size() + 64) { queue.clear(); queue.addAll(present); }
+    }
     void addAll(Collection<Long> keys) { keys.forEach(this::add); }
     boolean contains(long key) { return present.contains(key); }
     boolean isEmpty() { return present.isEmpty(); }
-    void remove(long key) { if (present.remove(key)) queue.remove(key); }
+    /** O(1): the queue entry stays behind and poll() skips it, avoiding a linear PriorityQueue.remove. */
+    void remove(long key) { present.remove(key); }
     Long poll() {
-        Long key = queue.poll();
-        if (key != null) present.remove(key);
+        Long key;
+        // A removed and re-added key may be queued twice; the first copy consumes its presence.
+        while ((key = queue.poll()) != null && !present.remove(key)) { }
         return key;
     }
+    int queued() { return queue.size(); }
 }

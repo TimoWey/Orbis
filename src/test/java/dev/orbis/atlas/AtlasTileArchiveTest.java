@@ -126,4 +126,46 @@ class AtlasTileArchiveTest {
             assertNotEquals(stalePixels[32 * 64 + 32], livePixels[32 * 64 + 32]);
         }
     }
+
+    @Test void regionalRevisionOnlyFollowsWritesInsideTheRectangle() throws Exception {
+        var archive = new AtlasTileArchive(directory);
+        long before = archive.revision(0, 0, 511, 511);
+        archive.write(tile(40, 0, 0xff123400), false); // region (1, 0)
+        assertEquals(before, archive.revision(0, 0, 511, 511));
+        assertNotEquals(before, archive.revision(0, 0, 512, 511));
+        assertEquals(archive.revision(), archive.revision(-100, -100, 600, 600));
+    }
+
+    @Test void localTilesDirectoryDependsOnlyOnShapeAndAdoptsTheNewestLegacyFingerprint() throws Exception {
+        Path cache = directory.resolve("world").resolve("dimension.atlas.gz");
+        Path stable = AtlasTileArchive.localDirectory(cache, -8192, -8192, 16384);
+        assertEquals(stable, AtlasTileArchive.localDirectory(cache, -8192, -8192, 16384));
+        assertNotEquals(stable, AtlasTileArchive.localDirectory(cache, -1024, -1024, 2048));
+        assertEquals(cache.resolveSibling("dimension.atlas.gz.tiles"), stable.getParent());
+
+        // Fingerprints of two older mod lists; the newer one holds the latest exploration.
+        Path older = stable.resolveSibling(AtlasCache.hash("mods=a")), newer = stable.resolveSibling(AtlasCache.hash("mods=b"));
+        new AtlasTileArchive(older).write(tile(0, 0, 0xff111100), false);
+        new AtlasTileArchive(newer).write(tile(1, 0, 0xff222200), false);
+        java.nio.file.Files.setLastModifiedTime(older.resolve("r.0.0.tiles"), java.nio.file.attribute.FileTime.fromMillis(1_000));
+        java.nio.file.Files.setLastModifiedTime(older, java.nio.file.attribute.FileTime.fromMillis(1_000));
+        Path otherShape = AtlasTileArchive.localDirectory(cache, -1024, -1024, 2048);
+        new AtlasTileArchive(otherShape).write(tile(2, 0, 0xff333300), false);
+
+        AtlasTileArchive.migrateLocal(stable);
+        assertFalse(java.nio.file.Files.exists(older));
+        assertFalse(java.nio.file.Files.exists(newer));
+        assertTrue(java.nio.file.Files.exists(otherShape));
+        try (var reader = new AtlasTileArchive(stable).reader()) {
+            assertEquals(0xff222200, reader.get(1, 0).terrainPixel(0));
+            assertNull(reader.get(0, 0));
+        }
+
+        // Once adopted, later fingerprint directories are only cleaned up, never merged over it.
+        Path stale = stable.resolveSibling(AtlasCache.hash("mods=c"));
+        new AtlasTileArchive(stale).write(tile(3, 0, 0xff444400), false);
+        AtlasTileArchive.migrateLocal(stable);
+        assertFalse(java.nio.file.Files.exists(stale));
+        try (var reader = new AtlasTileArchive(stable).reader()) { assertNull(reader.get(3, 0)); }
+    }
 }

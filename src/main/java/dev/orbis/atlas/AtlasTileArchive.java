@@ -8,9 +8,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
 import net.minecraft.world.level.ChunkPos;
 
-/** Sparse region archive of original 16x16 colors; owned by one world/fingerprint session. */
+/** Sparse region archive of original 16x16 colors; owned by one world/dimension session. */
 final class AtlasTileArchive {
     private static final long MAGIC = 0x4f524254494c4501L;
+    // Bump only when stored tiles become incompatible; mod, data pack and generator changes keep the explored map.
+    private static final String LOCAL_FORMAT = "local-v1";
+    // Before local-v1, singleplayer tiles lived under the full survey fingerprint (mods, generator, resources).
+    private static final java.util.regex.Pattern LEGACY = java.util.regex.Pattern.compile("[0-9a-f]{64}");
     private static final int PAYLOAD = 4 + 256 * 4 + 4, SLOT = 1 + PAYLOAD;
     // Reloads can briefly have two session objects for the same fingerprint directory.
     private static final Object FILE_IO = new Object();
@@ -25,12 +29,58 @@ final class AtlasTileArchive {
     private volatile boolean closed;
 
     AtlasTileArchive(Path directory) { this.directory = directory; }
+
+    /** Singleplayer tiles beside the survey cache file, whose path already names the world and dimension. */
+    static Path localDirectory(Path cacheFile, int minX, int minZ, int span) {
+        return cacheFile.resolveSibling(cacheFile.getFileName() + ".tiles")
+                .resolve(LOCAL_FORMAT + "-" + AtlasCache.hash(minX + "|" + minZ + "|" + span));
+    }
+
+    /** Adopts the newest legacy fingerprint directory once, then removes the stale ones. Worker threads only. */
+    static void migrateLocal(Path directory) throws IOException {
+        Path parent = directory.getParent();
+        if (!Files.isDirectory(parent)) return;
+        List<Path> legacy = new ArrayList<>();
+        try (var paths = Files.newDirectoryStream(parent, path -> Files.isDirectory(path)
+                && LEGACY.matcher(path.getFileName().toString()).matches())) {
+            paths.forEach(legacy::add);
+        }
+        if (legacy.isEmpty()) return;
+        if (!Files.exists(directory)) {
+            Path newest = null; long newestTime = Long.MIN_VALUE;
+            for (var path : legacy) {
+                long time = lastWrite(path);
+                if (newest == null || time > newestTime) { newest = path; newestTime = time; }
+            }
+            synchronized (FILE_IO) {
+                if (!Files.exists(directory)) { Files.move(newest, directory); legacy.remove(newest); }
+            }
+        }
+        for (var path : legacy) delete(path);
+    }
+    private static long lastWrite(Path directory) throws IOException {
+        long latest = Files.getLastModifiedTime(directory).toMillis();
+        try (var paths = Files.newDirectoryStream(directory, "r.*.*.tiles")) {
+            for (var path : paths) latest = Math.max(latest, Files.getLastModifiedTime(path).toMillis());
+        }
+        return latest;
+    }
+    private static void delete(Path directory) throws IOException {
+        try (var paths = Files.walk(directory)) {
+            for (var path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
+        }
+    }
+
     long revision() { return revision.get(); }
     /** Read-only, nonblocking invalidation for the few regions covered by the HUD texture. */
     long revision(int blockX, int blockZ, int size) {
+        return revision(blockX, blockZ, blockX + size - 1, blockZ + size - 1);
+    }
+    /** Latest write in the regions overlapping the inclusive block rectangle. */
+    long revision(int minBlockX, int minBlockZ, int maxBlockX, int maxBlockZ) {
         long latest = 1;
-        for (int rz = blockZ >> 9; rz <= (blockZ + size - 1) >> 9; rz++)
-            for (int rx = blockX >> 9; rx <= (blockX + size - 1) >> 9; rx++)
+        for (int rz = minBlockZ >> 9; rz <= maxBlockZ >> 9; rz++)
+            for (int rx = minBlockX >> 9; rx <= maxBlockX >> 9; rx++)
                 latest = Math.max(latest, changes.getOrDefault(ChunkPos.pack(rx, rz), 1L));
         return latest;
     }
