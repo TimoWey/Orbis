@@ -50,6 +50,9 @@ final class AtlasCache {
                 + "|structures=" + level.structureManager().shouldGenerateStructures();
         Path file = fileFor(FabricLoader.getInstance().getGameDir().resolve("orbis-atlas-cache"), identity, dimension);
         return resourceFingerprint.handleAsync((resourceHash, failure) -> {
+            // Explored terrain is keyed by world, dimension and shape only, so it survives mod and data pack changes.
+            try { AtlasTileArchive.migrateLocal(AtlasTileArchive.localDirectory(file, minX, minZ, span)); }
+            catch (IOException | RuntimeException e) { Orbis.LOGGER.warn("Could not migrate legacy atlas terrain beside {}", file, e); }
             try {
                 if (failure != null) throw new CompletionException(failure);
                 String fingerprint = hash(config + "|resources=" + resourceHash);

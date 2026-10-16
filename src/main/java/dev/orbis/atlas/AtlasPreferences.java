@@ -24,6 +24,8 @@ final class AtlasPreferences {
     static void cycleMinimapZoom() { STORE.number("minimap.zoom", minimapZoom() >= 8 ? .25 : minimapZoom() * 2); }
     static double zoom(String dimension, boolean globe) { return STORE.number("zoom." + globe + "." + dimension, globe ? 1 : 512, globe ? .5 : 32, globe ? 12 : 30000000); }
     static void zoom(String dimension, boolean globe, double value) { STORE.number("zoom." + globe + "." + dimension, value); }
+    /** One write when the atlas closes or changes dimension, not one per scroll step. */
+    static void saveZoom(String dimension, double flat, double globe) { STORE.zoom(dimension, flat, globe); }
     static String status() { return STORE.status(); }
     static int corner() {
         try { return Math.floorMod(Integer.parseInt(VALUES.getProperty("corner", "0")), 4); }
@@ -62,6 +64,11 @@ final class AtlasPreferences {
         void number(String key, double value) {
             if (!Double.isFinite(value)) return;
             values.setProperty(key, Double.toString(value)); save();
+        }
+        void zoom(String dimension, double flat, double globe) {
+            if (dimension == null || !Double.isFinite(flat) || !Double.isFinite(globe)) return;
+            values.setProperty("zoom.false." + dimension, Double.toString(flat));
+            values.setProperty("zoom.true." + dimension, Double.toString(globe)); save();
         }
         String status() { return status; }
         boolean globe(String dimension) {

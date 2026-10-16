@@ -62,7 +62,10 @@ public final class AtlasProbe {
     }
 
     /** How many blocks across the flat map shows in a dimension. */
-    public static double zoom(String dimension) { return AtlasPreferences.zoom(dimension, false); }
+    public static double zoom(String dimension) {
+        return Minecraft.getInstance().gui.screen() instanceof PlayerAtlasScreen map ? map.flatZoom(dimension)
+                : AtlasPreferences.zoom(dimension, false);
+    }
 
     /** Sets what the map shows when next opened in a dimension: the globe or the flat map, {@code blocks} across. */
     public static void prepare(String dimension, boolean globe, double blocks) {

@@ -30,7 +30,11 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
         if (pending != null && pending.isDone()) {
             try {
                 var result = pending.join();
-                if (result != null && result.key.equals(key)) { ready = result; version++; }
+                if (result != null && result.key.equals(key)) {
+                    // Writes elsewhere in the shown regions often leave the visible pixels unchanged.
+                    if (ready == null || !ready.key.equals(key) || !java.util.Arrays.equals(ready.pixels, result.pixels)) version++;
+                    ready = result;
+                }
                 failed = false;
             } catch (CompletionException failure) {
                 if (!failed) Orbis.LOGGER.warn("Atlas archived terrain projection failed", failure.getCause());
@@ -38,9 +42,9 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
             }
             pending = null;
         }
+        long revision = revision(archive, data, view);
         if (pending == null && (ready == null || !ready.key.equals(key) || System.nanoTime() >= nextStart)
-                && (ready == null || !ready.key.equals(key) || ready.revision != archive.revision())) {
-            long revision = archive.revision();
+                && (ready == null || !ready.key.equals(key) || ready.revision != revision)) {
             nextStart = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(33);
             pending = CompletableFuture.supplyAsync(() -> {
                 try {
@@ -58,6 +62,23 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
         } catch (IOException impossible) { throw new IllegalStateException(impossible); }
     }
     long version() { return version; }
+
+    /** Flat views only follow writes in the regions they show; the globe and views across a seam use the global revision. */
+    static long revision(AtlasTileArchive archive, AtlasSnapshot data, AtlasMapRaster.View view) {
+        if (view.globe()) return archive.revision();
+        double halfX = view.width() * .5 / view.scale(), halfZ = view.height() * .5 / view.scale();
+        double minX = Math.floor(view.centerX() - halfX) - 1, maxX = Math.floor(view.centerX() + halfX) + 1;
+        double minZ = Math.floor(view.centerZ() - halfZ) - 1, maxZ = Math.floor(view.centerZ() + halfZ) + 1;
+        if (data.wrapped() && (minX < data.minX() || minZ < data.minZ()
+                || maxX >= (double) data.minX() + data.span() || maxZ >= (double) data.minZ() + data.span()))
+            return archive.revision();
+        if (!(minX >= Integer.MIN_VALUE && minZ >= Integer.MIN_VALUE && maxX <= Integer.MAX_VALUE && maxZ <= Integer.MAX_VALUE))
+            return archive.revision();
+        // Very wide views would scan thousands of regions per frame.
+        if ((((long) maxX >> 9) - ((long) minX >> 9) + 1) * (((long) maxZ >> 9) - ((long) minZ >> 9) + 1) > 4096)
+            return archive.revision();
+        return archive.revision((int) minX, (int) minZ, (int) maxX, (int) maxZ);
+    }
     /** Whether the last {@link #update} returned the finished layer for its view, with nothing more on its way. */
     boolean settled() { return pending == null && ready != null && ready.key.equals(wanted); }
     public void close() { wanted = null; ready = null; version++; }
