@@ -220,17 +220,23 @@ final class PlayerAtlasScreen extends Screen {
     /** Block coordinates under the pointer on the flat map; elsewhere the player's own position. */
     private String place(int mx, int my) {
         double px = minecraft.player.getX(), pz = minecraft.player.getZ();
+        String own = player();
         if (!globe && inside(mx, my)) {
             double perPixel = blocks / side();
             double cx = x + (mx - (left + mapWidth * .5)) * perPixel, cz = z + (my - (top + mapHeight * .5)) * perPixel;
             // Off the square there is no world under the pointer.
             if (square() && (cx < data.minX() || cz < data.minZ() || cx >= data.minX() + data.span() || cz >= data.minZ() + data.span()))
-                return "X " + (long) Math.floor(px) + " · Y " + (long) Math.floor(minecraft.player.getY()) + " · Z " + (long) Math.floor(pz);
+                return own;
             px = cx; pz = cz;
             if (data.wrapped()) { px = AtlasMapMath.canonical(px, data.minX(), data.span()); pz = AtlasMapMath.canonical(pz, data.minZ(), data.span()); }
             return "X " + (long) Math.floor(px) + " · Z " + (long) Math.floor(pz);
         }
-        return "X " + (long) Math.floor(px) + " · Y " + (long) Math.floor(minecraft.player.getY()) + " · Z " + (long) Math.floor(pz);
+        return own;
+    }
+    /** The player's position as the world numbers it: the client keeps counting past the seam, the label does not. */
+    private String player() {
+        int[] at = OrbisMinimap.shownBlock(data, minecraft.player.getX(), minecraft.player.getZ());
+        return "X " + at[0] + " · Y " + (long) Math.floor(minecraft.player.getY()) + " · Z " + at[1];
     }
     private boolean inside(double mx, double my) { return mx >= left && mx < left + mapWidth && my >= top && my < top + mapHeight; }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean twice) {

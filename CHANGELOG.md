@@ -2,6 +2,11 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.20 — 2026-10-16
+
+- Works with **C2ME** (Concurrent Chunk Management Engine) 0.4.2: terrain, the Nether and structures stay seamless at the world's edges while C2ME generates chunks in parallel, and small worlds no longer hang. Without C2ME nothing changes.
+- The atlas shows the world's own coordinates after a trip around the world. Before, it kept counting past the seam (for example X 16879 instead of X 495).
+
 ## 0.1.0-alpha.19 — 2026-10-16
 
 - The flat map zooms out a little past the whole world, so with **Map: one square** its edge shows on every side. The square map stays on the world: it fills the view where it can and sits in the middle when it fits whole.
