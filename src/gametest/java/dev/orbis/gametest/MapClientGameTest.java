@@ -60,6 +60,10 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.waitTicks(20);
             context.takeScreenshot("map-explored");
             checkZoom(context);
+            context.runOnClient(mc -> AtlasProbe.showSettings(mc, true));
+            context.waitTicks(5);
+            context.takeScreenshot("map-settings");
+            context.runOnClient(mc -> AtlasProbe.showSettings(mc, false));
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the map");
 

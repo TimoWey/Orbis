@@ -2,6 +2,11 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.17 — 2026-10-16
+
+- New atlas layout: the map fills the screen, and its few controls sit on it. Map or globe at the top left, close (×) at the top right, zoom in and out, centre and the minimap settings (gear) at the bottom right. The minimap settings open in a small panel beside the gear.
+- The atlas shows the block coordinates under the mouse on the flat map, otherwise the player's position.
+
 ## 0.1.0-alpha.16 — 2026-10-16
 
 - The map shows relief: slopes and water depth are shaded like vanilla maps (softer). Areas mapped before keep their flat look until they are seen again.

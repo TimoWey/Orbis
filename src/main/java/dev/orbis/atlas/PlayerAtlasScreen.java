@@ -9,42 +9,73 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
-/** Quiet player interface: a centred map and one row of settings on each side. */
+/**
+ * Quiet player interface: the map fills the screen and its few controls sit on it. Map or globe at the top left,
+ * close at the top right, zoom, centre and the minimap settings (behind the gear) at the bottom right.
+ */
 final class PlayerAtlasScreen extends Screen {
     // SDL scancode of numpad minus; InputConstants names numpad plus (KEY_ADD) but not this one.
     private static final int KEY_SUBTRACT = 86;
+    private static final int MARGIN = 6, PAD = 6, ICON = 20, GAP = 2, PANEL = 116;
     // Kept between openings, so the map is there at once when the screen opens again.
     private static final AtlasMapTexture texture = new AtlasMapTexture();
+    private final java.util.List<Button> settings = new java.util.ArrayList<>();
     private AtlasSnapshot data;
     private Button globeButton;
     private String dimension;
-    private int left, top, size;
-    private boolean globe, follow = true, dragging, zoomed, zoomKeyHandled;
+    private int left, top, mapWidth, mapHeight;
+    private boolean globe, follow = true, dragging, zoomed, zoomKeyHandled, settingsOpen;
     private double x, z, yaw, pitch, blocks = 512, globeZoom = 1;
-    PlayerAtlasScreen() { super(Component.literal("Orbis Atlas")); }
+    PlayerAtlasScreen() { super(Component.translatable("orbis.atlas.title")); }
     private String tr(String key) { return Component.translatable("orbis.player." + key).getString(); }
+    /** The shorter side of the map: the flat zoom counts blocks across it, and the globe fits inside it. */
+    private int side() { return Math.min(mapWidth, mapHeight); }
     @Override protected void init() {
-        size = Math.max(64, Math.min(width - 32, height - 112));
-        left = (width - size) / 2; top = (height - size) / 2;
-        int w = Math.min(100, (width - 32) / 4), start = (width - (w * 4 + 12)) / 2;
-        button(start, top - 26, w, tr("flat"), b -> mode(false), () -> !globe);
-        globeButton = button(start + w + 4, top - 26, w, tr("globe"), b -> mode(true), () -> globe);
-        button(start + (w + 4) * 2, top - 26, w, tr("center"), b -> follow = true);
-        button(start + (w + 4) * 3, top - 26, w, tr("close"), b -> onClose());
-        button(start, top + size + 8, w, visibleLabel(), b -> { AtlasPreferences.toggleVisible(); b.setMessage(Component.literal(visibleLabel())); });
-        button(start + w + 4, top + size + 8, w, cornerLabel(), b -> { AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel())); });
-        button(start + (w + 4) * 2, top + size + 8, w, sizeLabel(), b -> { AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel())); });
-        button(start + (w + 4) * 3, top + size + 8, w, miniZoomLabel(), b -> { AtlasPreferences.cycleMinimapZoom(); b.setMessage(Component.literal(miniZoomLabel())); });
+        settings.clear();
+        left = MARGIN; top = MARGIN;
+        mapWidth = Math.max(64, width - 2 * MARGIN); mapHeight = Math.max(64, height - 2 * MARGIN);
+        int right = left + mapWidth - PAD, bottom = top + mapHeight - PAD;
+        int modeWidth = Math.max(font.width(tr("flat")), font.width(tr("globe"))) + 12;
+        button(left + PAD, top + PAD, modeWidth, tr("flat"), b -> mode(false), () -> !globe);
+        globeButton = button(left + PAD + modeWidth, top + PAD, modeWidth, tr("globe"), b -> mode(true), () -> globe);
+        icon(right - ICON, top + PAD, "×", tr("close"), b -> onClose());
+        int column = right - ICON;
+        icon(column, bottom - 4 * ICON - 3 * GAP, "+", tr("zoom_in"), b -> zoom(1.25));
+        icon(column, bottom - 3 * ICON - 2 * GAP, "-", tr("zoom_out"), b -> zoom(1 / 1.25));
+        icon(column, bottom - 2 * ICON - GAP, "◎", tr("center"), b -> follow = true);
+        icon(column, bottom - ICON, "⚙", tr("settings"), b -> showSettings(!settingsOpen));
+        // The minimap settings open beside the gear, bottom row level with it.
+        int panelX = column - GAP - PANEL - 4, rowY = bottom - ICON;
+        setting(panelX, rowY - 3 * (ICON + GAP), miniZoomLabel(), b -> { AtlasPreferences.cycleMinimapZoom(); b.setMessage(Component.literal(miniZoomLabel())); });
+        setting(panelX, rowY - 2 * (ICON + GAP), sizeLabel(), b -> { AtlasPreferences.cycleSize(); b.setMessage(Component.literal(sizeLabel())); });
+        setting(panelX, rowY - (ICON + GAP), cornerLabel(), b -> { AtlasPreferences.cycleCorner(); b.setMessage(Component.literal(cornerLabel())); });
+        setting(panelX, rowY, visibleLabel(), b -> { AtlasPreferences.toggleVisible(); b.setMessage(Component.literal(visibleLabel())); });
+        showSettings(settingsOpen);
     }
     private String visibleLabel() { return tr(AtlasPreferences.visible() ? "minimap_on" : "minimap_off"); }
     private String cornerLabel() { return tr("corner_" + AtlasPreferences.corner()); }
     private String sizeLabel() { return tr("size") + ": " + new String[]{"S", "M", "L"}[AtlasPreferences.sizeIndex()]; }
-    private String miniZoomLabel() { return "Mini: " + AtlasPreferences.minimapZoom() + "×"; }
+    private String miniZoomLabel() {
+        double zoom = AtlasPreferences.minimapZoom();
+        String shown = zoom == Math.rint(zoom) ? String.valueOf((int) zoom) : zoom == .5 ? "½" : zoom == .25 ? "¼" : String.valueOf(zoom);
+        return tr("mini_zoom") + ": " + shown + "×";
+    }
+    void showSettings(boolean open) {
+        settingsOpen = open;
+        for (Button b : settings) b.visible = open;
+    }
+    private void setting(int x, int y, String label, Button.OnPress action) {
+        settings.add(button(x, y, PANEL, label, action));
+    }
+    private void icon(int x, int y, String glyph, String name, Button.OnPress action) {
+        Button b = addRenderableWidget(new AtlasButton(x, y, ICON, ICON, glyph, action, () -> false, false));
+        b.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(name)));
+    }
     private Button button(int x, int y, int w, String label, Button.OnPress action) {
         return button(x, y, w, label, action, () -> false);
     }
     private Button button(int x, int y, int w, String label, Button.OnPress action, java.util.function.BooleanSupplier selected) {
-        return addRenderableWidget(new AtlasButton(x, y, w, 18, label, action, selected, false));
+        return addRenderableWidget(new AtlasButton(x, y, w, ICON, label, action, selected, false));
     }
     @Override public void tick() {
         if (minecraft.level == null || minecraft.player == null) { onClose(); return; }
@@ -77,7 +108,7 @@ final class PlayerAtlasScreen extends Screen {
         // Key and text events of one press are delivered before the frame that follows them.
         zoomKeyHandled = false;
         g.fill(0, 0, width, height, 0xd9182028);
-        g.text(font, "ORBIS · " + tr("atlas"), (width - font.width("ORBIS · " + tr("atlas"))) / 2, top - 42, 0xff70dfbd, false);
+        String place = null;
         if (data != null && minecraft.player != null) {
             if (follow) {
                 x = minecraft.player.getX(); z = minecraft.player.getZ();
@@ -85,8 +116,8 @@ final class PlayerAtlasScreen extends Screen {
                 yaw = -((x - data.minX()) / data.span() - .5) * Math.PI * 2;
                 pitch = (.5 - (z - data.minZ()) / data.span()) * Math.PI;
             }
-            var view = new AtlasMapRaster.View(size, size, x, z, globe ? globeZoom : size / blocks, globe, yaw, pitch, false, false);
-            g.enableScissor(left, top, left + size, top + size);
+            var view = new AtlasMapRaster.View(mapWidth, mapHeight, x, z, globe ? globeZoom : side() / blocks, globe, yaw, pitch, false, false);
+            g.enableScissor(left, top, left + mapWidth, top + mapHeight);
             texture.draw(g, data, view, left, top);
             var shown = texture.displayedView();
             if (shown != null) {
@@ -98,17 +129,46 @@ final class PlayerAtlasScreen extends Screen {
                         (px - data.minX()) / data.span(), (pz - data.minZ()) / data.span(), shown.yaw(), shown.pitch(), minecraft.player.getYRot()));
             }
             g.disableScissor();
+            place = place(mx, my);
         }
-        String hint = AtlasPreferences.status().isEmpty() ? tr("hint") : AtlasPreferences.status();
-        g.text(font, hint, (width - font.width(hint)) / 2, top + size + 32, 0xffafbecf, false);
+        g.outline(left, top, mapWidth, mapHeight, 0xff3b4c5a);
+        String title = "ORBIS · " + tr("atlas");
+        label(g, title, left + (mapWidth - font.width(title)) / 2, top + PAD + 6, 0xff70dfbd);
+        int infoY = top + mapHeight - PAD - 10;
+        if (place != null) label(g, place, left + PAD + 2, infoY, 0xffe6edf3);
+        if (!AtlasPreferences.status().isEmpty()) label(g, AtlasPreferences.status(), left + PAD + 2, infoY - 14, 0xffafbecf);
+        if (settingsOpen && !settings.isEmpty()) {
+            Button first = settings.getFirst(), last = settings.getLast();
+            g.fill(first.getX() - 4, first.getY() - 4, first.getRight() + 4, last.getBottom() + 4, 0xe0101820);
+            g.outline(first.getX() - 4, first.getY() - 4, PANEL + 8, last.getBottom() - first.getY() + 8, 0xff3b4c5a);
+        }
         super.extractRenderState(g, mx, my, delta);
     }
-    private boolean inside(double mx, double my) { return mx >= left && mx < left + size && my >= top && my < top + size; }
+    /** Text on a dark backing, readable over any terrain. */
+    private void label(GuiGraphicsExtractor g, String text, int x, int y, int color) {
+        g.fill(x - 3, y - 2, x + font.width(text) + 3, y + 10, 0xb0101820);
+        g.text(font, text, x, y, color, false);
+    }
+    /** Block coordinates under the pointer on the flat map; elsewhere the player's own position. */
+    private String place(int mx, int my) {
+        double px = minecraft.player.getX(), pz = minecraft.player.getZ();
+        if (!globe && inside(mx, my)) {
+            double perPixel = blocks / side();
+            px = x + (mx - (left + mapWidth * .5)) * perPixel; pz = z + (my - (top + mapHeight * .5)) * perPixel;
+            if (data.wrapped()) { px = AtlasMapMath.canonical(px, data.minX(), data.span()); pz = AtlasMapMath.canonical(pz, data.minZ(), data.span()); }
+            return "X " + (long) Math.floor(px) + " · Z " + (long) Math.floor(pz);
+        }
+        return "X " + (long) Math.floor(px) + " · Y " + (long) Math.floor(minecraft.player.getY()) + " · Z " + (long) Math.floor(pz);
+    }
+    private boolean inside(double mx, double my) { return mx >= left && mx < left + mapWidth && my >= top && my < top + mapHeight; }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean twice) {
+        // The controls lie on the map: they get the click first.
+        if (super.mouseClicked(event, twice)) return true;
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && inside(event.x(), event.y())) {
+            if (settingsOpen) showSettings(false);
             dragging = true; setDragging(true); return true;
         }
-        return super.mouseClicked(event, twice);
+        return false;
     }
     @Override public boolean mouseReleased(MouseButtonEvent event) {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
@@ -120,8 +180,8 @@ final class PlayerAtlasScreen extends Screen {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) { follow = false;
             if (globe) turnGlobe(event.x() - dx, event.y() - dy, event.x(), event.y());
             else {
-                // The grabbed spot stays under the pointer: one screen pixel is blocks / size blocks.
-                x -= dx * blocks / size; z -= dy * blocks / size;
+                // The grabbed spot stays under the pointer: one screen pixel is blocks / side blocks.
+                x -= dx * blocks / side(); z -= dy * blocks / side();
                 if (data.wrapped()) { x = AtlasMapMath.canonical(x, data.minX(), data.span()); z = AtlasMapMath.canonical(z, data.minZ(), data.span()); }
             }
             return true;
@@ -133,7 +193,7 @@ final class PlayerAtlasScreen extends Screen {
      * globe has no poles: it turns freely and without end in every direction.
      */
     private void turnGlobe(double fromX, double fromY, double toX, double toY) {
-        double radius = Math.max(8, size * .5 - 4) * globeZoom, cx = left + size * .5, cy = top + size * .5;
+        double radius = Math.max(8, side() * .5 - 4) * globeZoom, cx = left + mapWidth * .5, cy = top + mapHeight * .5;
         double[] from = chart((fromX - cx) / radius, (cy - fromY) / radius), to = chart((toX - cx) / radius, (cy - toY) / radius);
         yaw = wrap(yaw + 2 * Math.PI * (to[0] - from[0]), 2 * Math.PI);
         pitch = wrap(pitch + Math.PI * (to[1] - from[1]), Math.PI);

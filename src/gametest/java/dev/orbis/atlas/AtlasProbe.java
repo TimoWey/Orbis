@@ -84,6 +84,11 @@ public final class AtlasProbe {
         AtlasPreferences.setGlobe(dimension, globe);
     }
 
+    /** Opens or closes the minimap settings beside the gear of the open map. */
+    public static void showSettings(Minecraft client, boolean open) {
+        if (client.gui.screen() instanceof PlayerAtlasScreen screen) screen.showSettings(open);
+    }
+
     /** Presses on the middle of the open map and drags it by (dx, dy) GUI pixels, as the mouse would. */
     public static void drag(Minecraft client, double dx, double dy, boolean press) {
         if (!(client.gui.screen() instanceof PlayerAtlasScreen screen)) return;
