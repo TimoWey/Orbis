@@ -40,10 +40,15 @@ final class AtlasMinimapCache implements AutoCloseable {
     private volatile Target wanted;
     private CompletableFuture<Result> pending;
     private Result ready;
-    private long generation, retryAt;
+    private long generation, retryAt, lastStart;
+    /** New terrain in an unchanged window is drawn at most this often; a moved window is drawn at once. */
+    private final long terrainInterval;
+    // Only the worker touches it: one raster, so its chunk index is not rebuilt from scratch for every frame.
+    private AtlasMapRaster raster;
 
-    AtlasMinimapCache() { this(WORKER); }
-    AtlasMinimapCache(Executor executor) { this.executor = executor; }
+    AtlasMinimapCache() { this(WORKER, TimeUnit.MILLISECONDS.toNanos(250)); }
+    AtlasMinimapCache(Executor executor) { this(executor, 0); }
+    AtlasMinimapCache(Executor executor, long terrainInterval) { this.executor = executor; this.terrainInterval = terrainInterval; }
 
     Frame update(AtlasSnapshot data, double x, double z, double span) {
         var session = Session.of(data);
@@ -70,7 +75,11 @@ final class AtlasMinimapCache implements AutoCloseable {
         long revision = session.archive == null ? 0 : acrossSeam ? session.archive.revision()
                 : session.archive.revision(window.x, window.z, window.size);
         var key = new Key(target, data.layers().terrain(), data.layers().loaded(), revision);
-        if (pending == null && (ready == null || !ready.key.equals(key)) && System.nanoTime() >= retryAt) {
+        boolean moved = ready == null || !ready.key.target.equals(target);
+        long now = System.nanoTime();
+        if (pending == null && (ready == null || !ready.key.equals(key)) && now >= retryAt
+                && (moved || now - lastStart >= terrainInterval)) {
+            lastStart = now;
             Result previous = ready;
             pending = CompletableFuture.supplyAsync(() -> {
                 try {
@@ -78,7 +87,9 @@ final class AtlasMinimapCache implements AutoCloseable {
                     int[] archived = session.archive == null ? null : AtlasTerrainBackdrop.render(session.archive, data,
                             window.view(), window.size, window.size, () -> !target.equals(wanted) || session.archive.closed());
                     if (!target.equals(wanted) || session.archive != null && archived == null) return null;
-                    int[] pixels = new AtlasMapRaster(window.size, window.size).render(data, window.view(), archived);
+                    if (raster == null || raster.width() != window.size) raster = new AtlasMapRaster(window.size, window.size);
+                    // The raster reuses its buffer; the frame keeps its own copy.
+                    int[] pixels = raster.render(data, window.view(), archived).clone();
                     // Changes elsewhere may replace the snapshot but must not cause an identical GPU upload.
                     Frame frame = previous != null && previous.key.target.equals(target)
                             && Arrays.equals(previous.frame.pixels, pixels) ? previous.frame : new Frame(window, pixels);

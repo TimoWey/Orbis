@@ -60,7 +60,7 @@ The smallest world (128 chunks per side) after exploring it completely, in an au
 
 Orbis currently targets **Fabric**. Install Fabric Loader, Fabric API and the Orbis JAR. The current alpha targets Minecraft 26.3 and Java 25.
 
-Orbis ships no integration code for other mods. **Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. The other mods below are priorities for compatibility testing and have **not yet been verified**.
+**Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. Distant Horizons' far terrain continues past the world's edges; this is the only integration code Orbis ships for another mod. The other mods below are priorities for compatibility testing and have **not yet been verified**.
 
 <table>
   <tr>
