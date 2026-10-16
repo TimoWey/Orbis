@@ -55,7 +55,7 @@ class AtlasUnexploredTerrainTest {
         assertEquals(6, AtlasUnknownTerrain.level(1e9));
     }
 
-    @Test void fictionalGeographyHasOnlyTwoNeutralGrayInksWithDarkerWater() {
+    @Test void fictionalGeographyHasOnlyTwoDarkMutedInksWithDarkerWater() {
         var colors = new HashSet<Integer>();
         for (int z = 0; z < 4096; z += 64) for (int x = 0; x < 4096; x += 64) {
             int color = AtlasUnknownTerrain.color(x, z, 0);
@@ -63,9 +63,12 @@ class AtlasUnexploredTerrainTest {
             assertEquals(color, AtlasUnknownTerrain.color(x + 63, z + 63, 0), "No fine texture within a map cell");
         }
         assertEquals(INKS, colors);
+        int stone = 0x70; // MapColor.STONE, the darkest common explored rock
         for (int ink : INKS) {
-            assertEquals(ink & 255, ink >> 8 & 255);
-            assertEquals(ink & 255, ink >> 16 & 255);
+            int r = ink >> 16 & 255, g = ink >> 8 & 255, b = ink & 255;
+            assertTrue(Math.max(r, Math.max(g, b)) - Math.min(r, Math.min(g, b)) <= 16, "Muted, nearly neutral");
+            assertTrue(Math.max(r, Math.max(g, b)) < stone, "Darker than explored stone");
+            assertNotEquals(AtlasTerrain.EMPTY_SLICE_COLOR, ink);
         }
         assertTrue((AtlasUnknownTerrain.WATER & 255) < (AtlasUnknownTerrain.LAND & 255));
     }
