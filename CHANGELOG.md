@@ -2,6 +2,15 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.18 — 2026-10-16
+
+- The map and the globe no longer flicker while you move them. Each block of the flat map is a fixed pixel in its picture, the picture moves in whole screen pixels, and the globe is drawn at screen resolution.
+- Zooming with the mouse wheel and the buttons glides instead of jumping.
+- New map setting in the gear panel: **Map: continued** (the world goes on past its edges, as before) or **Map: one square** (the world shown once, dark past its outlined edge).
+- The yellow seam lines are gone from the map and the minimap.
+- The map's buttons (close, zoom, centre, gear) are drawn as pixel icons in one style.
+- Map and globe pictures render on all processor cores.
+
 ## 0.1.0-alpha.17 — 2026-10-16
 
 - New atlas layout: the map fills the screen, and its few controls sit on it. Map or globe at the top left, close (×) at the top right, zoom in and out, centre and the minimap settings (gear) at the bottom right. The minimap settings open in a small panel beside the gear.

@@ -197,6 +197,8 @@
   "orbis.player.zoom_in": "Zoom in",
   "orbis.player.zoom_out": "Zoom out",
   "orbis.player.settings": "Minimap settings",
+  "orbis.player.map_repeat": "Map: continued",
+  "orbis.player.map_square": "Map: one square",
   "orbis.player.mini_zoom": "Mini zoom",
   "orbis.player.atlas": "Atlas",
   "orbis.player.hint": "Drag to move · Scroll to zoom · Settings saved",

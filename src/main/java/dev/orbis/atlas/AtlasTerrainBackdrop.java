@@ -57,8 +57,8 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
         // Motion/reopening samples warm original tiles immediately. Missing regions load on workers.
         if (scratch == null || scratch.length != width * height) scratch = new int[width * height];
         else java.util.Arrays.fill(scratch, 0);
-        try (var reader = archive.residentReader()) {
-            return render(reader, data, view, width, height, () -> false, scratch);
+        try {
+            return render(archive::residentReader, data, view, width, height, () -> false, scratch);
         } catch (IOException impossible) { throw new IllegalStateException(impossible); }
     }
     long version() { return version; }
@@ -85,40 +85,76 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
 
     static int[] render(AtlasTileArchive archive, AtlasSnapshot data, AtlasMapRaster.View view,
             int width, int height, BooleanSupplier cancelled) throws IOException {
-        try (var reader = archive.reader()) {
-            return render(reader, data, view, width, height, cancelled, new int[width * height]);
+        return render(archive::reader, data, view, width, height, cancelled, new int[width * height]);
+    }
+
+    /**
+     * World offsets of the globe's pixels from its centre, in world widths. Turning the globe only shifts them, so
+     * the two latest charts (the screen's and the HUD's globe) are kept.
+     */
+    private record Chart(int width, int height, int viewWidth, int viewHeight, double radius, float[] u, float[] v) {
+        private static final Chart[] recent = new Chart[2];
+        static synchronized Chart of(int width, int height, int viewWidth, int viewHeight, double radius) {
+            for (Chart chart : recent) if (chart != null && chart.width == width && chart.height == height
+                    && chart.viewWidth == viewWidth && chart.viewHeight == viewHeight && chart.radius == radius) return chart;
+            float[] u = new float[width * height], v = new float[width * height];
+            double ratioX = width / (double) viewWidth, ratioY = height / (double) viewHeight;
+            java.util.stream.IntStream.range(0, height).parallel().forEach(py -> { for (int px = 0; px < width; px++) {
+                int index = py * width + px;
+                double gx = ((px + .5) / ratioX - viewWidth * .5) / radius, gy = (viewHeight * .5 - (py + .5) / ratioY) / radius;
+                double square = gx * gx + gy * gy;
+                if (square > 1) { u[index] = Float.NaN; continue; }
+                double distance = Math.sqrt(square);
+                double scale = distance == 0 ? 0 : Math.asin(distance) / (2 * Math.PI * distance);
+                u[index] = (float) (gx * scale); v[index] = (float) (-gy * scale);
+            } });
+            var chart = new Chart(width, height, viewWidth, viewHeight, radius, u, v);
+            recent[1] = recent[0]; recent[0] = chart;
+            return chart;
         }
     }
 
-    private static int[] render(AtlasTileArchive.Reader reader, AtlasSnapshot data, AtlasMapRaster.View view,
+    /** Rows per parallel task; each task reads through its own reader. */
+    private static final int BAND = 16;
+
+    private static int[] render(java.util.function.Supplier<AtlasTileArchive.Reader> readers, AtlasSnapshot data, AtlasMapRaster.View view,
             int width, int height, BooleanSupplier cancelled, int[] pixels) throws IOException {
         double ratioX = width / (double) view.width(), ratioY = height / (double) view.height();
         double radius = Math.max(8, Math.min(view.width(), view.height()) * .5 - 4) * view.scale();
-        {
-            for (int py = 0; py < height; py++) {
-                if (cancelled.getAsBoolean()) return null;
-                for (int px = 0; px < width; px++) {
-                    double x, z;
-                    if (view.globe()) {
-                        double[] uv = AtlasMapMath.unproject(((px + .5) / ratioX - view.width() * .5) / radius,
-                                (view.height() * .5 - (py + .5) / ratioY) / radius, view.yaw(), view.pitch());
-                        if (uv == null) continue;
-                        x = data.minX() + uv[0] * data.span(); z = data.minZ() + uv[1] * data.span();
-                    } else {
-                        x = view.centerX() + ((px + .5) / ratioX - view.width() * .5) / view.scale();
-                        z = view.centerZ() + ((py + .5) / ratioY - view.height() * .5) / view.scale();
-                        // Past a seam the archive is read at the same place in the world.
-                        if (data.wrapped()) {
-                            x = AtlasMapMath.canonical(x, data.minX(), data.span());
-                            z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+        double originU = .5 - view.yaw() / (2 * Math.PI), originV = .5 - view.pitch() / Math.PI;
+        Chart chart = view.globe() ? Chart.of(width, height, view.width(), view.height(), radius) : null;
+        var stopped = new java.util.concurrent.atomic.AtomicBoolean();
+        try {
+            java.util.stream.IntStream.range(0, (height + BAND - 1) / BAND).parallel().forEach(band -> {
+                try (var reader = readers.get()) {
+                    for (int py = band * BAND, end = Math.min(height, py + BAND); py < end; py++) {
+                        if (stopped.get() || cancelled.getAsBoolean()) { stopped.set(true); return; }
+                        for (int px = 0; px < width; px++) {
+                            double x, z;
+                            if (view.globe()) {
+                                // AtlasMapMath.unproject, with the rotation-independent part from the chart.
+                                int index = py * width + px;
+                                if (Float.isNaN(chart.u[index])) continue;
+                                x = data.minX() + AtlasMapMath.unit(originU + chart.u[index]) * data.span();
+                                z = data.minZ() + AtlasMapMath.unit(originV + chart.v[index]) * data.span();
+                            } else {
+                                x = view.centerX() + ((px + .5) / ratioX - view.width() * .5) / view.scale();
+                                z = view.centerZ() + ((py + .5) / ratioY - view.height() * .5) / view.scale();
+                                // Past a seam the archive is read at the same place in the world.
+                                if (data.wrapped()) {
+                                    x = AtlasMapMath.canonical(x, data.minX(), data.span());
+                                    z = AtlasMapMath.canonical(z, data.minZ(), data.span());
+                                }
+                            }
+                            int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
+                            var tile = reader.get(bx >> 4, bz >> 4);
+                            if (tile != null) pixels[py * width + px] = tile.colorAt(bx, bz);
                         }
                     }
-                    int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
-                    var tile = reader.get(bx >> 4, bz >> 4);
-                    if (tile != null) pixels[py * width + px] = tile.colorAt(bx, bz);
-                }
-            }
-        }
+                } catch (IOException failure) { throw new java.io.UncheckedIOException(failure); }
+            });
+        } catch (java.io.UncheckedIOException failure) { throw failure.getCause(); }
+        if (stopped.get()) return null;
         return pixels;
     }
 }

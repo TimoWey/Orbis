@@ -197,6 +197,8 @@
   "orbis.player.zoom_in": "Hineinzoomen",
   "orbis.player.zoom_out": "Herauszoomen",
   "orbis.player.settings": "Minimap-Einstellungen",
+  "orbis.player.map_repeat": "Karte: fortgesetzt",
+  "orbis.player.map_square": "Karte: ein Quadrat",
   "orbis.player.mini_zoom": "Mini-Zoom",
   "orbis.player.atlas": "Atlas",
   "orbis.player.hint": "Ziehen: bewegen · Mausrad: Zoom · Einstellungen gespeichert",
