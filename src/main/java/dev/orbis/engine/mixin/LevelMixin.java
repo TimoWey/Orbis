@@ -37,6 +37,10 @@ public abstract class LevelMixin implements TorusHolder {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/LevelEntityGetter;get(Lnet/minecraft/world/phys/AABB;Ljava/util/function/Consumer;)V"))
     private void orbis$entitiesInPieces(LevelEntityGetter<Entity> entities, AABB box, Consumer<Entity> output,
                                         Operation<Void> original) {
+        if (Fold.whole(orbis$torus, box)) {
+            original.call(entities, box, output);
+            return;
+        }
         Fold.pieces(orbis$torus, box, piece -> original.call(entities, piece, output));
     }
 
@@ -47,6 +51,10 @@ public abstract class LevelMixin implements TorusHolder {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void orbis$typedEntitiesInPieces(LevelEntityGetter<Entity> entities, EntityTypeTest type, AABB box,
                                              AbortableIterationConsumer output, Operation<Void> original) {
+        if (Fold.whole(orbis$torus, box)) {
+            original.call(entities, type, box, output);
+            return;
+        }
         boolean[] aborted = {false};
         AbortableIterationConsumer tracked = entity -> {
             Continuation next = output.accept(entity);

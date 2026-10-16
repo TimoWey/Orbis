@@ -2,13 +2,14 @@ package dev.orbis.engine.mixin;
 
 import dev.orbis.engine.Fold;
 import dev.orbis.engine.Tori;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
-/** A player reaches the image of an entity nearest to them, so hits and clicks across the seam count on the server. */
+/** A player reaches the image of an entity or block nearest to them, so hits and clicks across the seam count on the server. */
 @Mixin(Player.class)
 public abstract class PlayerMixin {
     @ModifyVariable(method = {
@@ -18,5 +19,15 @@ public abstract class PlayerMixin {
     private AABB orbis$nearestBox(AABB box) {
         Player self = (Player) (Object) this;
         return Fold.nearest(Tori.of(self.level()), box, self.getX(), self.getZ());
+    }
+
+    /**
+     * Block range checks measure to the block's image nearest the player, so packets whose block the client names
+     * in its own lap (pick block, command and structure blocks) are not refused on the far side of the seam.
+     */
+    @ModifyVariable(method = "isWithinBlockInteractionRange(Lnet/minecraft/core/BlockPos;D)Z", at = @At("HEAD"), argsOnly = true)
+    private BlockPos orbis$nearestBlock(BlockPos pos) {
+        Player self = (Player) (Object) this;
+        return Fold.nearest(Tori.of(self.level()), pos, self.getX(), self.getZ());
     }
 }
