@@ -17,10 +17,9 @@ import org.spongepowered.asm.mixin.Mixin;
 /**
  * A selector's box ({@code dx}/{@code dy}/{@code dz}, or the one {@code distance} builds) reaching past the seam
  * matches the entities there: each is tested at its image nearest to the box. The search itself already looks past
- * the seam, and {@code distance} uses the torus distance. The old engine wraps the same method and drops the box
- * test for levels it does not run, so this wrapper sits outside it (priority 2000).
+ * the seam, and {@code distance} uses the torus distance.
  */
-@Mixin(value = EntitySelector.class, priority = 2000)
+@Mixin(EntitySelector.class)
 public abstract class EntitySelectorMixin {
     @WrapMethod(method = "getPredicate")
     private Predicate<Entity> orbis$boxOnTorus(Vec3 pos, @Nullable AABB box, @Nullable FeatureFlagSet features,

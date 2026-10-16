@@ -1,0 +1,16 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "dev.orbis.engine.c2me.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "dev.orbis.engine.c2me.C2meMixinPlugin",
+  "mixins": [
+    "LockTokenImplMixin",
+    "RandomUtilsMixin",
+    "StatusAdvancingSchedulerMixin",
+    "TheChunkSystemMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

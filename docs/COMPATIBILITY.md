@@ -1,6 +1,6 @@
 # Mod compatibility
 
-As of 2026-10-15. Orbis ships integration code for one mod, Distant Horizons (below); none for the others. The client game tests run with Sodium, Lithium and Distant Horizons via `gradlew runClientGameTest -PorbisCompat=true`.
+As of 2026-10-16. Orbis ships integration code for two mods, Distant Horizons and C2ME (below); none for the others. The client game tests run with Sodium, Lithium and Distant Horizons via `gradlew runClientGameTest -PorbisCompat=true`, and with C2ME via `-PorbisC2me=true`.
 
 | Mod | Priority | What to check | Orbis |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ As of 2026-10-15. Orbis ships integration code for one mod, Distant Horizons (be
 | Mod Menu | Compatibility priority | Check listing; Orbis has no Mod Menu settings screen | Untested |
 | ScalableLux | Candidate | Check lighting across seams | Untested |
 | Iris Shaders | Compatibility priority; particularly important | Check shaders across seams | Untested |
-| C2ME | Optional investigation | Check parallel generation near seams | Untested / risk |
+| C2ME | Requested 2026-10-16 | Check parallel generation near seams | 0.4.2-alpha.0.104: the seam, debug world, behaviour, parcours and map game tests pass with it (2026-10-16). Orbis folds C2ME's chunk scheduler keys, neighbour waits, generation locks and random positions across the seam, and its aquifer hooks run after C2ME's aquifer rewrite. Only loaded when C2ME is installed |
 
 “Required” for Distant Horizons, Sodium and Lithium describes the release acceptance target. They are optional installations in the current alpha; only Fabric Loader and Fabric API are runtime requirements. A matching build of each mod and its dependencies must exist for the selected Minecraft version before testing.
 Additional compatibility request: the exact identity of “EM²” is still to be confirmed.

@@ -24,6 +24,8 @@ final class AtlasMapTexture implements AutoCloseable {
     /** Extra width rendered on each side of a flat view, as a fraction of the view. */
     static final double MARGIN = .25;
     /** How often a settled picture still asks whether archived terrain has arrived since. */
+    /** Largest texture side: the globe renders every pixel through its chart, a flat picture is mostly copied. */
+    private static final int GLOBE_LIMIT = 1280, FLAT_LIMIT = 1536;
     private static final long RECHECK_NANOS = 250_000_000L;
     /** How often a picture still waiting for archived terrain looks for it. */
     private static final long UNSETTLED_NANOS = 50_000_000L;
@@ -33,6 +35,7 @@ final class AtlasMapTexture implements AutoCloseable {
     private final long intervalNanos;
     private DynamicTexture texture;
     private int width, height, uploads;
+    private boolean smooth;
     private double updateMillis;
     private long lastStart;
     private CompletableFuture<Frame> pending;
@@ -55,17 +58,20 @@ final class AtlasMapTexture implements AutoCloseable {
 
     void draw(GuiGraphicsExtractor g, AtlasSnapshot data, AtlasMapRaster.View view, int x, int y) {
         requested = view;
-        var target = target(data, view);
-        int limit = view.globe() ? 768 : 1536;
-        double factor = Math.min(Minecraft.getInstance().getWindow().getGuiScale(),
-                limit / (double) Math.max(target.width(), target.height()));
-        int w = Math.max(1, (int) (target.width() * factor)), h = Math.max(1, (int) (target.height() * factor));
-        if (texture == null || w != width || h != height) {
+        double gui = Minecraft.getInstance().getWindow().getGuiScale();
+        int limit = view.globe() ? GLOBE_LIMIT : FLAT_LIMIT;
+        // The texture's size follows the screen only, never the zoom, so zooming never replaces it.
+        int outerWidth = view.globe() ? view.width() : view.width() + 2 * margin(view.width());
+        int outerHeight = view.globe() ? view.height() : view.height() + 2 * margin(view.height());
+        double factor = Math.min(gui, limit / (double) Math.max(outerWidth, outerHeight));
+        int w = Math.max(1, (int) (outerWidth * factor)), h = Math.max(1, (int) (outerHeight * factor));
+        if (texture == null || w != width || h != height || smooth != view.globe()) {
             release();
-            width = w; height = h;
-            texture = new DynamicTexture(() -> "Orbis atlas", new NativeImage(w, h, false));
+            width = w; height = h; smooth = view.globe();
+            texture = new Texture(new NativeImage(w, h, false), view.globe());
             Minecraft.getInstance().getTextureManager().register(id, texture);
         }
+        var target = target(data, view, w, h);
         if (pending != null && pending.isDone()) {
             Frame frame = null;
             try { frame = pending.join(); }
@@ -96,25 +102,33 @@ final class AtlasMapTexture implements AutoCloseable {
         else g.blit(id, x, y, x + view.width(), y + view.height(), 0, 1, 0, 1);
     }
 
+    private static int margin(int size) { return (int) Math.ceil(size * MARGIN); }
+
     /**
-     * What to render for a requested view. A globe is rendered as asked. A flat view keeps the centre of the picture
-     * on screen while the view stays well inside its margin, so panning needs no new picture.
+     * What to render for a requested view. A globe is rendered as asked. A flat picture has one texel per block, or
+     * per square of whole blocks when zoomed out, on a grid fixed in the world: a picture rendered around a new
+     * centre then samples exactly the blocks the old one did, and panning never makes the terrain shimmer. The
+     * picture keeps its centre while the view stays well inside its margin, so panning needs no new picture.
      */
-    private AtlasMapRaster.View target(AtlasSnapshot data, AtlasMapRaster.View view) {
+    private AtlasMapRaster.View target(AtlasSnapshot data, AtlasMapRaster.View view, int w, int h) {
         if (view.globe()) return view;
-        int mx = (int) Math.ceil(view.width() * MARGIN), my = (int) Math.ceil(view.height() * MARGIN);
-        double cx = view.centerX(), cz = view.centerZ();
-        if (shown != null && !shown.view.globe() && shown.view.scale() == view.scale()
-                && shown.view.width() == view.width() + 2 * mx && shown.view.height() == view.height() + 2 * my
+        double needX = (view.width() + 2 * margin(view.width())) / view.scale(), needZ = (view.height() + 2 * margin(view.height())) / view.scale();
+        // A texel is one block when the texture covers the view at that size, else a square of whole blocks.
+        double blocksPerTexel = Math.max(1, Math.ceil(Math.max(needX / w, needZ / h) - 1e-9));
+        double density = 1 / blocksPerTexel;
+        double halfX = w * .5 * blocksPerTexel, halfZ = h * .5 * blocksPerTexel;
+        // How far the view may move off the picture's centre before the picture runs out.
+        double slackX = halfX - view.width() * .5 / view.scale(), slackZ = halfZ - view.height() * .5 / view.scale();
+        if (shown != null && !shown.view.globe() && shown.view.scale() == density
+                && shown.view.width() == w && shown.view.height() == h
                 && shown.view.chunks() == view.chunks() && shown.view.places() == view.places()) {
             double sx = nearest(data, view.centerX(), shown.view.centerX()), sz = nearest(data, view.centerZ(), shown.view.centerZ());
-            if (Math.abs(sx - shown.view.centerX()) * view.scale() <= mx / 2.0
-                    && Math.abs(sz - shown.view.centerZ()) * view.scale() <= my / 2.0) {
-                cx = shown.view.centerX(); cz = shown.view.centerZ();
-            }
+            if (Math.abs(sx - shown.view.centerX()) <= slackX / 2 && Math.abs(sz - shown.view.centerZ()) <= slackZ / 2)
+                return shown.view;
         }
-        return new AtlasMapRaster.View(view.width() + 2 * mx, view.height() + 2 * my, cx, cz, view.scale(),
-                false, 0, 0, view.chunks(), view.places());
+        double left = Math.floor((view.centerX() - halfX) / blocksPerTexel) * blocksPerTexel;
+        double top = Math.floor((view.centerZ() - halfZ) / blocksPerTexel) * blocksPerTexel;
+        return new AtlasMapRaster.View(w, h, left + halfX, top + halfZ, density, false, 0, 0, view.chunks(), view.places());
     }
 
     private static double nearest(AtlasSnapshot data, double value, double center) {
@@ -128,6 +142,9 @@ final class AtlasMapTexture implements AutoCloseable {
         double viewWidth = view.width() / view.scale(), viewHeight = view.height() / view.scale();
         double left = nearest(data, view.centerX(), picture.centerX()) - viewWidth / 2;
         double top = nearest(data, view.centerZ(), picture.centerZ()) - viewHeight / 2;
+        // Whole screen pixels only: the picture then moves as one piece and no block changes width while panning.
+        double perPixel = view.scale() * Minecraft.getInstance().getWindow().getGuiScale();
+        left = Math.round(left * perPixel) / perPixel; top = Math.round(top * perPixel) / perPixel;
         double u0 = (left - pictureLeft) / pictureWidth, u1 = (left + viewWidth - pictureLeft) / pictureWidth;
         double v0 = (top - pictureTop) / pictureHeight, v1 = (top + viewHeight - pictureTop) / pictureHeight;
         if (u0 >= 0 && u1 <= 1 && v0 >= 0 && v1 <= 1) {
@@ -165,6 +182,15 @@ final class AtlasMapTexture implements AutoCloseable {
             AtlasUpload.copy(raster.render(data, view, archived), back);
             return new Frame(key, view, w, h, generation, backdrop.version(), settled, back, (System.nanoTime() - start) / 1e6);
         }, WORKER);
+    }
+
+    /** The globe is drawn about one texel per screen pixel, so it is smoothed; flat blocks stay sharp. */
+    private static final class Texture extends DynamicTexture {
+        Texture(NativeImage pixels, boolean smooth) {
+            super(() -> "Orbis atlas", pixels);
+            sampler = com.mojang.blaze3d.systems.RenderSystem.getSamplerCache()
+                    .getClampToEdge(smooth ? com.mojang.renderpearl.api.textures.FilterMode.LINEAR : com.mojang.renderpearl.api.textures.FilterMode.NEAREST);
+        }
     }
 
     int uploads() { return uploads; }

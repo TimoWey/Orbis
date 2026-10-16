@@ -3,6 +3,7 @@ package dev.orbis.engine;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.orbis.WorldSize;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
@@ -19,10 +20,13 @@ import net.minecraft.world.level.levelgen.structure.StructureStart;
  * noise, folded lookups and wrapping are attached to the level by the engine mixins.
  */
 public final class TorusChunkGenerator extends NoiseBasedChunkGenerator {
+    /** A Nether as narrow as the smallest test world up to an Earth-sized Overworld; a bad save reports instead of crashing. */
+    private static final Codec<Integer> WIDTH_CHUNKS = Codec.intRange(WorldSize.DEBUG_MIN_CHUNKS / 8, WorldSize.EARTH_CHUNKS);
+
     public static final MapCodec<TorusChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             BiomeSource.CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
             NoiseGeneratorSettings.CODEC.fieldOf("settings").forGetter(NoiseBasedChunkGenerator::generatorSettings),
-            Codec.INT.fieldOf("width_chunks").forGetter(g -> g.torus.widthChunks()))
+            WIDTH_CHUNKS.fieldOf("width_chunks").forGetter(g -> g.torus.widthChunks()))
             .apply(i, i.stable(TorusChunkGenerator::new)));
 
     private final Torus torus;

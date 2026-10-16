@@ -37,7 +37,9 @@ public final class Fold {
         return ChunkPos.pack(torus.foldChunk(x), torus.foldChunk(z));
     }
 
-    public static int chunkCoord(@Nullable Torus torus, int chunk) { return torus == null ? chunk : torus.foldChunk(chunk); }
+    public static int chunkCoord(@Nullable Torus torus, int chunk) {
+        return torus == null || torus.containsChunk(chunk) ? chunk : torus.foldChunk(chunk);
+    }
 
     public static SectionPos section(@Nullable Torus torus, SectionPos pos) {
         if (torus == null || torus.containsChunk(pos.x()) && torus.containsChunk(pos.z())) return pos;
@@ -96,7 +98,7 @@ public final class Fold {
      * A box at least as wide as the torus is clipped to it instead. Without a torus the box itself is the one part.
      */
     public static void pieces(@Nullable Torus torus, AABB box, Consumer<AABB> action) {
-        if (torus == null) {
+        if (whole(torus, box)) {
             action.accept(box);
             return;
         }
@@ -108,6 +110,13 @@ public final class Fold {
                 action.accept(new AABB(minX, box.minY, minZ, maxX, box.maxY, maxZ));
             }
         }
+    }
+
+    /** True when {@code box} needs no splitting: there is no torus, or the box lies inside the folded world. */
+    public static boolean whole(@Nullable Torus torus, AABB box) {
+        if (torus == null) return true;
+        double min = torus.minBlock(), max = min + torus.widthBlocks();
+        return box.minX >= min && box.maxX < max && box.minZ >= min && box.maxZ < max;
     }
 
     /** The whole-width shifts that bring [min, max] onto the torus on one axis; NaN means clip to the torus. */

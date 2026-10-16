@@ -1,14 +1,13 @@
 name: Build Orbis
 # Actions minutes are limited for this private repository, so the client game tests (about 50 minutes)
-# run only on request: by the "gametest" label on a pull request, or by starting the workflow by hand
-# with "gametest" ticked. Every other run builds and runs the unit tests (a few minutes). Branch pushes
+# run only on request: once when the "gametest" label is added to a pull request (remove and add it again
+# for another run; later pushes do not repeat it), or by starting the workflow by hand with "gametest" ticked. Every other run builds and runs the unit tests (a few minutes). Branch pushes
 # run through their pull request only, so one commit never builds twice.
 on:
   push:
     branches: [main]
     paths:
       - 'src/**'
-      - 'vendor/**'
       - 'tools/**'
       - 'spec/**'
       - 'analysis/**'
@@ -20,7 +19,6 @@ on:
     types: [opened, synchronize, reopened, labeled]
     paths:
       - 'src/**'
-      - 'vendor/**'
       - 'tools/**'
       - 'spec/**'
       - 'analysis/**'
@@ -35,7 +33,8 @@ on:
         type: boolean
         default: false
 concurrency:
-  group: orbis-${{ github.ref }}
+  # Adding any other label starts a run that is skipped at once; it gets its own group so it cannot cancel a build.
+  group: orbis-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'gametest' && github.run_id || 'build' }}
   cancel-in-progress: true
 permissions:
   contents: read
@@ -63,11 +62,8 @@ jobs:
           cache: gradle
       - name: Build, regression tests and exact artifact verification
         run: bash gradlew build -PorbisDebug=${{ matrix.debug }} --no-daemon --stacktrace
-      - name: Print requested Minecraft API facts
-        if: always() && matrix.variant == 'normal'
-        run: python3 tools/api_probe.py
       - name: Play the seam in Minecraft (client game test under Xvfb)
-        if: matrix.variant == 'normal' && (inputs.gametest || contains(github.event.pull_request.labels.*.name, 'gametest'))
+        if: matrix.variant == 'normal' && (inputs.gametest || (github.event.action == 'labeled' && github.event.label.name == 'gametest'))
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 mesa-utils > /dev/null
@@ -106,7 +102,7 @@ jobs:
           for log in $(find build/run -path '*logs/latest.log'); do echo "=== tail $log"; tail -n 150 "$log"; done
           exit $status
       - name: Upload game test screenshots and log
-        if: always() && matrix.variant == 'normal' && (inputs.gametest || contains(github.event.pull_request.labels.*.name, 'gametest'))
+        if: always() && matrix.variant == 'normal' && (inputs.gametest || (github.event.action == 'labeled' && github.event.label.name == 'gametest'))
         uses: actions/upload-artifact@v4
         with:
           name: orbis-seam-game-test
@@ -114,14 +110,16 @@ jobs:
             build/run/**/screenshots/*.png
             build/run/**/logs/latest.log
           if-no-files-found: ignore
+          retention-days: 7
       - name: Upload mod JAR and sources
         uses: actions/upload-artifact@v4
         with:
           name: orbis-fabric-26.3-${{ matrix.variant }}
           path: ${{ matrix.output }}/libs/*.jar
           if-no-files-found: error
+          retention-days: 14
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.variant }}
@@ -129,3 +127,4 @@ jobs:
             ${{ matrix.output }}/reports/tests/
             ${{ matrix.output }}/test-results/
           if-no-files-found: ignore
+          retention-days: 7

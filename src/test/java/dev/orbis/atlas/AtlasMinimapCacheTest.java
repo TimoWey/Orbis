@@ -122,4 +122,19 @@ class AtlasMinimapCacheTest {
         queue.remove(near);
         assertNull(queue.poll());
     }
+
+    @Test void lazilyRemovedKeysAreSkippedReaddedOnceAndCompacted() {
+        var queue = new AtlasTerrainQueue();
+        long near = ChunkPos.pack(1, 0), mid = ChunkPos.pack(5, 0), far = ChunkPos.pack(9, 0);
+        queue.add(far); queue.add(mid); queue.add(near);
+        queue.remove(near); queue.remove(mid); queue.add(mid);
+        assertFalse(queue.contains(near));
+        assertEquals(mid, queue.poll());
+        assertEquals(far, queue.poll());
+        assertNull(queue.poll());
+        assertTrue(queue.isEmpty());
+        for (int i = 0; i < 10_000; i++) { queue.add(near); queue.remove(near); }
+        assertTrue(queue.queued() <= 66, "stale entries are bounded: " + queue.queued());
+        assertNull(queue.poll());
+    }
 }

@@ -2,7 +2,40 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
-## Unreleased
+## 0.1.0-alpha.20 — 2026-10-16
+
+- Works with **C2ME** (Concurrent Chunk Management Engine) 0.4.2: terrain, the Nether and structures stay seamless at the world's edges while C2ME generates chunks in parallel, and small worlds no longer hang. Without C2ME nothing changes.
+- The atlas shows the world's own coordinates after a trip around the world. Before, it kept counting past the seam (for example X 16879 instead of X 495).
+
+## 0.1.0-alpha.19 — 2026-10-16
+
+- The flat map zooms out a little past the whole world, so with **Map: one square** its edge shows on every side. The square map stays on the world: it fills the view where it can and sits in the middle when it fits whole.
+
+## 0.1.0-alpha.18 — 2026-10-16
+
+- The map and the globe no longer flicker while you move them. Each block of the flat map is a fixed pixel in its picture, the picture moves in whole screen pixels, and the globe is drawn at screen resolution.
+- Zooming with the mouse wheel and the buttons glides instead of jumping.
+- New map setting in the gear panel: **Map: continued** (the world goes on past its edges, as before) or **Map: one square** (the world shown once, dark past its outlined edge).
+- The yellow seam lines are gone from the map and the minimap.
+- The map's buttons (close, zoom, centre, gear) are drawn as pixel icons in one style.
+- Map and globe pictures render on all processor cores.
+
+## 0.1.0-alpha.17 — 2026-10-16
+
+- New atlas layout: the map fills the screen, and its few controls sit on it. Map or globe at the top left, close (×) at the top right, zoom in and out, centre and the minimap settings (gear) at the bottom right. The minimap settings open in a small panel beside the gear.
+- The atlas shows the block coordinates under the mouse on the flat map, otherwise the player's position.
+
+## 0.1.0-alpha.16 — 2026-10-16
+
+- The map shows relief: slopes and water depth are shaded like vanilla maps (softer). Areas mapped before keep their flat look until they are seen again.
+- Unexplored areas on the map are dark slate instead of light grey, so they no longer look like stone.
+- The explored singleplayer map survives mod and data pack updates. Before, updating any mod started an empty map; old copies are cleaned up.
+- The open map only redraws when the part you look at changes; zoom is saved when the map closes.
+- Zoom keys work on German and other keyboard layouts, including numpad minus.
+- Pick block (middle click) and other block actions work after walking once around the world.
+- A memory leak in the End and in normal worlds is fixed.
+- A broken world size in a save reports an error instead of crashing.
+- German texts use ß consistently.
 
 - Distant Horizons: far terrain continues past the world's edges, like the world itself. Before, past a seam the far view was empty and the world floated in the distance as a block.
 - Map and globe follow the mouse exactly when dragged; the picture is drawn in the background, so the game no longer stutters while the map is open or the minimap is on.
