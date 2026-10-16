@@ -32,6 +32,7 @@
     "LayerLightSectionStorageMixin",
     "LeapAtTargetGoalMixin",
     "LevelChunkMixin",
+    "LevelStorageSourceMixin",
     "LevelMixin",
     "LevelTicksMixin",
     "LightEngineMixin",
