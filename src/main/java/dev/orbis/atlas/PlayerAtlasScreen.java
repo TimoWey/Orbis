@@ -16,6 +16,8 @@ import net.minecraft.network.chat.Component;
 final class PlayerAtlasScreen extends Screen {
     // SDL scancode of numpad minus; InputConstants names numpad plus (KEY_ADD) but not this one.
     private static final int KEY_SUBTRACT = 86;
+    /** How far past one world width the flat map zooms out. */
+    private static final double WORLD_ROOM = 1.05;
     private static final int MARGIN = 6, PAD = 6, ICON = 20, GAP = 2, PANEL = 116;
     // Pixel pictures for the icon buttons, so they share one style whatever the font has.
     private static final String[] CLOSE = {
@@ -112,7 +114,8 @@ final class PlayerAtlasScreen extends Screen {
         // Before the first snapshot the stored zoom has not been read yet; it would replace this one.
         if (dimension == null) return;
         if (globe) globeZoomGoal = Math.clamp(globeZoomGoal * factor, .5, 12);
-        else blocksGoal = Math.clamp(blocksGoal / factor, 32, data != null && data.wrapped() ? data.span() : 30000000);
+        // Fully zoomed out, a little room stays around the world, so its edge shows on every side.
+        else blocksGoal = Math.clamp(blocksGoal / factor, 32, data != null && data.wrapped() ? data.span() * WORLD_ROOM : 30000000);
         zoomed = true;
     }
     private void saveZoom() {

@@ -2,6 +2,10 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.19 — 2026-10-16
+
+- The flat map zooms out a little past the whole world, so with **Map: one square** its edge shows on every side.
+
 ## 0.1.0-alpha.18 — 2026-10-16
 
 - The map and the globe no longer flicker while you move them. Each block of the flat map is a fixed pixel in its picture, the picture moves in whole screen pixels, and the globe is drawn at screen resolution.
