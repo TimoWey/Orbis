@@ -14,7 +14,7 @@ Every player needs Orbis. A game without it is turned away while connecting, wit
 
 ## Map controls
 
-**M** opens and closes the atlas (rebindable under Controls). Top row: **Map**, **Globe**, **Center**, **Close**. Drag to move the map or rotate the globe; the mouse wheel zooms (the +/− keys work too). Dragging stops following the player; **Center** (or Home) follows the player again. Bottom row: minimap on/off, corner, size and minimap zoom. **F1** hides the HUD. The unwrapped End always uses the flat map. In the Nether the map shows a fixed slice at Y=32. On an Orbis world the flat map and minimap stay centred on you beside a seam and go on with the other side of the world; yellow lines mark the seams.
+**M** opens and closes the atlas (rebindable under Controls). The map fills the screen: **Map** and **Globe** at the top left, close (×) at the top right, zoom in and out, centre and the gear at the bottom right. Drag to move the map or rotate the globe; the mouse wheel zooms (the +/− keys work too). Dragging stops following the player; centre (or Home) follows the player again. The gear opens a small panel: minimap on/off, corner, size, minimap zoom, and **Map: continued / one square**. **F1** hides the HUD. The unwrapped End always uses the flat map. In the Nether the map shows a fixed slice at Y=32. On an Orbis world the flat map and minimap stay centred on you beside a seam and go on with the other side of the world.
 
 Settings are saved atomically in `config/orbis-atlas.properties` and survive restarts. Flat zoom, globe zoom and view mode are stored per dimension; minimap corner, size, visibility and zoom are global. When reopened, the map follows the player again. The settings also apply on other servers, without transferring terrain.
 
