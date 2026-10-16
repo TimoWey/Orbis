@@ -18,6 +18,9 @@ final class AtlasPreferences {
     private static final Properties VALUES = STORE.values;
     static boolean globe(String dimension) { return STORE.globe(dimension); }
     static void setGlobe(String dimension, boolean globe) { STORE.setGlobe(dimension, globe); }
+    /** Whether the full map continues past the world's edges, or shows the world once as a square. */
+    static boolean repeat() { return Boolean.parseBoolean(VALUES.getProperty("map.repeat", "true")); }
+    static void toggleRepeat() { VALUES.setProperty("map.repeat", Boolean.toString(!repeat())); save(); }
     static boolean visible() { return Boolean.parseBoolean(VALUES.getProperty("visible", "true")); }
     static void toggleVisible() { VALUES.setProperty("visible", Boolean.toString(!visible())); save(); }
     static double minimapZoom() { return STORE.number("minimap.zoom", 1, .25, 8); }

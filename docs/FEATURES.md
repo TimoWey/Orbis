@@ -1,6 +1,6 @@
 # Features
 
-Status for 0.1.0-alpha.17. See [Implementation status](IMPLEMENTATION.md) for test evidence and limitations.
+Status for 0.1.0-alpha.18. See [Implementation status](IMPLEMENTATION.md) for test evidence and limitations.
 
 | Feature | Behaviour | Status |
 | --- | --- | --- |

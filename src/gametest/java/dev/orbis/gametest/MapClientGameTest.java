@@ -64,6 +64,11 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.waitTicks(5);
             context.takeScreenshot("map-settings");
             context.runOnClient(mc -> AtlasProbe.showSettings(mc, false));
+            // The world once, as a square: dark past its edges, which are outlined.
+            context.runOnClient(mc -> AtlasProbe.setRepeat(false));
+            context.waitTicks(10);
+            context.takeScreenshot("map-square");
+            context.runOnClient(mc -> AtlasProbe.setRepeat(true));
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the map");
 

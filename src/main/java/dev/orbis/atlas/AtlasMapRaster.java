@@ -28,6 +28,8 @@ final class AtlasMapRaster {
     // Per pixel lighting of the globe: brightness, highlight and haze inside the disk, halo alpha outside it.
     private float[] globeShade, globeShine, globeHaze;
     private static final int ATMOSPHERE = 0x9fd2ff;
+    /** Rows per parallel globe task. */
+    private static final int GLOBE_BAND = 16;
     // Light from the upper left, a little toward the viewer.
     private static final double LIGHT_X = -.5, LIGHT_Y = .6, LIGHT_Z = .62;
     private double projectionRadius = Double.NaN;
@@ -103,7 +105,8 @@ final class AtlasMapRaster {
         if (archived != null) for (int i = 0; i < pixels.length; i++) if (archived[i] != 0) pixels[i] = archived[i];
         // Work stays bounded by screen coverage without replacing terrain with coarse averages.
         // Views are at most one world wide, so on a wrapped world each cell shows in one of its neighbouring copies.
-        int copies = data.wrapped() ? 1 : 0;
+        // A zoomed-out picture reaches up to one and a half worlds past its centre.
+        int copies = data.wrapped() ? 2 : 0;
         for (var cell : data.chunks()) for (int kx = -copies; kx <= copies; kx++) for (int kz = -copies; kz <= copies; kz++) {
             double cx = cell.x() * 16.0 + kx * (double) data.span(), cz = cell.z() * 16.0 + kz * (double) data.span();
             if (cx + 16 <= leftWorld || cx >= rightWorld || cz + 16 <= topWorld || cz >= bottomWorld) continue;
@@ -129,38 +132,38 @@ final class AtlasMapRaster {
                 if (16 * view.scale >= 6) outline(x(x), y(z), x(x + 16), y(z + 16), LOADED);
             }
         }
-        // The seams, where the world meets itself.
-        for (int kx = -copies; kx <= copies; kx++) for (int kz = -copies; kz <= copies; kz++) if (data.wrapped())
-            outline(x(data.minX() + kx * (double) data.span()), y(data.minZ() + kz * (double) data.span()),
-                    x(data.minX() + (kx + 1) * (double) data.span()), y(data.minZ() + (kz + 1) * (double) data.span()), 0xffeac66c);
     }
     private void globe() {
         double radius = Math.max(8, Math.min(view.width, view.height) * .5 - 4) * view.scale;
         cacheProjection(radius);
         double originU = .5 - view.yaw / (2 * Math.PI), originV = .5 - view.pitch / Math.PI;
         int fogLevel = AtlasUnknownTerrain.level(fogScale * data.span() / (2 * Math.PI * radius * Math.min(ratioX, ratioY)));
-        long lastKey = Long.MIN_VALUE;
-        AtlasSnapshot.Cell lastCell = null;
-        boolean lastLive = false;
-        for (int py = 0; py < height; py++) {
-            for (int px = 0; px < width; px++) {
-                int index = py * width + px;
-                if (Double.isNaN(globeU[index])) continue;
-                double u = AtlasMapMath.unit(originU + globeU[index]);
-                double v = AtlasMapMath.unit(originV + globeV[index]);
-                int color = AtlasUnknownTerrain.color((data.minX() + u * data.span()) * fogScale,
-                        (data.minZ() + v * data.span()) * fogScale, fogLevel);
-                if (archived != null && archived[index] != 0) color = archived[index];
-                int bx = (int) Math.floor(data.minX() + u * data.span());
-                int bz = (int) Math.floor(data.minZ() + v * data.span());
-                // Neighbouring pixels mostly fall in the same chunk.
-                long key = ChunkPos.pack(bx >> 4, bz >> 4);
-                if (key != lastKey) { lastKey = key; lastCell = terrain.get(key); lastLive = loaded.contains(key); }
-                if (lastCell != null && (archived == null || archived[index] == 0 || lastLive)) color = lastCell.colorAt(bx, bz);
-                if (view.chunks && lastLive) color = blend(color, LOADED);
-                pixels[index] = lit ? light(color, globeShade[index], globeShine[index], globeHaze[index]) : color;
+        // Rows are independent, so a picture as large as the screen still renders in a few milliseconds.
+        java.util.stream.IntStream.range(0, (height + GLOBE_BAND - 1) / GLOBE_BAND).parallel().forEach(band -> {
+            long lastKey = Long.MIN_VALUE;
+            AtlasSnapshot.Cell lastCell = null;
+            boolean lastLive = false;
+            for (int py = band * GLOBE_BAND, end = Math.min(height, py + GLOBE_BAND); py < end; py++) {
+                for (int px = 0; px < width; px++) {
+                    int index = py * width + px;
+                    if (Double.isNaN(globeU[index])) continue;
+                    double u = AtlasMapMath.unit(originU + globeU[index]);
+                    double v = AtlasMapMath.unit(originV + globeV[index]);
+                    int bx = (int) Math.floor(data.minX() + u * data.span());
+                    int bz = (int) Math.floor(data.minZ() + v * data.span());
+                    // Neighbouring pixels mostly fall in the same chunk.
+                    long key = ChunkPos.pack(bx >> 4, bz >> 4);
+                    if (key != lastKey) { lastKey = key; lastCell = terrain.get(key); lastLive = loaded.contains(key); }
+                    int color;
+                    if (lastCell != null && (archived == null || archived[index] == 0 || lastLive)) color = lastCell.colorAt(bx, bz);
+                    else if (archived != null && archived[index] != 0) color = archived[index];
+                    else color = AtlasUnknownTerrain.color((data.minX() + u * data.span()) * fogScale,
+                            (data.minZ() + v * data.span()) * fogScale, fogLevel);
+                    if (view.chunks && lastLive) color = blend(color, LOADED);
+                    pixels[index] = lit ? light(color, globeShade[index], globeShine[index], globeHaze[index]) : color;
+                }
             }
-        }
+        });
         // A thin glowing atmosphere around the disk.
         if (lit) for (int index = 0; index < pixels.length; index++)
             if (Double.isNaN(globeU[index]) && globeHaze[index] > 0)
@@ -190,7 +193,8 @@ final class AtlasMapRaster {
         double hx = lx / half, hy = ly / half, hz = (lz + 1) / half;
         // The halo is a few screen pixels wide whatever the zoom.
         double halo = Math.max(3, radius * .07 * Math.min(ratioX, ratioY)) / (radius * Math.min(ratioX, ratioY));
-        for (int py = 0; py < height; py++) {
+        // Zooming the globe redraws this chart every frame, so its rows are shared out like the picture's.
+        java.util.stream.IntStream.range(0, height).parallel().forEach(py -> {
             double yy = (view.height * .5 - (py + .5) / ratioY) / radius;
             for (int px = 0; px < width; px++) {
                 int index = py * width + px;
@@ -213,7 +217,7 @@ final class AtlasMapRaster {
                 globeU[index] = xx * scale;
                 globeV[index] = -yy * scale;
             }
-        }
+        });
         projectionRadius = radius; projectionWidth = view.width; projectionHeight = view.height;
     }
     private void globePoint(double x, double z, int color, boolean place) {

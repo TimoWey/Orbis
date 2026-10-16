@@ -140,6 +140,11 @@ final class AtlasTileArchive {
         synchronized (regions) { return new Reader(new HashMap<>(regions)); }
     }
     private AtlasSnapshot.Cell[] region(int rx, int rz) throws IOException {
+        // Loaded regions need no file lock, so parallel readers do not queue behind each other.
+        if (!closed) synchronized (regions) {
+            var cached = regions.get(ChunkPos.pack(rx, rz));
+            if (cached != null) return cached;
+        }
         synchronized (FILE_IO) {
             if (closed) return EMPTY;
             if (existingRegions == null) {

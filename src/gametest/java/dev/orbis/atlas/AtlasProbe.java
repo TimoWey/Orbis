@@ -84,6 +84,9 @@ public final class AtlasProbe {
         AtlasPreferences.setGlobe(dimension, globe);
     }
 
+    /** Whether the full map continues past the world's edges or shows the world once, as a square. */
+    public static void setRepeat(boolean repeat) { if (AtlasPreferences.repeat() != repeat) AtlasPreferences.toggleRepeat(); }
+
     /** Opens or closes the minimap settings beside the gear of the open map. */
     public static void showSettings(Minecraft client, boolean open) {
         if (client.gui.screen() instanceof PlayerAtlasScreen screen) screen.showSettings(open);
