@@ -61,7 +61,7 @@ public final class AtlasProbe {
         return missing;
     }
 
-    /** How many blocks across the flat map shows in a dimension. */
+    /** How many blocks across the flat map shows in a dimension. Client thread only. */
     public static double zoom(String dimension) {
         return Minecraft.getInstance().gui.screen() instanceof PlayerAtlasScreen map ? map.flatZoom(dimension)
                 : AtlasPreferences.zoom(dimension, false);
