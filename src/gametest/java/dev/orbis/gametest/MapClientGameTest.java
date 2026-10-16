@@ -68,6 +68,14 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.runOnClient(mc -> AtlasProbe.setRepeat(false));
             context.waitTicks(10);
             context.takeScreenshot("map-square");
+            // Fully zoomed out, the whole square shows with a little room around its edge.
+            double square = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
+            for (int i = 0; i < 16; i++) context.getInput().pressKey(InputConstants.KEY_MINUS);
+            context.waitTicks(20);
+            double widest = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
+            SeamWorld.check(widest > 2048, "Zoomed out, the map shows only " + widest + " blocks of a 2048-block world");
+            context.takeScreenshot("map-square-whole");
+            while (context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) > square * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
             context.runOnClient(mc -> AtlasProbe.setRepeat(true));
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the map");
