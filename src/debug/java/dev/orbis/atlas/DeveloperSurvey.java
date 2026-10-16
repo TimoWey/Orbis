@@ -353,7 +353,7 @@ final class DeveloperSurvey {
             if (ready || !loading.isDone()) return;
             cache = loading.join(); loading = null; ready = true; cacheStatus = cache.status();
             if (cache.file() != null) {
-                archive = new AtlasTileArchive(cache.file().resolveSibling(cache.file().getFileName() + ".tiles").resolve(cache.fingerprint()));
+                archive = new AtlasTileArchive(AtlasTileArchive.localDirectory(cache.file(), minX, minZ, span));
                 importer.archive(archive);
             }
             var d = cache.data();

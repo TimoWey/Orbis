@@ -27,7 +27,6 @@
     "EntitySectionCallbackMixin",
     "EntitySectionStorageMixin",
     "EntitySelectorMixin",
-    "GenerationChunkHolderMixin",
     "GhastMixin",
     "GhastShootFireballGoalMixin",
     "LayerLightSectionStorageMixin",

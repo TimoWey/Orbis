@@ -60,6 +60,23 @@ public final class MapClientGameTest implements FabricClientGameTest {
             context.waitTicks(20);
             context.takeScreenshot("map-explored");
             checkZoom(context);
+            context.runOnClient(mc -> AtlasProbe.showSettings(mc, true));
+            context.waitTicks(5);
+            context.takeScreenshot("map-settings");
+            context.runOnClient(mc -> AtlasProbe.showSettings(mc, false));
+            // The world once, as a square: dark past its edges, which are outlined.
+            context.runOnClient(mc -> AtlasProbe.setRepeat(false));
+            context.waitTicks(10);
+            context.takeScreenshot("map-square");
+            // Fully zoomed out, the whole square shows with a little room around its edge.
+            double square = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
+            for (int i = 0; i < 16; i++) context.getInput().pressKey(InputConstants.KEY_MINUS);
+            context.waitTicks(20);
+            double widest = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
+            SeamWorld.check(widest > 2048, "Zoomed out, the map shows only " + widest + " blocks of a 2048-block world");
+            context.takeScreenshot("map-square-whole");
+            while (context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) > square * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
+            context.runOnClient(mc -> AtlasProbe.setRepeat(true));
             context.getInput().pressKey(AtlasProbe.mapKey());
             waitForMap(context, false, "M did not close the map");
 
@@ -184,11 +201,11 @@ public final class MapClientGameTest implements FabricClientGameTest {
 
     /** Zoom keys and the mouse wheel change how many blocks the open map shows, and the scale is kept. */
     private static void checkZoom(ClientGameTestContext context) {
-        double before = AtlasProbe.zoom(OVERWORLD);
+        double before = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         context.getInput().pressKey(InputConstants.KEY_EQUALS);
         context.getInput().pressKey(InputConstants.KEY_EQUALS);
         context.waitTicks(5);
-        double in = AtlasProbe.zoom(OVERWORLD);
+        double in = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         SeamWorld.check(in < before, "Zooming in with = left the map at " + in + " blocks (was " + before + ")");
         context.takeScreenshot("map-zoomed-in");
         int[] centre = context.computeOnClient(mc -> new int[]{mc.getWindow().getScreenWidth() / 2, mc.getWindow().getScreenHeight() / 2});
@@ -196,13 +213,13 @@ public final class MapClientGameTest implements FabricClientGameTest {
         context.getInput().scroll(-4);
         context.getInput().scroll(-4);
         context.waitTicks(5);
-        double out = AtlasProbe.zoom(OVERWORLD);
+        double out = context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD));
         SeamWorld.check(out > in, "Scrolling down did not zoom out: " + out + " blocks (was " + in + ")");
         context.getInput().pressKey(InputConstants.KEY_MINUS);
         context.waitTicks(5);
-        SeamWorld.check(AtlasProbe.zoom(OVERWORLD) >= out, "- zoomed in instead of out");
+        SeamWorld.check(context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) >= out, "- zoomed in instead of out");
         context.takeScreenshot("map-zoomed-out");
-        while (AtlasProbe.zoom(OVERWORLD) > before * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
+        while (context.computeOnClient(mc -> AtlasProbe.zoom(OVERWORLD)) > before * 1.01) context.getInput().pressKey(InputConstants.KEY_EQUALS);
     }
 
     /** The map key sits under Controls and works under the key the player chose there. */

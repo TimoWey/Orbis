@@ -24,7 +24,7 @@ public final class Tori {
                 TorusChunkGenerator.CODEC);
     }
 
-    /** The torus of an Orbis-engine level; {@code null} everywhere else, including old-engine worlds. */
+    /** The torus of an Orbis-engine level; {@code null} everywhere else. */
     public static @Nullable Torus of(@Nullable Level level) {
         return level instanceof TorusHolder holder ? holder.orbis$torus() : null;
     }

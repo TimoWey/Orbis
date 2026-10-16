@@ -4,8 +4,10 @@ package dev.orbis.atlas;
 final class AtlasUnknownTerrain {
     private static final int SIZE = 64;
     private static final double BLOCKS_PER_TEXEL = 64;
-    static final int WATER = 0xff5c5c5c;
-    static final int LAND = 0xffababab;
+    // Dark slate inks stay below every stone-like MapColor so unexplored shapes never read as terrain,
+    // yet remain distinguishable from the Nether's empty slice and the screen backdrop.
+    static final int WATER = 0xff353a40;
+    static final int LAND = 0xff4a5058;
     private static final int[] PALETTE = {WATER, LAND};
     private static final int[][] LEVELS = build();
 
@@ -28,7 +30,7 @@ final class AtlasUnknownTerrain {
             double u = x / (double) SIZE, v = z / (double) SIZE;
             double coast = .72 * noise(u * 4, v * 4, 4) + .22 * noise(u * 8, v * 8, 8)
                     + .06 * noise(u * 16, v * 16, 16);
-            // Two flat gray inks distinguish fictional water and land only.
+            // Two flat slate inks distinguish fictional water and land only.
             // Deliberately no hill shading, fine grain, height contours or real biome data.
             levels[0][z * SIZE + x] = coast < .48 ? WATER : LAND;
         }

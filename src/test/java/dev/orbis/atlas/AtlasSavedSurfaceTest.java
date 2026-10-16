@@ -69,4 +69,19 @@ class AtlasSavedSurfaceTest {
         assertEquals(0xff000000 | Blocks.LAVA.defaultBlockState().getMapColor(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).col, tile.colorAt(5,7));
         assertEquals(AtlasTerrain.EMPTY_SLICE_COLOR,tile.colorAt(0,0));
     }
+    @Test void savedTilesCarryReliefAndWaterDepthShading() {
+        var factory = blocksFactory(); var blocks = factory.createForBlockStates();
+        for (int z=0; z<16; z++) for (int x=0; x<16; x++) {
+            int top = x < 8 ? (z < 8 ? 4 : 6) : 2; // West: a terrace two blocks up at z=8. East: a basin.
+            for (int y=0; y<=top; y++) blocks.set(x, y, z, Blocks.STONE.defaultBlockState());
+            if (x >= 8) for (int y=top+1; y<=top+(z < 8 ? 1 : 12); y++) blocks.set(x, Math.min(y, 15), z, Blocks.WATER.defaultBlockState());
+        }
+        var tile = new AtlasSavedSurface(LevelHeightAccessor.create(0,256),factory,tag(factory,0,blocks)).sample(new ChunkPos(0,0),false);
+        int stone = 0xff000000 | Blocks.STONE.defaultBlockState().getMapColor(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).col;
+        int water = 0xff000000 | Blocks.WATER.defaultBlockState().getMapColor(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).col;
+        assertEquals(stone, tile.colorAt(2,3));
+        assertEquals(AtlasShading.shade(stone, AtlasShading.HIGH), tile.colorAt(2,8));
+        assertEquals(AtlasShading.shade(water, AtlasShading.HIGH), tile.colorAt(10,3));
+        assertEquals(AtlasShading.shade(water, AtlasShading.LOW), tile.colorAt(10,12));
+    }
 }

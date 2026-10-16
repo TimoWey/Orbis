@@ -96,6 +96,11 @@ if (providers.gradleProperty('orbisChunky').map { it.toBoolean() }.getOrElse(fal
     dependencies { localRuntime 'maven.modrinth:chunky:4Eotm6ov' }
 }
 
+// -PorbisC2me=true adds C2ME 0.4.2-alpha.0.104 (Concurrent Chunk Management Engine) for the seam tests.
+if (providers.gradleProperty('orbisC2me').map { it.toBoolean() }.getOrElse(false)) {
+    dependencies { localRuntime 'maven.modrinth:c2me-fabric:s5lf4njU' }
+}
+
 // -PorbisCompat=true runs the game (and its game tests) with the mods Orbis must work beside.
 if (providers.gradleProperty('orbisCompat').map { it.toBoolean() }.getOrElse(false)) {
     dependencies {

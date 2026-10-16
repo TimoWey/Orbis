@@ -61,8 +61,11 @@ public final class AtlasProbe {
         return missing;
     }
 
-    /** How many blocks across the flat map shows in a dimension. */
-    public static double zoom(String dimension) { return AtlasPreferences.zoom(dimension, false); }
+    /** How many blocks across the flat map shows in a dimension. Client thread only. */
+    public static double zoom(String dimension) {
+        return Minecraft.getInstance().gui.screen() instanceof PlayerAtlasScreen map ? map.flatZoom(dimension)
+                : AtlasPreferences.zoom(dimension, false);
+    }
 
     /** Sets what the map shows when next opened in a dimension: the globe or the flat map, {@code blocks} across. */
     public static void prepare(String dimension, boolean globe, double blocks) {
@@ -79,6 +82,14 @@ public final class AtlasProbe {
     public static void setMinimap(boolean visible, boolean globe, String dimension) {
         if (AtlasPreferences.visible() != visible) AtlasPreferences.toggleVisible();
         AtlasPreferences.setGlobe(dimension, globe);
+    }
+
+    /** Whether the full map continues past the world's edges or shows the world once, as a square. */
+    public static void setRepeat(boolean repeat) { if (AtlasPreferences.repeat() != repeat) AtlasPreferences.toggleRepeat(); }
+
+    /** Opens or closes the minimap settings beside the gear of the open map. */
+    public static void showSettings(Minecraft client, boolean open) {
+        if (client.gui.screen() instanceof PlayerAtlasScreen screen) screen.showSettings(open);
     }
 
     /** Presses on the middle of the open map and drags it by (dx, dy) GUI pixels, as the mouse would. */
