@@ -26,7 +26,9 @@ class TorusGenerationTest {
     private static final List<Dimension> DIMENSIONS = List.of(
             new Dimension("overworld", NoiseGeneratorSettings.OVERWORLD, MultiNoiseBiomeSourceParameterLists.OVERWORLD, 1_024),
             new Dimension("nether", NoiseGeneratorSettings.NETHER, MultiNoiseBiomeSourceParameterLists.NETHER, 128),
-            new Dimension("normal overworld", NoiseGeneratorSettings.OVERWORLD, MultiNoiseBiomeSourceParameterLists.OVERWORLD, 76_544));
+            new Dimension("normal overworld", NoiseGeneratorSettings.OVERWORLD, MultiNoiseBiomeSourceParameterLists.OVERWORLD, 76_544),
+            // The widest world: its laps reach past the game's 30 million block limit, where they are skipped.
+            new Dimension("earth overworld", NoiseGeneratorSettings.OVERWORLD, MultiNoiseBiomeSourceParameterLists.OVERWORLD, 1_448_160));
 
     private static TorusChunkGenerator generator(Dimension d) {
         var biomes = MultiNoiseBiomeSource.createFromPreset(
@@ -50,7 +52,9 @@ class TorusGenerationTest {
                 int x = point[0], z = point[1];
                 var column = generator.getBaseColumn(x, z, height, random);
                 for (int[] lap : new int[][]{{1, 0}, {0, 1}, {1, 1}, {-1, -1}, {2, -3}}) {
-                    int otherX = x + lap[0] * width, otherZ = z + lap[1] * width;
+                    long farX = x + (long) lap[0] * width, farZ = z + (long) lap[1] * width;
+                    if (Math.abs(farX) > 30_000_000 || Math.abs(farZ) > 30_000_000) continue;
+                    int otherX = (int) farX, otherZ = (int) farZ;
                     var repeated = generator.getBaseColumn(otherX, otherZ, height, random);
                     for (int y = height.getMinY(); y <= height.getMaxY(); y++)
                         assertEquals(column.getBlock(y), repeated.getBlock(y), d.name() + " column at y=" + y);

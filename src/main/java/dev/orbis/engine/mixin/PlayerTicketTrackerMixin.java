@@ -38,7 +38,8 @@ public abstract class PlayerTicketTrackerMixin {
 
     @Inject(method = "onLevelChange(JII)V", at = @At("HEAD"))
     private void orbis$noteLevel(long node, int oldLevel, int level, CallbackInfo callback) {
-        orbis$levels.put(node, level);
+        // Only tori settle tickets below; elsewhere (the End, normal worlds) nothing would ever remove the entry.
+        if (orbis$onTorus()) orbis$levels.put(node, level);
     }
 
     @ModifyVariable(method = "onLevelChange(JIZZ)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
