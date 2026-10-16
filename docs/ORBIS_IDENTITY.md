@@ -10,7 +10,7 @@ Alpha audit, 2026-10-06; updated 2026-10-15 after the old engine was removed. Or
 | Interface wording | Authored English and German resources. Other locales fall back to English. |
 | Art | Advancement icons use vanilla items. The new map interface does not bundle Xaero artwork or source. |
 | Maps | Orbis owns its atlas, minimap, globe projection, waypoints and debug inspection. Xaero's Minimap is a usability reference. |
-| World generation | Orbis's own engine (`dev.orbis.engine`, generator `orbis:torus`) handles periodic generation, connected edges and codecs. Worlds of the old engine no longer load. |
+| World generation | Orbis's own engine (`dev.orbis.engine`, generator `orbis:torus`) handles periodic generation, connected edges and codecs. Worlds of the old engine open with their saved settings rewritten to it. |
 
 ## Cartography branch
 
