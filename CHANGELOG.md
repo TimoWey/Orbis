@@ -2,6 +2,11 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
+## 0.1.0-alpha.21 — 2026-10-16
+
+- Worlds from Orbis alphas before the engine switch (such as alpha.11) open again. Their saved terrain, seed and size stay as they are; newly generated chunks come from the new engine and may not line up with old terrain next to them.
+- With C2ME, a closed world no longer stays in memory. Before, every world opened in one game session was kept until the game quit.
+
 ## 0.1.0-alpha.20 — 2026-10-16
 
 - Works with **C2ME** (Concurrent Chunk Management Engine) 0.4.2: terrain, the Nether and structures stay seamless at the world's edges while C2ME generates chunks in parallel, and small worlds no longer hang. Without C2ME nothing changes.

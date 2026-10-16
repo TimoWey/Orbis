@@ -4,7 +4,7 @@ import dev.orbis.Orbis;
 import net.minecraft.nbt.CompoundTag;
 
 /**
- * Opens worlds made by Orbis alphas from before the engine switch (such as 0.1.0-alpha.11), which and saved their
+ * Opens worlds made by Orbis alphas from before the engine switch (such as 0.1.0-alpha.11), which saved their
  * dimensions as {@code toroidal_world:toroidal} generators with a {@code wrapping} range per axis. Without this,
  * vanilla cannot read the world gen settings and quietly falls back to a default world with a random seed.
  *

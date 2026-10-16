@@ -1,6 +1,6 @@
-# Implementation status — 0.1.0-alpha.20
+# Implementation status — 0.1.0-alpha.21
 
-Orbis is a **standalone Fabric mod** with its own world engine (`dev.orbis.engine`, generator `orbis:torus`). **Install Fabric Loader, Fabric API and Orbis.** Worlds created with the old engine of earlier alpha builds no longer load.
+Orbis is a **standalone Fabric mod** with its own world engine (`dev.orbis.engine`, generator `orbis:torus`). **Install Fabric Loader, Fabric API and Orbis.** Worlds created with the old engine of earlier alpha builds open: their world gen settings are rewritten to `orbis:torus` when read (`LegacyWorldGen`); new chunks there come from the new engine and may not line up with old terrain.
 
 Server setup and map controls are in the [server and player guide](SERVER.md); per-version changes are in the [changelog](../CHANGELOG.md).
 
@@ -44,9 +44,9 @@ Orbis is an early development alpha. Start with new test worlds; it does not con
 
 Java 25 is required to run Gradle and Minecraft. Run `bash gradlew build` (Windows: `gradlew.bat build`). The build runs regression tests, compares compiled presets against `spec/world-presets.json`, and verifies its exact binary and sources JARs. Verification uses Gradle's standard libraries and does not require a local Python installation. GitHub Actions builds both normal and debug variants and publishes separate JARs and test reports. Use the ordinary JAR, not the `-sources.jar`.
 
-For the optional developer atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.20-debug.jar` instead of the normal JAR. The normal build excludes the debug classes and entrypoint entirely. CI artifact names end in `-normal` or `-debug`; inspect their recorded revision before installing.
+For the optional developer atlas, run `gradlew.bat build -PorbisDebug=true` and use `build/debug/libs/orbis-0.1.0-alpha.21-debug.jar` instead of the normal JAR. The normal build excludes the debug classes and entrypoint entirely. CI artifact names end in `-normal` or `-debug`; inspect their recorded revision before installing.
 
-The normal build target is `build/libs/orbis-0.1.0-alpha.20.jar`. Place the verified output in the test instance's `mods` folder. `verifyDistribution` verifies exact Gradle archive paths, so older JARs left in the directory cannot be mistaken for the current artifact. `META-INF/orbis-build.json` records the version, variant, source SHA-256 and optional `-PorbisCommit=<commit>` (`GITHUB_SHA` in CI). The source fingerprint also changes for uncommitted input changes; a commit alone is not a claim that the working tree was clean. GitHub sign-in is required for this private repository.
+The normal build target is `build/libs/orbis-0.1.0-alpha.21.jar`. Place the verified output in the test instance's `mods` folder. `verifyDistribution` verifies exact Gradle archive paths, so older JARs left in the directory cannot be mistaken for the current artifact. `META-INF/orbis-build.json` records the version, variant, source SHA-256 and optional `-PorbisCommit=<commit>` (`GITHUB_SHA` in CI). The source fingerprint also changes for uncommitted input changes; a commit alone is not a claim that the working tree was clean. GitHub sign-in is required for this private repository.
 
 Install Fabric Loader 0.19.5 for Minecraft 26.3, Fabric API 0.161.0+26.3 and Orbis. Create a new world, set **World shape** to **Orbis**, then **Customize**. Remove older Orbis JARs first.
 
