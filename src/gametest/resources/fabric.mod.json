@@ -14,7 +14,8 @@
       "dev.orbis.gametest.MapClientGameTest",
       "dev.orbis.gametest.ChunkyClientGameTest",
       "dev.orbis.gametest.ModRequiredClientGameTest",
-      "dev.orbis.gametest.ServerMapClientGameTest"
+      "dev.orbis.gametest.ServerMapClientGameTest",
+      "dev.orbis.gametest.DistantHorizonsClientGameTest"
     ]
   },
   "depends": {

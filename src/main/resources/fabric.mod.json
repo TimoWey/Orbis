@@ -24,7 +24,8 @@
   },
   "mixins": [
     "orbis.mixins.json",
-    "orbis.engine.mixins.json"
+    "orbis.engine.mixins.json",
+    "orbis.dh.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.5",

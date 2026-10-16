@@ -5,7 +5,10 @@ import java.io.IOException;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 
-/** Builds a screen-sized layer from archived full-resolution tiles without render-thread I/O. */
+/**
+ * Builds a screen-sized layer from archived full-resolution tiles without render-thread I/O. Not thread-safe: one
+ * atlas texture calls it from its own raster thread.
+ */
 final class AtlasTerrainBackdrop implements AutoCloseable {
     private static final ExecutorService WORKERS = Executors.newFixedThreadPool(2, r -> {
         var t = new Thread(r, "Orbis terrain projection"); t.setDaemon(true); return t;
@@ -16,6 +19,7 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
     private CompletableFuture<Result> pending;
     private Result ready;
     private long version, nextStart;
+    private int[] scratch;
     private boolean failed;
 
     int[] update(AtlasSnapshot data, AtlasMapRaster.View view, int width, int height) {
@@ -47,23 +51,26 @@ final class AtlasTerrainBackdrop implements AutoCloseable {
         }
         if (ready != null && ready.key.equals(key)) return ready.pixels;
         // Motion/reopening samples warm original tiles immediately. Missing regions load on workers.
+        if (scratch == null || scratch.length != width * height) scratch = new int[width * height];
+        else java.util.Arrays.fill(scratch, 0);
         try (var reader = archive.residentReader()) {
-            return render(reader, data, view, width, height, () -> false);
+            return render(reader, data, view, width, height, () -> false, scratch);
         } catch (IOException impossible) { throw new IllegalStateException(impossible); }
     }
     long version() { return version; }
+    /** Whether the last {@link #update} returned the finished layer for its view, with nothing more on its way. */
+    boolean settled() { return pending == null && ready != null && ready.key.equals(wanted); }
     public void close() { wanted = null; ready = null; version++; }
 
     static int[] render(AtlasTileArchive archive, AtlasSnapshot data, AtlasMapRaster.View view,
             int width, int height, BooleanSupplier cancelled) throws IOException {
         try (var reader = archive.reader()) {
-            return render(reader, data, view, width, height, cancelled);
+            return render(reader, data, view, width, height, cancelled, new int[width * height]);
         }
     }
 
     private static int[] render(AtlasTileArchive.Reader reader, AtlasSnapshot data, AtlasMapRaster.View view,
-            int width, int height, BooleanSupplier cancelled) throws IOException {
-        int[] pixels = new int[width * height];
+            int width, int height, BooleanSupplier cancelled, int[] pixels) throws IOException {
         double ratioX = width / (double) view.width(), ratioY = height / (double) view.height();
         double radius = Math.max(8, Math.min(view.width(), view.height()) * .5 - 4) * view.scale();
         {

@@ -10,7 +10,8 @@ import net.minecraft.network.chat.Component;
 
 /** Quiet player interface: a centred map and one row of settings on each side. */
 final class PlayerAtlasScreen extends Screen {
-    private final AtlasMapTexture texture = new AtlasMapTexture();
+    // Kept between openings, so the map is there at once when the screen opens again.
+    private static final AtlasMapTexture texture = new AtlasMapTexture();
     private AtlasSnapshot data;
     private Button globeButton;
     private String dimension;
@@ -103,8 +104,9 @@ final class PlayerAtlasScreen extends Screen {
     }
     @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (dragging && event.button() == InputConstants.MOUSE_BUTTON_LEFT && data != null) { follow = false;
-            if (globe) { yaw += dx * .015; pitch = Math.clamp(pitch + dy * .0075, -Math.PI / 2, Math.PI / 2); }
+            if (globe) turnGlobe(event.x() - dx, event.y() - dy, event.x(), event.y());
             else {
+                // The grabbed spot stays under the pointer: one screen pixel is blocks / size blocks.
                 x -= dx * blocks / size; z -= dy * blocks / size;
                 if (data.wrapped()) { x = AtlasMapMath.canonical(x, data.minX(), data.span()); z = AtlasMapMath.canonical(z, data.minZ(), data.span()); }
             }
@@ -112,6 +114,27 @@ final class PlayerAtlasScreen extends Screen {
         }
         return super.mouseDragged(event, dx, dy);
     }
+    /**
+     * Turns the globe so the spot grabbed at {@code (fromX, fromY)} follows the pointer to {@code (toX, toY)}. The
+     * globe has no poles: it turns freely and without end in every direction.
+     */
+    private void turnGlobe(double fromX, double fromY, double toX, double toY) {
+        double radius = Math.max(8, size * .5 - 4) * globeZoom, cx = left + size * .5, cy = top + size * .5;
+        double[] from = chart((fromX - cx) / radius, (cy - fromY) / radius), to = chart((toX - cx) / radius, (cy - toY) / radius);
+        yaw = wrap(yaw + 2 * Math.PI * (to[0] - from[0]), 2 * Math.PI);
+        pitch = wrap(pitch + Math.PI * (to[1] - from[1]), Math.PI);
+    }
+    /**
+     * World offset (in world widths) of a point on the globe from its centre, as the raster's inverse chart has it.
+     * Near and past the rim, where that chart runs away, the centre's own scale continues instead.
+     */
+    static double[] chart(double x, double y) {
+        double distance = Math.hypot(x, y), rim = .9;
+        double scale = distance <= rim ? (distance == 0 ? 1 / (2 * Math.PI) : Math.asin(distance) / (2 * Math.PI * distance))
+                : (Math.asin(rim) / (2 * Math.PI) + (distance - rim) / (2 * Math.PI * Math.sqrt(1 - rim * rim))) / distance;
+        return new double[] {x * scale, -y * scale};
+    }
+    private static double wrap(double angle, double period) { return angle - Math.floor(angle / period) * period; }
     @Override public boolean mouseScrolled(double x, double y, double dx, double dy) {
         if (inside(x,y) && dy != 0) { zoom(Math.pow(1.25, Math.clamp(dy,-4,4))); return true; }
         return super.mouseScrolled(x,y,dx,dy);
@@ -125,5 +148,6 @@ final class PlayerAtlasScreen extends Screen {
     }
     @Override public boolean isPauseScreen() { return false; }
     @Override public void extractBackground(GuiGraphicsExtractor g, int x, int y, float delta) {}
-    @Override public void removed() { texture.close(); }
+    /** The world changed or was left: the kept picture belongs to it. */
+    static void forget() { texture.close(); }
 }

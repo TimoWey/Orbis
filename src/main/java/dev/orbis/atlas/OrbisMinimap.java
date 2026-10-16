@@ -5,7 +5,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /** Compact north-up terrain map, or a globe oriented toward the live player. */
 final class OrbisMinimap implements AutoCloseable {
-    private final AtlasMapTexture texture = new AtlasMapTexture();
+    // The corner globe turns slowly with the player; a few updates a second keep it smooth without busy work.
+    private final AtlasMapTexture texture = new AtlasMapTexture(20);
     private final AtlasMinimapTexture flatTexture = new AtlasMinimapTexture();
 
     void draw(GuiGraphicsExtractor g, AtlasSnapshot data) {

@@ -26,7 +26,8 @@ public final class PlayerAtlasClient implements ClientModInitializer {
     private final Map<String, AtlasRemoteTerrain> archives = new HashMap<>();
     private String remoteWorld;
     // Wraps the server announced per dimension; chunks arrive in the client's own continuous frame.
-    private final Map<String, AtlasShape> shapes = new HashMap<>();
+    private final Map<String, AtlasShape> shapes = new java.util.concurrent.ConcurrentHashMap<>();
+    private static Map<String, AtlasShape> announced = Map.of();
     private ClientLevel level;
 
     @Override public void onInitializeClient() {
@@ -44,6 +45,7 @@ public final class PlayerAtlasClient implements ClientModInitializer {
             if (world != null && context.client().player != null && world.dimension().identifier().toString().equals(dimension))
                 reload(world, context.client().player.chunkPosition(), context.client().options.getEffectiveRenderDistance());
         });
+        announced = shapes;
         mapKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.orbis.atlas",
                 InputConstants.Type.KEYBOARD, InputConstants.KEY_M,
                 KeyMapping.Category.register(Identifier.fromNamespaceAndPath("orbis", "atlas"))));
@@ -60,7 +62,7 @@ public final class PlayerAtlasClient implements ClientModInitializer {
         // the collector maps belong to the client thread, just like chunk callbacks.
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             dimensions.clear(); shapes.clear(); closeArchives(); remoteWorld = null;
-            snapshot = null; minimap.close(); level = null; PlayerLocalTerrain.clearView();
+            snapshot = null; minimap.close(); PlayerAtlasScreen.forget(); level = null; PlayerLocalTerrain.clearView();
         }));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             tick(client);
@@ -69,6 +71,11 @@ public final class PlayerAtlasClient implements ClientModInitializer {
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
                 Identifier.fromNamespaceAndPath("orbis", "minimap"), (g, delta) -> minimap.draw(g, snapshot));
+    }
+    /** The torus a server announced for a dimension, for anything on the client that needs it; null if none. */
+    public static dev.orbis.engine.@org.jspecify.annotations.Nullable Torus announcedTorus(String dimension) {
+        var shape = announced.get(dimension);
+        return shape == null || !shape.wrapped() ? null : new dev.orbis.engine.Torus(shape.minX(), shape.span());
     }
     private AtlasShape shape(ClientLevel world) {
         return shapes.getOrDefault(world.dimension().identifier().toString(), AtlasShape.OPEN);
@@ -86,7 +93,7 @@ public final class PlayerAtlasClient implements ClientModInitializer {
     }
     private void tick(Minecraft client) {
         if (client.level != level) {
-            minimap.close(); snapshot = null; level = client.level;
+            minimap.close(); PlayerAtlasScreen.forget(); snapshot = null; level = client.level;
             if (level == null) { dimensions.clear(); closeArchives(); remoteWorld = null; PlayerLocalTerrain.clearView(); }
         }
         if (level == null || client.player == null) return;

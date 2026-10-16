@@ -25,9 +25,7 @@ final class AtlasMinimapTexture implements AutoCloseable {
             uploaded = null;
         }
         if (uploaded != frame) {
-            var image = texture.getPixels();
-            for (int py = 0; py < resolution; py++) for (int px = 0; px < resolution; px++)
-                image.setPixel(px, py, frame.pixels()[py * resolution + px]);
+            AtlasUpload.copy(frame.pixels(), texture.getPixels());
             texture.upload();
             uploaded = frame;
         }
