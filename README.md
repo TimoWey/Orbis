@@ -62,31 +62,22 @@ The smallest world (128 chunks per side) after exploring it completely, in an au
 
 Orbis currently targets **Fabric**. Install Fabric Loader, Fabric API and the Orbis JAR. The current alpha targets Minecraft 26.3 and Java 25.
 
-**Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. Distant Horizons' far terrain continues past the world's edges. **C2ME** (Concurrent Chunk Management Engine) generates chunks in parallel across the seams; all seam tests pass with it too. These two are the only mods Orbis ships integration code for. Don't combine Distant Horizons with Chunky: creating a world then hangs, and Distant Horizons warns about this itself. The other mods below are priorities for compatibility testing and have **not yet been verified**.
+These mods were run together with Orbis in real game sessions: the seam and map game tests pass with all of them installed at once, except where a row says otherwise. Versions are the ones tested, not the only ones that may work.
 
-<table>
-  <tr>
-    <td width="33%"><a href="https://modrinth.com/mod/fabric-api"><img src="https://cdn.modrinth.com/data/P7dR8mSH/icon.png" width="28" height="28" alt="" align="absmiddle"> Fabric API</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/distanthorizons"><img src="https://cdn.modrinth.com/data/uCdwusMi/e716cda9bb568b5373ff76e363fb4c6d7278fba6_96.webp" width="28" height="28" alt="" align="absmiddle"> Distant Horizons</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/iris"><img src="https://cdn.modrinth.com/data/YL57xq9U/18d0e7f076d3d6ed5bedd472b853909aac5da202_96.webp" width="28" height="28" alt="" align="absmiddle"> Iris Shaders</a></td>
-  </tr>
-  <tr>
-    <td width="33%"><a href="https://modrinth.com/mod/sodium"><img src="https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp" width="28" height="28" alt="" align="absmiddle"> Sodium</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/lithium"><img src="https://cdn.modrinth.com/data/gvQqBUqZ/bcc8686c13af0143adf4285d741256af824f70b7_96.webp" width="28" height="28" alt="" align="absmiddle"> Lithium</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/ferrite-core"><img src="https://cdn.modrinth.com/data/uXXizFIs/222a126f26f8f9ae1eb339f3b767677f18bff31f_96.webp" width="28" height="28" alt="" align="absmiddle"> FerriteCore</a></td>
-  </tr>
-  <tr>
-    <td width="33%"><a href="https://modrinth.com/mod/entityculling"><img src="https://cdn.modrinth.com/data/NNAgCjsB/7873452d6cede4daed12da3d7d8c193ab88b4fd6_96.webp" width="28" height="28" alt="" align="absmiddle"> Entity Culling</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/modmenu"><img src="https://cdn.modrinth.com/data/mOgUt4GM/5a20ed1450a0e1e79a1fe04e61bb4e5878bf1d20.png" width="28" height="28" alt="" align="absmiddle"> Mod Menu</a></td>
-    <td width="33%"><a href="https://modrinth.com/mod/litematica"><img src="https://cdn.modrinth.com/data/bEpr0Arc/25b5529d7a3b030ac136a6ce879d8ed2a1aa4a8d.png" width="28" height="28" alt="" align="absmiddle"> Litematica</a></td>
-  </tr>
-  <tr>
-    <td width="33%"><a href="https://modrinth.com/mod/minihud"><img src="https://cdn.modrinth.com/data/UMxybHE8/4adf057a251f694983af139a06839e33bcd7a419.png" width="28" height="28" alt="" align="absmiddle"> MiniHUD</a></td>
-    <td colspan="2"><a href="https://modrinth.com/mod/tweakeroo"><img src="https://cdn.modrinth.com/data/t5wuYk45/35af76cfb1d3074c5e8575d5f7385bb6c083c9d6.png" width="28" height="28" alt="" align="absmiddle"> Tweakeroo</a></td>
-  </tr>
-</table>
+| Mod | Tested version | Result |
+| --- | --- | --- |
+| [Fabric API](https://modrinth.com/mod/fabric-api) | 0.163.0+26.3 | Works (0.161.0+26.3 is the minimum Orbis is built against) |
+| [Sodium](https://modrinth.com/mod/sodium) | 0.9.2, 0.9.3-beta.1 | Works |
+| [Lithium](https://modrinth.com/mod/lithium) | 0.26.2 | Works. Orbis turns off Lithium's own point-of-interest search, which cannot see beds and workstations past the seam |
+| [Distant Horizons](https://modrinth.com/mod/distanthorizons) | 3.3.4 | Works. Its far terrain continues past the world's edges |
+| [C2ME](https://modrinth.com/mod/c2me-fabric) | 0.4.2-alpha.0.104 | Works. Chunks are generated in parallel across the seams |
+| [Iris Shaders](https://modrinth.com/mod/iris) | 1.11.7 | Loads and the seam tests pass; shader packs themselves were not tried |
+| [FerriteCore](https://modrinth.com/mod/ferrite-core) | 9.0.0 | Works |
+| [MiniHUD](https://modrinth.com/mod/minihud) and [Tweakeroo](https://modrinth.com/mod/tweakeroo) | 0.41.2, 0.30.1 (with malilib 0.30.2) | Load and the seam tests pass; their overlays and tools were not checked at the seam |
+| [Entity Culling](https://modrinth.com/mod/entityculling) | 1.11.3 | **Known problem:** with it installed, our seam test no longer sees a flying arrow cross the seam. The cause is not known yet |
+| [Chunky](https://modrinth.com/mod/chunky) | 1.5.3 | Pre-generating a whole world works. Do not combine it with Distant Horizons: creating a world then hangs |
 
-Fabric API is a required dependency. The other mods are separate installations. Exact versions and test results belong in the [compatibility notes](docs/COMPATIBILITY.md).
+Other mods, such as Litematica and Mod Menu, are not tested yet. Exact versions and test results are in the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## World sizes
 

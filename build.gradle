@@ -109,3 +109,8 @@ if (providers.gradleProperty('orbisCompat').map { it.toBoolean() }.getOrElse(fal
         localRuntime 'maven.modrinth:distanthorizons:3.3.4-26.3'
     }
 }
+
+// -PorbisExtra=group:name:version,... adds more runtime mods (compatibility checks).
+if (providers.gradleProperty('orbisExtra').isPresent()) {
+    dependencies { providers.gradleProperty('orbisExtra').get().split(',').each { localRuntime it.trim() } }
+}
