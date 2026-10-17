@@ -1,0 +1,73 @@
+name: Bug report
+description: Something in Orbis does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check the open issues first so we don't get duplicates.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a world with size ...
+        2. Walk east across the edge at ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: orbis-version
+    attributes:
+      label: Orbis version
+      placeholder: 0.1.0-alpha.21
+    validations:
+      required: true
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft version
+      placeholder: "26.3"
+    validations:
+      required: true
+  - type: input
+    id: fabric-versions
+    attributes:
+      label: Fabric Loader and Fabric API version
+      placeholder: Loader 0.19.5, Fabric API 0.161.0+26.3
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where does it happen?
+      options:
+        - Singleplayer
+        - Multiplayer (dedicated server)
+        - Multiplayer (LAN)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: world-size
+    attributes:
+      label: World size
+      description: The size you picked when creating the world.
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: List your other mods with versions (e.g. Sodium, Lithium, C2ME, Distant Horizons), or "none".
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, crash report, screenshots
+      description: Paste `logs/latest.log` or the crash report (or a link to mclo.gs). Drag screenshots in here.
+      render: shell
