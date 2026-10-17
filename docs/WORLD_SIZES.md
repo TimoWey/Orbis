@@ -4,7 +4,7 @@
 
 The alpha uses four one-word tiers: **Tiny, Small, Normal, Large**, plus **Earth**. All widths below are full side lengths, not radii. Normal is the default. New selections use a logarithmic size slider, preset buttons or exact chunk input, bounded by Tiny and Earth. Biome and gameplay validation remain open.
 
-New menu selections require **at least 1,024 chunks per side (Tiny)** and at most **1,448,160 (Earth)**; typed values go down to 128 Overworld chunks (16 Nether chunks) for testing. Worlds created with the old engine of earlier alpha builds no longer load. Widths remain multiples of 16 for exact centred Nether mapping.
+New menu selections require **at least 1,024 chunks per side (Tiny)** and at most **1,448,160 (Earth)**; typed values go down to 128 Overworld chunks (16 Nether chunks) for testing. Worlds created with the old engine of earlier alpha builds keep their saved width. Widths remain multiples of 16 for exact centred Nether mapping.
 
 ## Current presets — no measured biome success rates
 

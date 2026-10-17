@@ -9,6 +9,7 @@ As of 2026-10-16. Orbis ships integration code for two mods, Distant Horizons an
 | Vanilla client | Joining an Orbis server | Turned away: Orbis is required on every client | Game test: the disconnect screen names the Orbis version to install |
 | Sodium | Required | Check rendering across seams | 0.9.2: all seam game tests pass with it (2026-10-14) |
 | Lithium | Required | Check AI and POI across seams | 0.26.2: all seam game tests pass with it (2026-10-14). Orbis turns off `mixin.ai.poi`, whose own POI search does not see beds and workstations past the seam |
+| Chunky | Pre-generation | Pre-generate an Orbis world | Works on its own (server game test). Together with Distant Horizons, world creation hangs (DH warns about Chunky itself), so don't combine them |
 | FerriteCore | Compatibility priority | Memory optimization | Untested |
 | Entity Culling | Compatibility priority | Check visibility across seams | Untested |
 | Litematica | Compatibility priority | Check schematic placement across seams | Untested |
