@@ -98,17 +98,22 @@ Worlds from earlier Orbis alphas (such as alpha.11) open again; their saved terr
 
 ## Compatibility
 
-Orbis is a **Fabric** mod for Minecraft 26.3 (Java 25). Fabric API is required. The mods below were tested together with Orbis in real game sessions, and all seam tests pass with each of them.
+Orbis is a **Fabric** mod for Minecraft 26.3 (Java 25). Fabric API is required. The mods below were run together with Orbis in real game sessions, and the seam and map tests pass with all of them installed at once, except where a row says otherwise.
 
-| Mod | Tested version | Notes |
+| Mod | Tested version | Result |
 | --- | --- | --- |
-| Sodium | 0.9.2 | Rendering across the seams |
-| Lithium | 0.26.2 | Orbis turns off one Lithium optimization, its own point-of-interest search, which cannot see beds and workstations past the seam |
-| Distant Horizons | 3.3.4 | Far terrain continues past the world's edges (Orbis ships support for DH 3.3.x) |
-| C2ME | 0.4.2 | Chunks are generated in parallel across the seams |
-| Chunky | – | Pre-generating a whole world works |
+| Fabric API | 0.163.0+26.3 | Works (0.161.0+26.3 is the minimum Orbis is built against) |
+| Sodium | 0.9.2, 0.9.3-beta.1 | Works |
+| Lithium | 0.26.2 | Works. Orbis turns off Lithium's own point-of-interest search, which cannot see beds and workstations past the seam |
+| Distant Horizons | 3.3.4 | Works. Far terrain continues past the world's edges |
+| C2ME | 0.4.2-alpha.0.104 | Works. Chunks are generated in parallel across the seams |
+| Iris Shaders | 1.11.7 | Loads and the seam tests pass; shader packs themselves were not tried |
+| FerriteCore | 9.0.0 | Works |
+| MiniHUD and Tweakeroo | 0.41.2, 0.30.1 (with malilib 0.30.2) | Load and the seam tests pass; their overlays and tools were not checked at the seam |
+| Entity Culling | 1.11.3 | **Known problem:** with it installed, our seam test no longer sees a flying arrow cross the seam. The cause is not known yet |
+| Chunky | 1.5.3 | Pre-generating a whole world works |
 
-**Do not combine Distant Horizons and Chunky:** the game then hangs while creating a world, even a vanilla one (Distant Horizons warns about this itself). Other mods, such as Iris, FerriteCore, Entity Culling, Litematica, MiniHUD, Tweakeroo and Mod Menu, are not tested yet.
+**Do not combine Distant Horizons and Chunky:** the game then hangs while creating a world, even a vanilla one (Distant Horizons warns about this itself). Other mods, such as Litematica and Mod Menu, are not tested yet.
 
 ## Alpha status
 
