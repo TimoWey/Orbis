@@ -2,6 +2,8 @@
 
 Finite Minecraft worlds. Seamless exploration.
 
+**Download:** [Orbis on Modrinth](https://modrinth.com/mod/orbis-worlds) · Minecraft 26.3 · Fabric
+
 Minecraft Java worlds span roughly 60 million × 60 million blocks, about 30 million from the centre in each direction. Think of [2b2t](https://www.2b2t.org/): a server running since 2010 whose world has welcomed over a million players. For one player or a small group, exploring a whole world that size is out of reach.
 
 Orbis is built around a different idea: a world small enough to get to know. Discover its landscapes, find your favourite places, and gradually make the whole world familiar. Each seed gives you a different world to call home.
@@ -111,7 +113,7 @@ Orbis deliberately stays focused on the wrapping world, its sizes, the fixed 1:8
 ## Try the alpha
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft **26.3** (Java 25).
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and the Orbis JAR (`orbis-<version>.jar`) in your `mods` folder.
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and the Orbis JAR (`orbis-<version>.jar`, from [Modrinth](https://modrinth.com/mod/orbis-worlds)) in your `mods` folder.
 3. Create a **new** world, set **World shape** to **Orbis** on the World tab, then **Customize** to choose the size.
 
 Back up anything you care about; this is an alpha. Building from source, known limitations and the test records are in the [project guide](docs/IMPLEMENTATION.md). Server setup is in the [server and player guide](docs/SERVER.md); changes per version are in the [changelog](CHANGELOG.md).
