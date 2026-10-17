@@ -40,13 +40,13 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha (**0.1.0-alpha.20**). It runs on its own world engine. Real Minecraft sessions check every seam, in both dimensions and through the corners: terrain, light, mobs and combat, villages and raids, redstone, portals, saving and reloading ([test records](docs/IMPLEMENTATION.md#validation)). Sodium, Lithium, Distant Horizons and C2ME were included in these tests. Worlds created by earlier alpha builds no longer load; start a new world.
+Orbis is an early development alpha (**0.1.0-alpha.21**). It runs on its own world engine. Real Minecraft sessions check every seam, in both dimensions and through the corners: terrain, light, mobs and combat, villages and raids, redstone, portals, saving and reloading ([test records](docs/IMPLEMENTATION.md#validation)). Sodium, Lithium, Distant Horizons and C2ME were included in these tests. Worlds from earlier alphas open; chunks generated new there may not line up with their old terrain, so a new world is best for testing.
 
 - **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges. Mobs, villages, projectiles, redstone and portals work across the seam.
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.
 - **A connected Nether.** Its width is always exactly one eighth of the Overworld's, matching Minecraft's usual coordinate scale.
 - **A familiar End.** The End keeps its normal, unwrapped behaviour.
-- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world; yellow lines mark the seams. The Atlas has a flat map and a 3D globe, zooms, and shows the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
+- **A map that knows the edges.** The corner minimap and the Atlas (press **M**, the key can be changed under Controls) keep you in the centre and continue with the other side of the world. The Atlas has a flat map (continued past the edges, or the world as one square) and a 3D globe, zooms smoothly, and shows the terrain you explored, even after a restart or on a server. Other players in your dimension appear as markers.
 - **Server ready.** One JAR for server and players. Every player needs Orbis on an Orbis world; anyone without it is turned away with a message naming the version to install. Joining shows one line: world size, that the edges connect, and the map key. Operators can run `/orbis check` (English or German) to look for the expected biomes and structures. Pre-generating with Chunky works. See the [server and player guide](docs/SERVER.md).
 - **Orbis cartography goals.** Three original advancements reward preparing a compass, map and field kit. See the [identity audit](docs/ORBIS_IDENTITY.md).
 
@@ -60,7 +60,7 @@ The smallest world (128 chunks per side) after exploring it completely, in an au
 
 Orbis currently targets **Fabric**. Install Fabric Loader, Fabric API and the Orbis JAR. The current alpha targets Minecraft 26.3 and Java 25.
 
-**Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. Distant Horizons' far terrain continues past the world's edges. **C2ME** (Concurrent Chunk Management Engine) generates chunks in parallel across the seams; all seam tests pass with it too. These two are the only mods Orbis ships integration code for. The other mods below are priorities for compatibility testing and have **not yet been verified**.
+**Sodium, Lithium and Distant Horizons** are tested together with Orbis: all seam tests pass with them. Distant Horizons' far terrain continues past the world's edges. **C2ME** (Concurrent Chunk Management Engine) generates chunks in parallel across the seams; all seam tests pass with it too. These two are the only mods Orbis ships integration code for. Don't combine Distant Horizons with Chunky: creating a world then hangs, and Distant Horizons warns about this itself. The other mods below are priorities for compatibility testing and have **not yet been verified**.
 
 <table>
   <tr>
@@ -98,7 +98,7 @@ Choose a preset or use the size slider and exact chunk input. New selections ran
 | Large | 625,008 | 10,000,128 | 100,002,560 |
 | Earth | 1,448,160 | 23,170,560 | 536,874,851 |
 
-These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Worlds created by earlier alpha builds with the old world engine no longer load.
+These are provisional sizes. Smaller worlds may miss biomes or structures; no preset currently guarantees them all. Earth is experimental: its target is 2²⁹ km², about 5.27% above Earth's roughly 510 million km² surface area. Preset widths are rounded to the nearest 16 chunks. The slider uses a logarithmic scale to keep smaller sizes easy to select. Worlds from earlier alphas with the old engine keep their size.
 
 ## Not in this alpha
 
