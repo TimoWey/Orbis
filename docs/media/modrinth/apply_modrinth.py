@@ -4,6 +4,7 @@
 
 Never submits the project for review and never uploads a version.
 """
+import hashlib
 import json, re, sys, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -25,10 +26,6 @@ def call(method, path, data=None, ctype=None):
         return json.loads(body) if body else None
 
 
-current = call('GET', f'/project/{project}')
-for image in current.get('gallery') or []:
-    call('DELETE', f'/project/{project}/gallery?url=' + urllib.parse.quote(image['url'], safe=''))
-
 order = [
     ('anim-torus.gif', 'URL_TORUS', 'How Orbis works', 'A square world folds into a torus: opposite edges are neighbours.', True),
     ('anim-atlas.gif', 'URL_ATLAS_GIF', 'Atlas map and globe', 'Switch between map and globe and turn the globe.', False),
@@ -38,9 +35,24 @@ order = [
     ('gui-atlas-map.png', 'URL_ATLAS_MAP', 'Atlas map', 'The explored world in the atlas (press M).', False),
     ('gui-minimap.png', 'URL_MINIMAP', 'Minimap', 'The corner minimap in game.', False),
 ]
+# Modrinth names images by content hash, so deleting and re-uploading an unchanged
+# image gives it the same address and breaks it. Keep images whose content is unchanged.
+wanted = {hashlib.sha1((folder / name).read_bytes()).hexdigest() for name, *_ in order}
+kept = set()
+for image in call('GET', f'/project/{project}').get('gallery') or []:
+    digest = image['url'].rsplit('/', 1)[-1].split('.')[0]
+    if digest in wanted and digest not in kept:
+        kept.add(digest)
+    else:
+        call('DELETE', f'/project/{project}/gallery?url=' + urllib.parse.quote(image['url'], safe=''))
 for n, (name, _, title, text, featured) in enumerate(order):
+    digest = hashlib.sha1((folder / name).read_bytes()).hexdigest()
     query = urllib.parse.urlencode({'ext': name.rsplit('.', 1)[1], 'featured': str(featured).lower(),
                                     'title': title, 'description': text, 'ordering': n})
+    if digest in kept:
+        current = next(i for i in call('GET', f'/project/{project}')['gallery'] if digest in i['url'])
+        call('PATCH', f'/project/{project}/gallery?url=' + urllib.parse.quote(current['url'], safe='') + '&' + query)
+        continue
     call('POST', f'/project/{project}/gallery?{query}', (folder / name).read_bytes(), 'application/octet-stream')
 
 gallery = call('GET', f'/project/{project}')['gallery']
