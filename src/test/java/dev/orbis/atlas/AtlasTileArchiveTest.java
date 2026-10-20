@@ -69,6 +69,29 @@ class AtlasTileArchiveTest {
         try (var reader = archive.reader()) { assertEquals(0xff000400, reader.get(0, 0).terrainPixel(0)); }
     }
 
+    @Test void batchWritesSpanRegionsKeepRanksAndReportThem() throws Exception {
+        var archive = new AtlasTileArchive(directory);
+        archive.write(tile(1, 0, 0xff000900), 3);
+        var batch = new ArrayList<AtlasSnapshot.Cell>();
+        for (int x = -40; x < 40; x++) batch.add(tile(x, 0, 0xff000000 | (x & 255) << 8));
+        long revision = archive.revision();
+        archive.write(batch, 2);
+        assertTrue(archive.revision() > revision);
+        try (var reader = archive.reader()) {
+            for (int x = -40; x < 40; x++) if (x != 1)
+                assertEquals(0xff000000 | (x & 255) << 8, reader.get(x, 0).terrainPixel(0));
+            // A saved tile never replaces a live capture, in a batch as alone.
+            assertEquals(0xff000900, reader.get(1, 0).terrainPixel(0));
+        }
+        byte[] ranks = archive.ranks(0, 0);
+        assertEquals(2, ranks[0]); assertEquals(3, ranks[1]); assertEquals(0, ranks[32]);
+        assertEquals(2, archive.ranks(-2, 0)[24]);
+        assertEquals(0, archive.ranks(5, 5)[0]);
+        revision = archive.revision();
+        archive.write(batch, 2);
+        assertEquals(revision, archive.revision());
+    }
+
     @Test void archiveRetainsMoreThanTheMemoryHistoryLimit() throws Exception {
         var archive = new AtlasTileArchive(directory);
         for (int x = 0; x <= AtlasCache.CHUNK_LIMIT; x++) archive.write(tile(x, 0, 0xff000000 | x << 8), false);

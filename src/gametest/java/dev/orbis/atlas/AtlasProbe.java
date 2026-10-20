@@ -44,6 +44,12 @@ public final class AtlasProbe {
      * The chunks out of {@code keys} the map has no picture of, neither in memory nor in its tile archive on disk, or
      * null before the first snapshot of {@code dimension}.
      */
+    /** Chunks the atlas counts as loaded in a dimension right now, or null without a map of it. Client thread only. */
+    public static java.util.Set<Long> loaded(String dimension) {
+        var data = PlayerAtlasClient.snapshot;
+        return data == null || !data.dimension().equals(dimension) ? null : java.util.Set.copyOf(data.loaded());
+    }
+
     public static java.util.Set<Long> unknown(String dimension, java.util.Collection<Long> keys) throws java.io.IOException {
         var data = PlayerAtlasClient.snapshot;
         if (data == null || !data.dimension().equals(dimension)) return null;

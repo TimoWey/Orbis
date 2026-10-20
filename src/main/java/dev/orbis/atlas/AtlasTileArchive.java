@@ -94,45 +94,79 @@ final class AtlasTileArchive {
         write(cell, distant ? 1 : 2);
     }
     synchronized void write(AtlasSnapshot.Cell cell, int rank) throws IOException {
-        synchronized (FILE_IO) { writeLocked(cell, rank); }
+        write(List.of(cell), rank);
     }
-    private void writeLocked(AtlasSnapshot.Cell cell, int rank) throws IOException {
-        if (closed || cell.terrainSize() != 256) return;
-        byte[] payload = new byte[PAYLOAD];
-        var buffer = ByteBuffer.wrap(payload);
-        buffer.putInt(cell.color());
-        for (int i = 0; i < 256; i++) buffer.putInt(cell.terrainPixel(i));
-        var crc = new CRC32(); crc.update(payload, 0, PAYLOAD - 4);
-        buffer.putInt((int) crc.getValue());
-        Files.createDirectories(directory);
-        try (var file = new RandomAccessFile(file(cell.x(), cell.z()).toFile(), "rw")) {
+    /** Writes many tiles, opening each region file once; pregeneration delivers tiles far faster than one open per tile. */
+    synchronized void write(Collection<AtlasSnapshot.Cell> cells, int rank) throws IOException {
+        var byRegion = new LinkedHashMap<Long, List<AtlasSnapshot.Cell>>();
+        for (var cell : cells) if (cell.terrainSize() == 256)
+            byRegion.computeIfAbsent(ChunkPos.pack(cell.x() >> 5, cell.z() >> 5), key -> new ArrayList<>()).add(cell);
+        synchronized (FILE_IO) {
+            if (closed || byRegion.isEmpty()) return;
+            Files.createDirectories(directory);
+            for (var region : byRegion.values()) writeRegion(region, rank);
+        }
+    }
+    private void writeRegion(List<AtlasSnapshot.Cell> cells, int rank) throws IOException {
+        var first = cells.getFirst();
+        long key = ChunkPos.pack(first.x() >> 5, first.z() >> 5);
+        var written = new ArrayList<AtlasSnapshot.Cell>();
+        try (var file = new RandomAccessFile(file(first.x(), first.z()).toFile(), "rw")) {
             if (file.length() == 0) file.writeLong(MAGIC);
             file.seek(0);
             if (file.readLong() != MAGIC) throw new IOException("Invalid atlas tile archive header");
-            long offset = offset(cell.x(), cell.z());
-            if (file.length() >= offset + SLOT) {
-                file.seek(offset);
-                int previousRank = file.readUnsignedByte();
-                if (previousRank > rank) return;
-                byte[] previous = new byte[PAYLOAD]; file.readFully(previous);
-                if (previousRank == rank && Arrays.equals(previous, payload)) return;
+            byte[] payload = new byte[PAYLOAD], previous = new byte[PAYLOAD];
+            for (var cell : cells) {
+                var buffer = ByteBuffer.wrap(payload);
+                buffer.putInt(cell.color());
+                for (int i = 0; i < 256; i++) buffer.putInt(cell.terrainPixel(i));
+                var crc = new CRC32(); crc.update(payload, 0, PAYLOAD - 4);
+                buffer.putInt((int) crc.getValue());
+                long offset = offset(cell.x(), cell.z());
+                if (file.length() >= offset + SLOT) {
+                    file.seek(offset);
+                    int previousRank = file.readUnsignedByte();
+                    if (previousRank > rank) continue;
+                    file.readFully(previous);
+                    if (previousRank == rank && Arrays.equals(previous, payload)) continue;
+                }
+                // Publish the validity byte last, so incomplete slots are never read as valid terrain.
+                file.seek(offset); file.writeByte(0); file.write(payload);
+                file.seek(offset); file.writeByte(rank);
+                written.add(cell);
             }
-            // Publish the validity byte last, so incomplete slots are never read as valid terrain.
-            file.seek(offset); file.writeByte(0); file.write(payload);
-            file.seek(offset); file.writeByte(rank);
-            long key = ChunkPos.pack(cell.x() >> 5, cell.z() >> 5);
-            if (existingRegions != null) existingRegions.add(key);
-            synchronized (regions) {
-                var cached = regions.get(key);
-                if (cached != null) {
-                    // Readers keep an immutable region for the duration of one projection.
-                    cached = cached.clone();
-                    cached[(cell.z() & 31) * 32 + (cell.x() & 31)] = cell;
-                    regions.put(key, cached);
+        }
+        if (written.isEmpty()) return;
+        if (existingRegions != null) existingRegions.add(key);
+        synchronized (regions) {
+            var cached = regions.get(key);
+            if (cached != null) {
+                // Readers keep an immutable region for the duration of one projection.
+                cached = cached.clone();
+                for (var cell : written) cached[(cell.z() & 31) * 32 + (cell.x() & 31)] = cell;
+                regions.put(key, cached);
+            }
+        }
+        changes.put(key, revision.incrementAndGet());
+    }
+
+    /** Rank of every slot in one region (0 = no tile), read without decoding any terrain. Worker threads only. */
+    byte[] ranks(int rx, int rz) throws IOException {
+        byte[] ranks = new byte[1024];
+        synchronized (FILE_IO) {
+            Path path = file(rx << 5, rz << 5);
+            if (closed || !Files.isRegularFile(path)) return ranks;
+            try (var file = new RandomAccessFile(path.toFile(), "r")) {
+                if (file.length() < 8) return ranks;
+                if (file.readLong() != MAGIC) return ranks;
+                for (int slot = 0; slot < 1024 && 8 + (slot + 1L) * SLOT <= file.length(); slot++) {
+                    file.seek(8 + slot * (long) SLOT);
+                    int rank = file.readUnsignedByte();
+                    ranks[slot] = (byte) (rank <= 3 ? rank : 0);
                 }
             }
-            changes.put(key, revision.incrementAndGet());
         }
+        return ranks;
     }
 
     Reader reader() { return new Reader(null); }

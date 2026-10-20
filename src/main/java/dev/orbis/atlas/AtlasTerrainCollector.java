@@ -27,7 +27,8 @@ final class AtlasTerrainCollector {
         refresh.remove(key); pending.add(key);
     }
     void unload(long key, Function<Long, AtlasSnapshot.Cell> sample, Consumer<AtlasSnapshot.Cell> captured) {
-        if (pending.contains(key) || refresh.contains(key)) {
+        // Every unload is sampled: an edit since the last refresh would otherwise only reach the map from the save.
+        if (loaded.contains(key) || pending.contains(key) || refresh.contains(key)) {
             var tile = sample.apply(key);
             if (tile != null && accept(tile)) captured.accept(tile);
         }
