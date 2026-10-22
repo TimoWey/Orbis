@@ -42,7 +42,7 @@ Each direction wraps independently. Here, Steve crosses the gold edge first, the
 
 ## Features
 
-Orbis is an early development alpha (**0.1.0-alpha.21**). It runs on its own world engine. Real Minecraft sessions check every seam, in both dimensions and through the corners: terrain, light, mobs and combat, villages and raids, redstone, portals, saving and reloading ([test records](docs/IMPLEMENTATION.md#validation)). Sodium, Lithium, Distant Horizons and C2ME were included in these tests. Worlds from earlier alphas open; chunks generated new there may not line up with their old terrain, so a new world is best for testing.
+Orbis is an early development alpha (**0.1.0-alpha.22**). It runs on its own world engine. Real Minecraft sessions check every seam, in both dimensions and through the corners: terrain, light, mobs and combat, villages and raids, redstone, portals, saving and reloading ([test records](docs/IMPLEMENTATION.md#validation)). Sodium, Lithium, Distant Horizons and C2ME were included in these tests. Worlds from earlier alphas open; chunks generated new there may not line up with their old terrain, so a new world is best for testing.
 
 - **A finite world without a wall.** The Overworld and Nether connect across both horizontal edges. Mobs, villages, projectiles, redstone and portals work across the seam.
 - **A size that suits your world.** Use the slider, choose Tiny, Small, Normal, Large or Earth, or enter an exact width. The world overview shows the area and dimension sizes before you apply them.

@@ -15,8 +15,9 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 
 /**
- * Chunky pre-generates the whole Debug world, Overworld and Nether, through its own commands. After leaving and
- * reopening the world the map knows every chunk of both, without the player having been there. Runs only beside
+ * Chunky pre-generates the whole Debug world, Overworld and Nether, through its own commands. The map knows every
+ * Overworld chunk Chunky unloaded shortly afterwards, and after leaving and reopening the world every chunk of both,
+ * without the player having been there. Runs only beside
  * Chunky ({@code -PorbisChunky=true}).
  */
 public final class ChunkyClientGameTest implements FabricClientGameTest {
@@ -33,6 +34,12 @@ public final class ChunkyClientGameTest implements FabricClientGameTest {
             var server = world.getServer();
             world.getConnection().waitForChunksRender();
             generate(context, server, OVERWORLD, overworld);
+            // Pregeneration must not overflow the live capture: every chunk Chunky already unloaded is on the map
+            // soon, without a restart. Chunks still loaded around the player are captured at their own pace.
+            var stillLoaded = context.computeOnClient(mc -> AtlasProbe.loaded(OVERWORLD));
+            var unloaded = new ArrayList<>(everyChunk(overworld));
+            if (stillLoaded != null) unloaded.removeAll(stillLoaded);
+            checkKnown(context, OVERWORLD, unloaded, "right after Chunky (Overworld)", 20 * 60 * 2);
             generate(context, server, NETHER, nether);
             context.takeScreenshot("chunky-done");
         }
