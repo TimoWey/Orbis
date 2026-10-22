@@ -25,7 +25,7 @@ final class AtlasPreferences {
     static void toggleVisible() { VALUES.setProperty("visible", Boolean.toString(!visible())); save(); }
     static double minimapZoom() { return STORE.number("minimap.zoom", 1, .25, 8); }
     static void cycleMinimapZoom() { STORE.number("minimap.zoom", minimapZoom() >= 8 ? .25 : minimapZoom() * 2); }
-    static double zoom(String dimension, boolean globe) { return STORE.number("zoom." + globe + "." + dimension, globe ? 1 : 512, globe ? .5 : 32, globe ? 12 : 30000000); }
+    static double zoom(String dimension, boolean globe) { return STORE.number("zoom." + globe + "." + dimension, globe ? 1 : 512, globe ? .5 : 32, globe ? AtlasMapRaster.maxGlobeZoom(Integer.MAX_VALUE) : 30000000); }
     static void zoom(String dimension, boolean globe, double value) { STORE.number("zoom." + globe + "." + dimension, value); }
     /** One write when the atlas closes or changes dimension, not one per scroll step. */
     static void saveZoom(String dimension, double flat, double globe) { STORE.zoom(dimension, flat, globe); }
