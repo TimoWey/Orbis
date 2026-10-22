@@ -287,7 +287,7 @@ final class DeveloperScreen extends Screen {
         if (!globe) zoom = Math.max(zoom, data.span() / 512.0);
     }
     private void zoom(double factor) {
-        if (globe) globeZoom = Math.clamp(globeZoom * factor, .5, 12);
+        if (globe) globeZoom = Math.clamp(globeZoom * factor, .5, data == null ? AtlasMapRaster.GLOBE_ZOOM_MAX : AtlasMapRaster.maxGlobeZoom(data.span()));
         else zoom = Math.clamp(zoom * factor, minimumZoom(), data == null ? 1 : Math.max(1, 8.0 * data.span() / Math.max(16, Math.min(mapRight - mapLeft, mapBottom - mapTop))));
         constrainView();
     }
