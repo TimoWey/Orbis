@@ -38,6 +38,20 @@ final class AtlasMapRaster {
     // Shading is for the screen; plain rasters keep the original block colors.
     private final boolean lit;
 
+    /** Closest globe zoom on small worlds, such as the debug world and small Nether maps. */
+    static final double GLOBE_ZOOM_MAX = 12;
+    /** Blocks across the shorter side of the view at the globe's closest zoom, where the world is big enough. */
+    private static final double GLOBE_CLOSEST_BLOCKS = 256;
+
+    /**
+     * Closest globe zoom for a world {@code span} blocks wide. At a fixed limit a big world stays a small ball, so
+     * the limit grows with the world until about {@link #GLOBE_CLOSEST_BLOCKS} blocks fill the view's shorter side.
+     */
+    static double maxGlobeZoom(int span) {
+        // At zoom z the globe's centre shows span / (2 pi radius) blocks per pixel, and the radius is half the side.
+        return Math.max(GLOBE_ZOOM_MAX, span / (Math.PI * GLOBE_CLOSEST_BLOCKS));
+    }
+
     AtlasMapRaster(int width, int height) { this(width, height, false); }
 
     /** {@code lit}: the globe gets light, shadow and an atmosphere so it reads as a ball. */
