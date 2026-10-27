@@ -103,7 +103,8 @@ final class PlayerAtlasScreen extends Screen {
             saveZoom();
             dimension = data.dimension(); globe = AtlasPreferences.globe(dimension) && data.wrapped();
             blocks = blocksGoal = AtlasPreferences.zoom(dimension, false);
-            globeZoom = globeZoomGoal = AtlasPreferences.zoom(dimension, true); follow = true;
+            globeZoom = globeZoomGoal = Math.min(AtlasPreferences.zoom(dimension, true), AtlasMapRaster.maxGlobeZoom(data.span()));
+            follow = true;
         }
     }
     private void mode(boolean value) {
@@ -113,7 +114,7 @@ final class PlayerAtlasScreen extends Screen {
     private void zoom(double factor) {
         // Before the first snapshot the stored zoom has not been read yet; it would replace this one.
         if (dimension == null) return;
-        if (globe) globeZoomGoal = Math.clamp(globeZoomGoal * factor, .5, 12);
+        if (globe) globeZoomGoal = Math.clamp(globeZoomGoal * factor, .5, data == null ? AtlasMapRaster.GLOBE_ZOOM_MAX : AtlasMapRaster.maxGlobeZoom(data.span()));
         // Fully zoomed out, a little room stays around the world, so its edge shows on every side.
         else blocksGoal = Math.clamp(blocksGoal / factor, 32, data != null && data.wrapped() ? data.span() * WORLD_ROOM : 30000000);
         zoomed = true;
