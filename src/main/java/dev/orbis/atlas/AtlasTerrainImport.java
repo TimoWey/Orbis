@@ -38,14 +38,17 @@ final class AtlasTerrainImport implements AutoCloseable {
         }
     }
     private void writeLive(int limit) throws java.io.IOException {
-        for (int i = 0; i < limit; i++) {
-            AtlasSnapshot.Cell tile;
+        // Chunky can unload far more chunks per second than one write per file open keeps up with; the queue then
+        // dropped its oldest tiles and left holes until the slow saved scan reached them again.
+        while (limit > 0) {
+            var batch = new ArrayList<AtlasSnapshot.Cell>();
             synchronized (live) {
                 var it = live.values().iterator();
-                if (!it.hasNext()) break;
-                tile = it.next(); it.remove();
+                while (it.hasNext() && batch.size() < Math.min(limit, 1024)) { batch.add(it.next()); it.remove(); }
             }
-            if (archive != null) archive.write(tile, 3);
+            if (batch.isEmpty()) break;
+            limit -= batch.size();
+            if (archive != null) archive.write(batch, 3);
         }
     }
 
@@ -67,7 +70,7 @@ final class AtlasTerrainImport implements AutoCloseable {
         int playerZ = player == null ? 0 : player.getBlockZ() >> 4;
         task = CompletableFuture.runAsync(() -> {
             try {
-                writeLive(64);
+                writeLive(AtlasCache.CHUNK_LIMIT);
                 long now = System.nanoTime();
                 if (player != null && (Math.abs((long) playerX - focusX) >= 4
                         || Math.abs((long) playerZ - focusZ) >= 4 || now >= nextNearbyScan)) {
@@ -76,7 +79,7 @@ final class AtlasTerrainImport implements AutoCloseable {
                     nextNearbyScan = now + TimeUnit.SECONDS.toNanos(30);
                 }
                 if (!savedScanning && now >= nextSavedScan) {
-                    saved.startScan(); savedScanning = true;
+                    saved.startScan(); savedScanning = true; ranksRegion = Long.MIN_VALUE;
                     nextSavedScan = now + TimeUnit.SECONDS.toNanos(30);
                 }
                 if (distant != null && !distantScanning && now >= nextDistantScan) {
@@ -89,8 +92,11 @@ final class AtlasTerrainImport implements AutoCloseable {
                         boolean priority = nearby.hasNext();
                         ChunkPos position = priority ? nearby.next() : saved.next();
                         if (position == null) { savedScanning = false; break; }
-                        // Existing pixels are immediately usable. The background scan still refreshes saved data.
+                        // Existing pixels are immediately usable.
                         if (priority && reader != null && reader.get(position.x(), position.z()) != null) continue;
+                        // Loaded chunks are captured while loaded and on unload, so an archived native tile is never older
+                        // than the save. Only missing or DH-only tiles need the expensive read.
+                        if (!priority && archive != null && archivedRank(position) >= 2) continue;
                         var tile = saved.read(position);
                         if (tile != null) store(new Tile(tile, false));
                     }
@@ -111,6 +117,14 @@ final class AtlasTerrainImport implements AutoCloseable {
                 if (closed) release();
             }
         }, WORKERS);
+    }
+
+    private long ranksRegion = Long.MIN_VALUE;
+    private byte[] ranks;
+    private int archivedRank(ChunkPos position) throws java.io.IOException {
+        long region = ChunkPos.pack(position.x() >> 5, position.z() >> 5);
+        if (region != ranksRegion) { ranks = archive.ranks(position.x() >> 5, position.z() >> 5); ranksRegion = region; }
+        return ranks[(position.z() & 31) * 32 + (position.x() & 31)];
     }
 
     private void store(Tile tile) {
