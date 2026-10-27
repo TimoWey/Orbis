@@ -2,8 +2,9 @@
 
 All versions target Minecraft 26.3, Java 25, Fabric Loader 0.19.5 and Fabric API 0.161.0+26.3. Every version is a development alpha; start with a new test world. Detailed test records live in [docs/verification](docs/verification/).
 
-## 0.1.0-alpha.22 — 2026-10-20
+## 0.1.0-alpha.22 — 2026-10-27
 
+- The globe zooms in further on large worlds. Before, its closest zoom was the same for every size, so the globe of a Normal world stayed a small ball. Now you can zoom in until about 256 blocks fill the view; small worlds keep the old limit.
 - The atlas keeps up with pre-generation (for example Chunky). Before, it dropped many of the chunks Chunky generated, so the map showed grey gaps and streaks until a slow background scan filled them in, which after every restart read the whole world again. Tiles are now written in bulk, one file per region, and the background scan only reads chunks the map does not have yet.
 
 ## 0.1.0-alpha.21 — 2026-10-16
